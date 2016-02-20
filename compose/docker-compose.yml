@@ -1,0 +1,37 @@
+#idées : 
+# - server syslog
+
+version: '2'
+services:
+
+  base: 
+    build: ../images/base
+
+  apache: 
+    build: ../images/apache
+    depends_on: 
+      - base
+
+  bdd:
+    build: ../images/mysql
+    volumes:
+      - /var/lib/mysql:/space/data/mysql
+
+  fulltextrss:
+    build: ../images/fulltextrss
+    volumes:
+      - /var/log/apache2:/space/logs/fulltextrss
+      - /var/cedricconf:/space/conf/fulltextrss
+    depends_on:
+      - apache
+
+  apachetest:
+    build: ../images/apache
+    links:
+      - bdd
+    volumes:
+      - /var/log/apache2:/space/logs/apachetest
+      - /var/cedricconf:/space/conf/apachetest
+    depends_on: 
+      - bdd
+      - apache
