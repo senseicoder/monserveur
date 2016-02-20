@@ -2,6 +2,8 @@
 
 source ~/bin/docker.inc.sh
 
-docker_needed_image test_apt_cacher_ng
+for i in "data/mysql logs/fulltextrss conf/fulltextrss logs/ttrss conf/ttrss"; do mkdir -p $i; done
+
+#docker_needed_image apt_cacher_ng
 
 docker-compose up

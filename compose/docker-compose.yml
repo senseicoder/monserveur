@@ -15,23 +15,23 @@ services:
   bdd:
     build: ../images/mysql
     volumes:
-      - /var/lib/mysql:/space/data/mysql
+      - ./data/mysql:/var/lib/mysql
 
   fulltextrss:
     build: ../images/fulltextrss
     volumes:
-      - /var/log/apache2:/space/logs/fulltextrss
-      - /var/cedricconf:/space/conf/fulltextrss
+      - ./logs/fulltextrss:/var/log/apache2
+      - ./conf/fulltextrss:/var/cedricconf
     depends_on:
       - apache
 
-  apachetest:
-    build: ../images/apache
+  ttrss:
+    build: ../images/ttrss
     links:
       - bdd
     volumes:
-      - /var/log/apache2:/space/logs/apachetest
-      - /var/cedricconf:/space/conf/apachetest
+      - ./logs/ttrss:/var/log/apache2
+      - ./conf/ttrss:/var/cedricconf
     depends_on: 
       - bdd
       - apache
