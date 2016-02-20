@@ -1,4 +1,4 @@
-FROM monsrv_base
+FROM mysql:5.7
 MAINTAINER Cédric Girard "c.girard@epiconcept.fr"
 
 RUN apt-get -y install mysql-server mysql-client

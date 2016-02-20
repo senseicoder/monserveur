@@ -107,6 +107,25 @@
 	},
 	"buffers":
 	[
+		{
+			"file": "images/mysql/Dockerfile",
+			"settings":
+			{
+				"buffer_size": 143,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"contents": "docker build -t monsrv_mysql .œ",
+			"file": "images/mysql/build.sh",
+			"file_size": 30,
+			"file_write_time": 131004000079157559,
+			"settings":
+			{
+				"buffer_size": 31,
+				"line_ending": "Unix"
+			}
+		}
 	],
 	"build_system": "",
 	"build_system_choices":
@@ -181,10 +200,20 @@
 	},
 	"expanded_folders":
 	[
-		"/home/cedric/www/c/monserveur"
+		"/home/cedric/www/c/monserveur",
+		"/home/cedric/www/c/monserveur/images",
+		"/home/cedric/www/c/monserveur/images/apache",
+		"/home/cedric/www/c/monserveur/images/base",
+		"/home/cedric/www/c/monserveur/images/fulltextrss",
+		"/home/cedric/www/c/monserveur/images/mysql"
 	],
 	"file_history":
 	[
+		"/home/cedric/www/c/monserveur/images/apache/Dockerfile",
+		"/home/cedric/www/c/monserveur/images/mysql/build.sh",
+		"/home/cedric/www/c/monserveur/images/mysql/Dockerfile",
+		"/home/cedric/www/c/monserveur/images/base/build.sh",
+		"/home/cedric/www/c/monserveur/images/base/Dockerfile",
 		"/home/cedric/www/e/OSEA_Plateforme/roles/apache2/tasks/main.yml",
 		"/home/cedric/www/e/OSEA_Plateforme/main.yml",
 		"/home/cedric/www/e/OSEA_Plateforme/Docker/run.sh",
@@ -307,12 +336,7 @@
 		"/home/cedric/www/e/epiconcept_build/packages/system/epiconcept-arborescence/opt/epiconcept/epiconcept-arborescence/apache2/auth/2.2/authuser_ip",
 		"/home/cedric/www/e/epiconcept_build/packages/system/epiconcept-arborescence/DEBIAN/control",
 		"/home/cedric/www/e/epiconcept_build/packages/system/epiconcept-arborescence/etc/apache2/conf.d/errorManager",
-		"/home/cedric/www/e/epiconcept_build/packages/system/epiconcept-arborescence/etc/epiconcept-arborescence/zz_epiconcept_apc_M.ini",
-		"/tmp/sublime-svn-1432732119/SVN",
-		"/tmp/sublime-svn-1432732088/SVN",
-		"/home/cedric/www/e/epiconcept_build/packages/system/ZMQPROXY/php-zmq/install-sh",
-		"/home/cedric/www/e/epiconcept_build/installation.txt",
-		"/tmp/sublime-svn-1432212289/SVN"
+		"/home/cedric/www/e/epiconcept_build/packages/system/epiconcept-arborescence/etc/epiconcept-arborescence/zz_epiconcept_apc_M.ini"
 	],
 	"find":
 	{
@@ -398,8 +422,65 @@
 	"groups":
 	[
 		{
+			"selected": 0,
 			"sheets":
 			[
+				{
+					"buffer": 0,
+					"file": "images/mysql/Dockerfile",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 143,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								14,
+								14
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "images/mysql/build.sh",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 31,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								31,
+								31
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/ShellScript/Shell-Unix-Generic.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				}
 			]
 		}
 	],
