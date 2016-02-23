@@ -4,6 +4,10 @@
 		"selected_items":
 		[
 			[
+				"apa",
+				"apache"
+			],
+			[
 				"id",
 				"idFilm"
 			],
@@ -108,21 +112,42 @@
 	"buffers":
 	[
 		{
-			"file": "images/mysql/Dockerfile",
+			"file": "images/ttrss/build.sh",
 			"settings":
 			{
-				"buffer_size": 143,
+				"buffer_size": 31,
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"contents": "docker build -t monsrv_mysql .œ",
-			"file": "images/mysql/build.sh",
-			"file_size": 30,
-			"file_write_time": 131004746930296922,
+			"file": "images/ttrss/Dockerfile",
 			"settings":
 			{
-				"buffer_size": 31,
+				"buffer_size": 390,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "images/mysql/Dockerfile",
+			"settings":
+			{
+				"buffer_size": 377,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "compose/docker-compose.yml",
+			"settings":
+			{
+				"buffer_size": 613,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "compose/run.sh",
+			"settings":
+			{
+				"buffer_size": 196,
 				"line_ending": "Unix"
 			}
 		}
@@ -201,19 +226,27 @@
 	"expanded_folders":
 	[
 		"/home/cedric/www/c/monserveur",
+		"/home/cedric/www/c/monserveur/compose",
 		"/home/cedric/www/c/monserveur/images",
 		"/home/cedric/www/c/monserveur/images/apache",
 		"/home/cedric/www/c/monserveur/images/base",
 		"/home/cedric/www/c/monserveur/images/fulltextrss",
-		"/home/cedric/www/c/monserveur/images/mysql"
+		"/home/cedric/www/c/monserveur/images/mysql",
+		"/home/cedric/www/c/monserveur/images/ttrss"
 	],
 	"file_history":
 	[
-		"/home/cedric/www/c/monserveur/images/apache/Dockerfile",
-		"/home/cedric/www/c/monserveur/images/mysql/build.sh",
-		"/home/cedric/www/c/monserveur/images/mysql/Dockerfile",
-		"/home/cedric/www/c/monserveur/images/base/build.sh",
+		"/home/cedric/www/c/monserveur/images/fulltextrss/Dockerfile",
+		"/home/cedric/www/c/monserveur/compose/docker-compose.yml",
+		"/home/cedric/bin/docker.inc.sh",
+		"/home/cedric/www/c/monserveur/compose/run.sh",
 		"/home/cedric/www/c/monserveur/images/base/Dockerfile",
+		"/home/cedric/www/c/monserveur/images/apache/Dockerfile",
+		"/home/cedric/www/c/monserveur/images/mysql/Dockerfile",
+		"/home/cedric/bin/docker.sh",
+		"/home/cedric/www/c/monserveur/images/stockage/Dockerfile",
+		"/home/cedric/www/c/monserveur/images/mysql/build.sh",
+		"/home/cedric/www/c/monserveur/images/base/build.sh",
 		"/home/cedric/www/e/OSEA_Plateforme/roles/apache2/tasks/main.yml",
 		"/home/cedric/www/e/OSEA_Plateforme/main.yml",
 		"/home/cedric/www/e/OSEA_Plateforme/Docker/run.sh",
@@ -330,13 +363,7 @@
 		"/tmp/sublime-svn-1433925888/SVN",
 		"/home/cedric/bin/dump.sh",
 		"/home/cedric/www/e/OutilsInternes/ScriptsUnix/bdd/voodb",
-		"/home/cedric/bin/voodb.d/export_structure.php",
-		"/tmp/sublime-svn-1433432751/SVN",
-		"/tmp/sublime-svn-1433432271/SVN",
-		"/home/cedric/www/e/epiconcept_build/packages/system/epiconcept-arborescence/opt/epiconcept/epiconcept-arborescence/apache2/auth/2.2/authuser_ip",
-		"/home/cedric/www/e/epiconcept_build/packages/system/epiconcept-arborescence/DEBIAN/control",
-		"/home/cedric/www/e/epiconcept_build/packages/system/epiconcept-arborescence/etc/apache2/conf.d/errorManager",
-		"/home/cedric/www/e/epiconcept_build/packages/system/epiconcept-arborescence/etc/epiconcept-arborescence/zz_epiconcept_apc_M.ini"
+		"/home/cedric/bin/voodb.d/export_structure.php"
 	],
 	"find":
 	{
@@ -422,40 +449,12 @@
 	"groups":
 	[
 		{
-			"selected": 0,
+			"selected": 4,
 			"sheets":
 			[
 				{
 					"buffer": 0,
-					"file": "images/mysql/Dockerfile",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 143,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								14,
-								14
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Text/Plain text.tmLanguage"
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 0,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "images/mysql/build.sh",
+					"file": "images/ttrss/build.sh",
 					"semi_transient": false,
 					"settings":
 					{
@@ -466,19 +465,133 @@
 						"selection":
 						[
 							[
-								31,
-								31
+								22,
+								22
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/ShellScript/Shell-Unix-Generic.tmLanguage"
+							"syntax": "Packages/ShellScript/Shell-Unix-Generic.sublime-syntax"
 						},
 						"translation.x": 0.0,
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "images/ttrss/Dockerfile",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 390,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								249,
+								249
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "images/mysql/Dockerfile",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 377,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								308,
+								308
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "compose/docker-compose.yml",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 613,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								569,
+								569
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/YAML/YAML.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "compose/run.sh",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 196,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								140,
+								140
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/ShellScript/Shell-Unix-Generic.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
 					"type": "text"
 				}
 			]
