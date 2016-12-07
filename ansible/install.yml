@@ -1,0 +1,6 @@
+---
+
+- hosts: all
+  roles:
+
+  - infra-role-docker-install

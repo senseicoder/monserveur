@@ -1,0 +1,2 @@
+sed -e 's/[#]*PasswordAuthentication.*$/PasswordAuthentication no/' /etc/ssh/sshd_config
+trigger sshd-restart
