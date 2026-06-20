@@ -102,6 +102,7 @@
     owner: root
     group: root
     mode: "0640"
+  diff: false
   notify: restart mindwtr
 
 - name: Déployer la configuration TLS dynamique Traefik
@@ -145,6 +146,7 @@
       dest: fullchain.pem
     - src: /etc/letsencrypt/live/{{ mindwtr_domain }}/privkey.pem
       dest: privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Installer le hook de renouvellement certbot
   template:
