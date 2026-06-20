@@ -1,0 +1,4 @@
+ansible/group_vars/all/vault.yml
+ansible/.vault_passw.py
+ansible/ssh-config
+compose/logs/
