@@ -1,4 +1,2 @@
-deploy_dir: "/opt/mindwtr"
 mindwtr_domain: "mindwtr.daneel.net"
 acme_email: "cedric@daneel.net"
-debian_release: "bookworm"
