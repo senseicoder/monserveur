@@ -7,18 +7,25 @@
       - ca-certificates
       - curl
       - gnupg
-      - lsb-release
     state: present
     update_cache: true
 
-- name: Ajouter la clé GPG Docker
-  apt_key:
+- name: Créer /etc/apt/keyrings
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Télécharger la clé GPG Docker
+  get_url:
     url: https://download.docker.com/linux/debian/gpg
-    state: present
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+    force: false
 
 - name: Ajouter le dépôt Docker
   apt_repository:
-    repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ debian_release }} stable"
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
     state: present
     filename: docker
 
@@ -57,8 +64,15 @@
     mode: "0750"
   loop:
     - "{{ deploy_dir }}"
-    - "{{ deploy_dir }}/data/cloud"
     - "{{ deploy_dir }}/traefik-dynamic"
+
+- name: Créer le répertoire data/cloud (uid 1000 — user interne mindwtr-cloud)
+  file:
+    path: "{{ deploy_dir }}/data/cloud"
+    state: directory
+    owner: 1000
+    group: 1000
+    mode: "0750"
 
 # --- Fichiers Compose ---
 
@@ -91,9 +105,11 @@
 
 # --- Certificat TLS ---
 
-- name: Installer certbot
+- name: Installer certbot et le plugin Apache
   apt:
-    name: certbot
+    name:
+      - certbot
+      - python3-certbot-apache
     state: present
 
 - name: Obtenir le certificat TLS pour {{ mindwtr_domain }}
@@ -120,8 +136,10 @@
   command: docker compose -f {{ deploy_dir }}/docker-compose.traefik.yml up -d
   args:
     chdir: "{{ deploy_dir }}"
+  changed_when: false
 
 - name: Démarrer mindwtr-cloud
   command: docker compose -f {{ deploy_dir }}/docker-compose.mindwtr.yml up -d
   args:
     chdir: "{{ deploy_dir }}"
+  changed_when: false
