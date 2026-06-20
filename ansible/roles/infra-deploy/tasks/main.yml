@@ -132,6 +132,9 @@
     creates: /etc/apache2/sites-enabled/{{ mindwtr_domain }}.conf
   notify: reload apache
 
+- name: Recharger Apache avant le challenge certbot
+  meta: flush_handlers
+
 # --- Certificat TLS ---
 # certbot est installé via snap sur glaurung (pas apt).
 # --webroot : le vhost mindwtr.daneel.net sert /.well-known/ sans redirection.
