@@ -44,7 +44,7 @@ ansible all -m ping
 ### 4. Dry-run (check mode)
 
 ```bash
-ansible-playbook install.yml --check --diff
+ansible-playbook install.yml --limit glaurung --check --diff
 ```
 
 Vérifie ce qui serait modifié sans toucher au serveur. Les tâches `command` (réseau Docker, certbot, compose up) ne sont pas simulables et s'affichent comme `skipped` — c'est normal.
@@ -52,7 +52,7 @@ Vérifie ce qui serait modifié sans toucher au serveur. Les tâches `command` (
 ### 5. Lancer le playbook
 
 ```bash
-ansible-playbook install.yml
+ansible-playbook install.yml --limit glaurung
 ```
 
 Le playbook effectue dans l'ordre :
@@ -86,7 +86,7 @@ curl -I https://mindwtr.daneel.net:8787/health
 ## Redéploiement
 
 ```bash
-cd ansible && ansible-playbook install.yml
+cd ansible && ansible-playbook install.yml --limit glaurung
 ```
 
 Les tâches sont idempotentes : Docker, le réseau et le certificat sont skippés s'ils existent déjà.
