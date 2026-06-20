@@ -109,15 +109,29 @@ Configs dans `/etc/apache2/sites-enabled/` sur glaurung.
 - **Option A (retenue pour Phase 1)** : Apache reste sur 80/443. On ajoute un vhost Apache `gtd.daneel.net` qui proxyfie vers le conteneur mindwtr (port interne). TLS via certbot comme les autres vhosts. Traefik n'est pas déployé dans cette phase.
 - **Option B (Phase 2+)** : Apache passe sur un port interne (ex. 127.0.0.1:8080). Traefik prend 80/443 et proxyfie Apache pour les anciens vhosts + gère mindwtr et ttrss directement. Migration plus lourde mais cohérente long terme.
 
-### Phase 1 — mindwtr via Apache (scope actuel)
+### Phase 1 — Traefik + mindwtr (scope actuel)
 
-1. Vérifier que `gtd.daneel.net` pointe sur l'IP de glaurung
-2. Lancer mindwtr-cloud en Compose (sans Traefik) sur un port interne (ex. 127.0.0.1:8787)
-3. Ajouter un vhost Apache `gtd.daneel.net` avec ProxyPass → 127.0.0.1:8787
-4. Obtenir le certificat TLS : `certbot --apache -d gtd.daneel.net`
-5. Configurer l'app Mindwtr : URL `https://gtd.daneel.net/v1`, token généré
+**Domaine :** `mindwtr.daneel.net` → IP de glaurung (51.254.212.250)
+**URL client Mindwtr :** `https://mindwtr.daneel.net:8787/v1`
 
-Le rôle Ansible `infra-deploy` (du dossier arkopen) est à adapter : retirer la partie Traefik, garder Docker + répertoires + Compose mindwtr seul.
+Architecture :
+```
+client  →  8787/HTTPS  →  Traefik (TLS via certs certbot)  →  mindwtr:8787 (réseau Docker "mindwtr")
+certbot  →  Apache (port 80)  →  renouvelle /etc/letsencrypt/live/mindwtr.daneel.net/
+hook post-renewal certbot  →  docker kill --signal=SIGUSR1 traefik  (rechargement cert)
+```
+
+Étapes Ansible :
+1. Installer Docker si absent
+2. Créer le réseau Docker `mindwtr`
+3. Déposer `docker-compose.mindwtr.yml` + `.env` prod dans `/opt/mindwtr/`
+4. Obtenir le cert : `certbot --apache -d mindwtr.daneel.net`
+5. Installer le hook post-renewal certbot pour recharger Traefik
+6. Démarrer Traefik puis mindwtr-cloud
+
+**Dashboard Traefik :** désactivé en Phase 1 (`--api.dashboard=false`). Activé en Phase 2 derrière BasicAuth.
+
+**Configurer l'app Mindwtr :** URL `https://mindwtr.daneel.net:8787/v1`, token = `mindwtr_token`
 
 ### Todos fin de Phase 1
 
