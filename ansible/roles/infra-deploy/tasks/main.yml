@@ -180,14 +180,14 @@
 # --- Démarrage des services ---
 
 - name: Démarrer Traefik
-  command: docker compose -f {{ deploy_dir }}/docker-compose.traefik.yml up -d
+  command: docker-compose -f {{ deploy_dir }}/docker-compose.traefik.yml up -d
   args:
     chdir: "{{ deploy_dir }}"
   changed_when: false
   ignore_errors: "{{ ansible_check_mode }}"
 
 - name: Démarrer mindwtr-cloud
-  command: docker compose -f {{ deploy_dir }}/docker-compose.mindwtr.yml up -d
+  command: docker-compose -f {{ deploy_dir }}/docker-compose.mindwtr.yml up -d
   args:
     chdir: "{{ deploy_dir }}"
   changed_when: false

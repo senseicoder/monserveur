@@ -70,8 +70,8 @@ Le playbook effectue dans l'ordre :
 
 ```bash
 # Depuis glaurung
-docker compose -f /opt/mindwtr/docker-compose.traefik.yml ps
-docker compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
+docker-compose -f /opt/mindwtr/docker-compose.traefik.yml ps
+docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 
 # Test HTTPS
 curl -I https://mindwtr.daneel.net:8787/health
@@ -91,7 +91,7 @@ cd ansible && ansible-playbook install.yml --limit glaurung
 ```
 
 Les tâches sont idempotentes : Docker, le réseau et le certificat sont skippés s'ils existent déjà.
-Pour forcer la mise à jour des conteneurs : `docker compose pull` sur le serveur.
+Pour forcer la mise à jour des conteneurs : `docker-compose pull` sur le serveur.
 
 ## Modifier le token
 

@@ -118,8 +118,8 @@ Les tâches Docker et certbot sont idempotentes (skippées si déjà en place).
 ### Vérifier les services sur le serveur
 
 ```bash
-docker compose -f /opt/mindwtr/docker-compose.traefik.yml ps
-docker compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
+docker-compose -f /opt/mindwtr/docker-compose.traefik.yml ps
+docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 ```
 
 ## Todos fin de Phase 1
