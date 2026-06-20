@@ -1,0 +1,27 @@
+services:
+  traefik:
+    image: traefik:v3
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=mindwtr"
+      - "--entrypoints.mindwtr.address=:8787"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "8787:8787"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/etc/letsencrypt:/etc/letsencrypt:ro"
+      - "{{ deploy_dir }}/traefik-dynamic:/etc/traefik/dynamic:ro"
+    networks:
+      - mindwtr
+
+networks:
+  mindwtr:
+    external: true

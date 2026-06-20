@@ -1,0 +1,27 @@
+services:
+  mindwtr-cloud:
+    image: ghcr.io/dongdongbh/mindwtr-cloud:latest
+    container_name: mindwtr-cloud
+    restart: unless-stopped
+    environment:
+      MINDWTR_CLOUD_AUTH_TOKENS: "{{ mindwtr_token }}"
+      MINDWTR_CLOUD_CORS_ORIGIN: "https://{{ mindwtr_domain }}:8787"
+    volumes:
+      - "{{ deploy_dir }}/data/cloud:/app/cloud_data"
+    networks:
+      - mindwtr
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mindwtr.rule=Host(`{{ mindwtr_domain }}`)"
+      - "traefik.http.routers.mindwtr.entrypoints=mindwtr"
+      - "traefik.http.routers.mindwtr.tls=true"
+      - "traefik.http.services.mindwtr.loadbalancer.server.port=8787"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  mindwtr:
+    external: true

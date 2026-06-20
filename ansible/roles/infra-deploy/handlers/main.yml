@@ -1,0 +1,10 @@
+---
+- name: restart traefik
+  command: docker compose -f {{ deploy_dir }}/docker-compose.traefik.yml restart
+  args:
+    chdir: "{{ deploy_dir }}"
+
+- name: restart mindwtr
+  command: docker compose -f {{ deploy_dir }}/docker-compose.mindwtr.yml restart
+  args:
+    chdir: "{{ deploy_dir }}"
