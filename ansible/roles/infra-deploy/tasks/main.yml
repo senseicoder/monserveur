@@ -125,15 +125,19 @@
     owner: root
     group: root
     mode: "0644"
+  register: apache_vhost
 
 - name: Activer le vhost Apache pour {{ mindwtr_domain }}
   command: a2ensite {{ mindwtr_domain }}
-  args:
-    creates: /etc/apache2/sites-enabled/{{ mindwtr_domain }}.conf
-  notify: reload apache
+  register: apache_a2ensite
+  changed_when: "'Enabling site' in apache_a2ensite.stdout"
+  failed_when: apache_a2ensite.rc != 0
 
-- name: Recharger Apache avant le challenge certbot
-  meta: flush_handlers
+- name: Recharger Apache si vhost modifié
+  service:
+    name: apache2
+    state: reloaded
+  when: apache_vhost is changed or apache_a2ensite is changed
 
 # --- Certificat TLS ---
 # certbot est installé via snap sur glaurung (pas apt).
