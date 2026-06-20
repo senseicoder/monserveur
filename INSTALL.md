@@ -41,7 +41,15 @@ ansible-vault encrypt group_vars/all/vault.yml
 ansible all -m ping
 ```
 
-### 4. Lancer le playbook
+### 4. Dry-run (check mode)
+
+```bash
+ansible-playbook install.yml --check --diff
+```
+
+Vérifie ce qui serait modifié sans toucher au serveur. Les tâches `command` (réseau Docker, certbot, compose up) ne sont pas simulables et s'affichent comme `skipped` — c'est normal.
+
+### 5. Lancer le playbook
 
 ```bash
 ansible-playbook install.yml
@@ -57,7 +65,7 @@ Le playbook effectue dans l'ordre :
 7. Démarrage de Traefik (port 8787/HTTPS)
 8. Démarrage de mindwtr-cloud
 
-### 5. Vérifier le déploiement
+### 6. Vérifier le déploiement
 
 ```bash
 # Depuis glaurung
@@ -68,7 +76,7 @@ docker compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 curl -I https://mindwtr.daneel.net:8787/health
 ```
 
-### 6. Configurer l'app Mindwtr
+### 7. Configurer l'app Mindwtr
 
 | Champ | Valeur |
 |-------|--------|
