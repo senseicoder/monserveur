@@ -126,9 +126,17 @@ docker compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 
 - [ ] Revoir le firewall : INPUT sans règle + piège Docker/PREROUTING. Utiliser `DOCKER-USER` pour filtrer les ports Docker. Ports à autoriser : 22, 80, 443, 8000-8002, 8787, 22000.
 
+## Infra Apache / certbot sur glaurung
+
+- Vhosts dans `/etc/apache2/sites-available/*.conf` — **générés automatiquement** (commentaire "fichier généré, il sera écrasé"). Chaque vhost a un dossier `.d/` pour snippets additionnels (reverse_proxy, ssl, access…).
+- Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**. Plugin Apache non connecté → utiliser `--webroot -w /var/www/html` pour les challenges HTTP-01 (le vhost `000-default` sert `/var/www/html` pour tout domaine non configuré).
+- Renewal hooks : `/etc/letsencrypt/renewal-hooks/deploy/` (vide avant notre déploiement).
+- Modules Apache actifs : proxy, proxy_http, proxy_fcgi, rewrite, ssl, headers.
+
 ## Phase 2 (à faire)
 
 - **Traefik sur 80/443** : passer Apache sur port interne, Traefik prend 80/443
+- **Traefik ACME DNS-01** : Traefik peut gérer ses propres certs via DNS challenge (API OVH) — élimine le besoin de certbot et du hook. HTTP-01 et TLS-ALPN-01 impossibles tant qu'Apache tient 80/443.
 - **TT-RSS** : intégrer `~/ttrss-docker/` dans ce repo (`.j2` + vault), labels Traefik sur `web-nginx`
 - **Dashboard Traefik** : activer derrière BasicAuth (`htpasswd -nB admin`, doubler les `$`)
 - **ssh-securite** : compléter le rôle (durcissement sshd)
