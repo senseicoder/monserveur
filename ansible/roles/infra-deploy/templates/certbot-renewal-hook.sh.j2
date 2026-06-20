@@ -1,3 +1,10 @@
 #!/bin/bash
-# Rechargement Traefik après renouvellement du cert {{ mindwtr_domain }}
+# Copie les certs renouvelés et recharge Traefik
+DEPLOY_DIR="{{ deploy_dir }}"
+DOMAIN="{{ mindwtr_domain }}"
+
+cp /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ${DEPLOY_DIR}/certs/fullchain.pem
+cp /etc/letsencrypt/live/${DOMAIN}/privkey.pem  ${DEPLOY_DIR}/certs/privkey.pem
+chmod 640 ${DEPLOY_DIR}/certs/*.pem
+
 docker restart traefik

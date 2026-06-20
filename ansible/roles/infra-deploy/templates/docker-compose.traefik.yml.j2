@@ -17,7 +17,7 @@ services:
       - "8787:8787"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "/etc/letsencrypt:/etc/letsencrypt:ro"
+      - "{{ deploy_dir }}/certs:/certs:ro"
       - "{{ deploy_dir }}/traefik-dynamic:/etc/traefik/dynamic:ro"
     networks:
       - mindwtr

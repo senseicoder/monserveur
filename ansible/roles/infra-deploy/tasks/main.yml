@@ -65,6 +65,7 @@
   loop:
     - "{{ deploy_dir }}"
     - "{{ deploy_dir }}/traefik-dynamic"
+    - "{{ deploy_dir }}/certs"
 
 - name: Créer le répertoire data/cloud (uid 1000 — user interne mindwtr-cloud)
   file:
@@ -121,6 +122,20 @@
     -d {{ mindwtr_domain }}
   args:
     creates: /etc/letsencrypt/live/{{ mindwtr_domain }}/fullchain.pem
+
+- name: Copier les certs mindwtr dans deploy_dir/certs (isolation Traefik)
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ deploy_dir }}/certs/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - src: /etc/letsencrypt/live/{{ mindwtr_domain }}/fullchain.pem
+      dest: fullchain.pem
+    - src: /etc/letsencrypt/live/{{ mindwtr_domain }}/privkey.pem
+      dest: privkey.pem
 
 - name: Installer le hook de renouvellement certbot
   template:
