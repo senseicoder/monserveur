@@ -115,17 +115,13 @@
   notify: restart traefik
 
 # --- Certificat TLS ---
-
-- name: Installer certbot et le plugin Apache
-  apt:
-    name:
-      - certbot
-      - python3-certbot-apache
-    state: present
+# certbot est installé via snap sur glaurung (pas apt), plugin Apache non connecté.
+# On utilise --webroot : Apache répond sur mindwtr.daneel.net via le vhost par défaut (000-default → /var/www/html).
 
 - name: Obtenir le certificat TLS pour {{ mindwtr_domain }}
   command: >
-    certbot certonly --apache
+    certbot certonly --webroot
+    -w /var/www/html
     --non-interactive
     --agree-tos
     --email {{ acme_email }}
