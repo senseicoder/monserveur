@@ -1,0 +1,2 @@
+# Copier en vault.yml et chiffrer : ansible-vault encrypt vault.yml
+mindwtr_token: "CHANGEME"
