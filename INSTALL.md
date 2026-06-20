@@ -5,7 +5,7 @@
 Sur la machine locale :
 - Ansible ≥ 2.14
 - Fichier `ansible/ssh-config` configuré pour joindre `glaurung`
-- Fichier `ansible/.vault_passw.py` présent (fournit le mot de passe vault)
+- Fichier `ansible/.vault_passw.sh` présent (fournit le mot de passe vault via `cmdp`)
 - DNS : `mindwtr.daneel.net` → 51.254.212.250 (IP de glaurung)
 
 ## Séquence
@@ -60,10 +60,11 @@ Le playbook effectue dans l'ordre :
 2. Création du réseau Docker `mindwtr`
 3. Création de `/opt/mindwtr/` et sous-dossiers
 4. Dépôt des fichiers Compose et config TLS Traefik
-5. Obtention du certificat TLS (`certbot certonly --apache -d mindwtr.daneel.net`)
-6. Installation du hook certbot (`/etc/letsencrypt/renewal-hooks/deploy/reload-traefik.sh`)
-7. Démarrage de Traefik (port 8787/HTTPS)
-8. Démarrage de mindwtr-cloud
+5. Déploiement du vhost Apache pour `mindwtr.daneel.net` (challenge HTTP-01)
+6. Obtention du certificat TLS (`certbot certonly --webroot -d mindwtr.daneel.net`)
+7. Installation du hook certbot (`/etc/letsencrypt/renewal-hooks/deploy/reload-traefik.sh`)
+8. Démarrage de Traefik (port 8787/HTTPS)
+9. Démarrage de mindwtr-cloud
 
 ### 6. Vérifier le déploiement
 

@@ -114,9 +114,27 @@
     mode: "0640"
   notify: restart traefik
 
+# --- Vhost Apache pour le challenge certbot ---
+# Sans vhost dédié, Apache utilise bots.plcoder.net par défaut et redirige vers HTTPS,
+# ce qui casse la validation HTTP-01 de Let's Encrypt.
+
+- name: Déployer le vhost Apache pour {{ mindwtr_domain }}
+  template:
+    src: apache-mindwtr.conf.j2
+    dest: /etc/apache2/sites-available/{{ mindwtr_domain }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Activer le vhost Apache pour {{ mindwtr_domain }}
+  command: a2ensite {{ mindwtr_domain }}
+  args:
+    creates: /etc/apache2/sites-enabled/{{ mindwtr_domain }}.conf
+  notify: reload apache
+
 # --- Certificat TLS ---
-# certbot est installé via snap sur glaurung (pas apt), plugin Apache non connecté.
-# On utilise --webroot : Apache répond sur mindwtr.daneel.net via le vhost par défaut (000-default → /var/www/html).
+# certbot est installé via snap sur glaurung (pas apt).
+# --webroot : le vhost mindwtr.daneel.net sert /.well-known/ sans redirection.
 
 - name: Obtenir le certificat TLS pour {{ mindwtr_domain }}
   command: >

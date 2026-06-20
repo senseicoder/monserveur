@@ -1,0 +1,6 @@
+<VirtualHost *:80>
+    ServerName {{ mindwtr_domain }}
+    DocumentRoot /var/www/html
+    # Vhost minimal pour le challenge certbot webroot.
+    # Traefik gère le HTTPS sur port 8787 — ce vhost ne fait que servir /.well-known/
+</VirtualHost>
