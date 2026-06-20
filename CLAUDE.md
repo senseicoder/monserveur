@@ -135,7 +135,10 @@ hook post-renewal certbot  →  docker kill --signal=SIGUSR1 traefik  (rechargem
 
 ### Todos fin de Phase 1
 
-- [ ] Revoir le firewall (vérifier que 8787 est bien ouvert / règles iptables cohérentes avec les ports exposés)
+- [ ] Revoir le firewall — état actuel : **INPUT ACCEPT sans aucune règle** (pas de pare-feu hôte). Tout port avec un listener est public. Points à adresser :
+  - Ajouter des règles INPUT pour n'autoriser que 22, 80, 443, 8000-8002, 8787 (+ 22000 Syncthing)
+  - **Attention piège Docker** : les ports bindés via Docker passent par PREROUTING/DNAT et contournent les règles INPUT. Pour les filtrer il faut utiliser la chaîne `DOCKER-USER` (pas INPUT)
+  - Envisager UFW avec `DOCKER_OPTS` ou nftables selon ce qui est installé
 
 ### Phase 2 — Migration vers Traefik (à faire)
 
