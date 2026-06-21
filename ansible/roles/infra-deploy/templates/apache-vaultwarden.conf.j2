@@ -1,0 +1,8 @@
+{% set global_ipv6 = ansible_all_ipv6_addresses | reject('match', '^fe80') | list %}
+<VirtualHost {{ ansible_default_ipv4.address }}:80{% if global_ipv6 %} [{{ global_ipv6[0] }}]:80{% endif %}>
+    ServerName {{ vaultwarden_domain }}
+    DocumentRoot /var/www/html
+    # Vhost minimal pour le challenge certbot webroot.
+    # Sans ce vhost, Apache utilise bots.plcoder.net (vhost par défaut sur ces IPs)
+    # qui redirige tout vers HTTPS, cassant la validation HTTP-01 de Let's Encrypt.
+</VirtualHost>

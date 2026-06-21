@@ -1,0 +1,30 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      DOMAIN: "https://{{ vaultwarden_domain }}:8787"
+      SIGNUPS_ALLOWED: "false"
+{% if vaultwarden_admin_token is defined %}
+      ADMIN_TOKEN: "{{ vaultwarden_admin_token }}"
+{% endif %}
+    volumes:
+      - "{{ deploy_dir }}/data/vaultwarden:/data"
+    networks:
+      - mindwtr
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vaultwarden.rule=Host(`{{ vaultwarden_domain }}`)"
+      - "traefik.http.routers.vaultwarden.entrypoints=mindwtr"
+      - "traefik.http.routers.vaultwarden.tls=true"
+      - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/api/alive"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  mindwtr:
+    external: true

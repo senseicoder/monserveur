@@ -1,10 +1,19 @@
 #!/bin/bash
-# Copie les certs renouvelés et recharge Traefik
+# Copie les certs renouvelés et recharge Traefik.
+# Appelé par certbot après chaque renouvellement réussi (RENEWED_LINEAGE est positionné).
 DEPLOY_DIR="{{ deploy_dir }}"
-DOMAIN="{{ mindwtr_domain }}"
 
-cp /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ${DEPLOY_DIR}/certs/fullchain.pem
-cp /etc/letsencrypt/live/${DOMAIN}/privkey.pem  ${DEPLOY_DIR}/certs/privkey.pem
-chmod 640 ${DEPLOY_DIR}/certs/*.pem
+case "$RENEWED_LINEAGE" in
+  */{{ mindwtr_domain }})
+    cp /etc/letsencrypt/live/{{ mindwtr_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/fullchain.pem
+    cp /etc/letsencrypt/live/{{ mindwtr_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/fullchain.pem ${DEPLOY_DIR}/certs/privkey.pem
+    ;;
+  */{{ vaultwarden_domain }})
+    cp /etc/letsencrypt/live/{{ vaultwarden_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/vault/fullchain.pem
+    cp /etc/letsencrypt/live/{{ vaultwarden_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/vault/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/vault/fullchain.pem ${DEPLOY_DIR}/certs/vault/privkey.pem
+    ;;
+esac
 
 docker restart traefik

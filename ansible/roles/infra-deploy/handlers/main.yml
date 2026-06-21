@@ -10,3 +10,9 @@
   args:
     chdir: "{{ deploy_dir }}"
   ignore_errors: "{{ ansible_check_mode }}"
+
+- name: restart vaultwarden
+  command: docker-compose -f {{ deploy_dir }}/docker-compose.vaultwarden.yml restart
+  args:
+    chdir: "{{ deploy_dir }}"
+  ignore_errors: "{{ ansible_check_mode }}"

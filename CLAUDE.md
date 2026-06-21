@@ -31,13 +31,14 @@ Infrastructure as code pour le VPS personnel `glaurung` (Debian 9 stretch). Dép
 | `sophie.daneel.net` | 80 | |
 | `sslsophie.daneel.net` | 80 | |
 
-Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**. Certs : `bots.plcoder.net`, `reader.daneel.net`, `mindwtr.daneel.net`.
+Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**. Certs : `bots.plcoder.net`, `reader.daneel.net`, `mindwtr.daneel.net`, `vault.daneel.net`.
 
 ### Conteneurs Docker actifs
 | Conteneur | Image | Notes |
 |-----------|-------|-------|
 | `traefik` | `traefik:v3` | Port 8787/HTTPS, réseau mindwtr ✅ |
 | `mindwtr-cloud` | `ghcr.io/dongdongbh/mindwtr-cloud:latest` | Healthy, réseau mindwtr ✅ |
+| `vaultwarden` | `vaultwarden/server:latest` | vault.daneel.net:8787, réseau mindwtr |
 | `php` | `debian:11` | Shell PHP ponctuel, lancé manuellement hors Compose |
 | `ttrss-docker-*` (×4) | `cthulhoo/ttrss-*` + `postgres:12-alpine` | Géré depuis `~/ttrss-docker/` |
 
@@ -85,11 +86,15 @@ ansible/
     │   ├── handlers/main.yml     ← restart traefik, restart mindwtr
     │   ├── tasks/main.yml
     │   └── templates/
-    │       ├── apache-mindwtr.conf.j2        ← vhost HTTP-01 certbot
+    │       ├── apache-mindwtr.conf.j2            ← vhost HTTP-01 certbot mindwtr
+    │       ├── apache-vaultwarden.conf.j2        ← vhost HTTP-01 certbot vaultwarden
     │       ├── docker-compose.traefik.yml.j2
     │       ├── docker-compose.mindwtr.yml.j2
-    │       ├── traefik-tls.yml.j2            ← TLS file provider
-    │       └── certbot-renewal-hook.sh.j2
+    │       ├── docker-compose.vaultwarden.yml.j2
+    │       ├── traefik-tls.yml.j2                ← TLS file provider (mindwtr + vault)
+    │       ├── certbot-renewal-hook.sh.j2         ← copie certs + restart traefik
+    │       ├── ipv6-default-route.sh.j2
+    │       └── ipv6-default-route.service.j2
     └── ssh-securite/             ← durcissement SSH (stub, Phase 2)
 ```
 
@@ -173,7 +178,20 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 - **ssh-securite** : compléter le rôle (durcissement sshd)
 - **Conteneur php** : formaliser le lancement
 
+## Vaultwarden — setup initial
+
+**URL :** `https://vault.daneel.net:8787`
+
+`SIGNUPS_ALLOWED=false` par défaut (sécurité). Deux options pour créer le premier compte :
+
+**Option A — ADMIN_TOKEN (recommandé)** : ajouter `vaultwarden_admin_token: "..."` dans `vault.yml` (`ansible-vault edit ansible/group_vars/all/vault.yml`), redéployer, puis créer l'utilisateur via `https://vault.daneel.net:8787/admin`.
+
+**Option B — signup temporaire** : passer `SIGNUPS_ALLOWED: "true"` dans le template, déployer, créer le compte, remettre `false`.
+
+Données persistées dans `/opt/mindwtr/data/vaultwarden/` (uid 1000).
+
 ## Sauvegardes critiques
 
 - `/opt/mindwtr/data/cloud/` — données sync Mindwtr
+- `/opt/mindwtr/data/vaultwarden/` — données Vaultwarden (mots de passe)
 - `/etc/letsencrypt/` — certificats TLS (renouvellement auto via certbot snap)

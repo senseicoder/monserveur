@@ -171,6 +171,15 @@
     - "{{ deploy_dir }}"
     - "{{ deploy_dir }}/traefik-dynamic"
     - "{{ deploy_dir }}/certs"
+    - "{{ deploy_dir }}/certs/vault"
+
+- name: Créer le répertoire data/vaultwarden (uid 1000 — user interne vaultwarden)
+  file:
+    path: "{{ deploy_dir }}/data/vaultwarden"
+    state: directory
+    owner: 1000
+    group: 1000
+    mode: "0750"
 
 - name: Créer le répertoire data/cloud (uid 1000 — user interne mindwtr-cloud)
   file:
@@ -273,6 +282,66 @@
     group: root
     mode: "0755"
 
+# --- Vaultwarden : vhost Apache + certbot + compose ---
+
+- name: Déployer le vhost Apache pour {{ vaultwarden_domain }}
+  template:
+    src: apache-vaultwarden.conf.j2
+    dest: /etc/apache2/sites-available/{{ vaultwarden_domain }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: apache_vhost_vault
+
+- name: Activer le vhost Apache pour {{ vaultwarden_domain }}
+  command: a2ensite {{ vaultwarden_domain }}
+  register: apache_a2ensite_vault
+  changed_when: "'Enabling site' in apache_a2ensite_vault.stdout"
+  failed_when: apache_a2ensite_vault.rc != 0
+
+- name: Recharger Apache si vhost vaultwarden modifié
+  service:
+    name: apache2
+    state: reloaded
+  when: apache_vhost_vault is changed or apache_a2ensite_vault is changed
+
+- name: Obtenir le certificat TLS pour {{ vaultwarden_domain }}
+  command: >
+    certbot certonly --webroot
+    -w /var/www/html
+    --non-interactive
+    --agree-tos
+    --email {{ acme_email }}
+    -d {{ vaultwarden_domain }}
+  args:
+    creates: /etc/letsencrypt/live/{{ vaultwarden_domain }}/fullchain.pem
+
+- name: Copier les certs vaultwarden dans deploy_dir/certs/vault
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ deploy_dir }}/certs/vault/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - src: /etc/letsencrypt/live/{{ vaultwarden_domain }}/fullchain.pem
+      dest: fullchain.pem
+    - src: /etc/letsencrypt/live/{{ vaultwarden_domain }}/privkey.pem
+      dest: privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: restart traefik
+
+- name: Déployer docker-compose.vaultwarden.yml
+  template:
+    src: docker-compose.vaultwarden.yml.j2
+    dest: "{{ deploy_dir }}/docker-compose.vaultwarden.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  diff: false
+  notify: restart vaultwarden
+
 # --- Démarrage des services ---
 
 - name: Démarrer Traefik
@@ -284,6 +353,13 @@
 
 - name: Démarrer mindwtr-cloud
   command: docker-compose -f {{ deploy_dir }}/docker-compose.mindwtr.yml up -d
+  args:
+    chdir: "{{ deploy_dir }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Démarrer vaultwarden
+  command: docker-compose -f {{ deploy_dir }}/docker-compose.vaultwarden.yml up -d
   args:
     chdir: "{{ deploy_dir }}"
   changed_when: false
