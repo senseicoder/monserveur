@@ -110,6 +110,42 @@ docker-compose -f /opt/mindwtr/docker-compose.traefik.yml ps
 docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 ```
 
+## Ajouter un nouveau service Docker
+
+### Derrière Traefik (recommandé)
+
+1. Rejoindre le réseau externe `mindwtr`
+2. Labels dans le Compose :
+   ```yaml
+   labels:
+     - "traefik.enable=true"
+     - "traefik.http.routers.<nom>.rule=Host(`<domaine>`)"
+     - "traefik.http.routers.<nom>.entrypoints=mindwtr"
+     - "traefik.http.routers.<nom>.tls=true"
+     - "traefik.http.services.<nom>.loadbalancer.server.port=<port interne>"
+   ```
+3. **TLS file provider** — Traefik n'a pas d'ACME (Apache tient 80/443). Pour chaque nouveau domaine :
+   - Obtenir un cert certbot : `certbot certonly --webroot -w /var/www/html -d <domaine>`
+   - Copier les certs dans `/opt/mindwtr/certs/` (ou un sous-dossier dédié)
+   - Mettre à jour `traefik-tls.yml.j2` pour référencer les nouveaux certs
+   - Tout nouveau domaine certbot nécessite un **vhost Apache dédié** (voir section ci-dessous)
+4. **Entrypoint unique** : `mindwtr` = port 8787. Tous les services Traefik actuels sont sur 8787 (non standard). Phase 2 = Traefik sur 80/443.
+5. **Healthcheck** : utiliser `127.0.0.1` et non `localhost` — avec IPv6 activé, `localhost` résout en `::1` et échoue si le service n'écoute qu'en IPv4.
+
+### DNS pour un nouveau domaine
+
+`glaurung.daneel.net` a un A (`51.254.212.250`) + AAAA (`2001:41d0:302:2100::4203`). Un CNAME vers `glaurung.daneel.net` hérite des deux enregistrements et fonctionnera en IPv4 et IPv6. Utiliser un A direct si on veut exclure l'IPv6.
+
+### Subnets à ne pas chevaucher
+
+| Réseau | Subnet IPv4 | Subnet IPv6 |
+|--------|-------------|-------------|
+| bridge | 172.17.0.0/16 | — |
+| ttrss-docker_default | 172.23.0.0/16 | — |
+| mindwtr | auto | fd00:0:0:1::/64 |
+
+Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` différent si IPv6 nécessaire.
+
 ## Infra Apache / certbot sur glaurung — points critiques
 
 - Vhosts dans `/etc/apache2/sites-available/*.conf` — **générés automatiquement** par l'outillage Epiconcept. Chaque vhost a un dossier `.d/` pour snippets additionnels.
@@ -122,7 +158,7 @@ docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 ## Todos Phase 1 (restants)
 
 - [ ] **Firewall** : INPUT ACCEPT sans règle + piège Docker/PREROUTING. Utiliser la chaîne `DOCKER-USER` pour filtrer. Ports à ouvrir : 22, 80, 443, 8000-8002, 8787, 22000.
-- [ ] **IPv6 full-stack** : Docker a IPv6 activé (daemon.json `"ipv6":true`, réseau mindwtr `fd00:0:0:1::/64`, forwarding kernel). Mais le routage IPv6 externe est bloqué au niveau OVH (port 443 lui-même timeout en IPv6). Contournement actuel : `mindwtr.daneel.net` est un A sans AAAA. Fix requis : activer le bloc IPv6 /64 dans le panel OVH (Network → IP → IPv6), puis configurer la route sur glaurung.
+- [x] **IPv6 full-stack** : activé — daemon.json, réseau mindwtr `fd00:0:0:1::/64`, forwarding kernel, route par défaut OVH via service systemd `ipv6-default-route`. `mindwtr.daneel.net` est un CNAME → `glaurung.daneel.net` (A + AAAA). Android vérifié en WiFi et mobile.
 
 ## Dette technique / refactoring
 
