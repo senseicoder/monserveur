@@ -122,6 +122,7 @@ docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 ## Todos Phase 1 (restants)
 
 - [ ] **Firewall** : INPUT ACCEPT sans règle + piège Docker/PREROUTING. Utiliser la chaîne `DOCKER-USER` pour filtrer. Ports à ouvrir : 22, 80, 443, 8000-8002, 8787, 22000.
+- [ ] **IPv6 Docker** : port 8787 inaccessible en IPv6 (Docker sur Debian stretch, ip6tables non configuré). Contournement actuel : `mindwtr.daneel.net` est un enregistrement A sans AAAA (Gandi). Fix propre : activer IPv6 dans le daemon Docker (`"ipv6": true` + subnet dans `/etc/docker/daemon.json`), vérifier ip6tables.
 
 ## Phase 2 (à faire)
 
