@@ -19,6 +19,8 @@ services:
       - "traefik.http.routers.vaultwarden.entrypoints=mindwtr"
       - "traefik.http.routers.vaultwarden.tls=true"
       - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
+    security_opt:
+      - seccomp:unconfined
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1/api/alive"]
       interval: 30s
