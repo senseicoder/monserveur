@@ -1,4 +1,4 @@
-{% set global_ipv6 = ansible_all_ipv6_addresses | reject('match', '^fe80') | list %}
+{% set global_ipv6 = ansible_all_ipv6_addresses | reject('match', '^fe80') | reject('match', '^fd') | reject('match', '^fc') | list %}
 <VirtualHost {{ ansible_default_ipv4.address }}:80{% if global_ipv6 %} [{{ global_ipv6[0] }}]:80{% endif %}>
     ServerName {{ vaultwarden_domain }}
     DocumentRoot /var/www/html
