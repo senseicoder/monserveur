@@ -1,0 +1,12 @@
+[Unit]
+Description=Route IPv6 par défaut OVH
+After=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ipv6-default-route.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

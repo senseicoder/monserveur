@@ -61,6 +61,37 @@
     - net.ipv6.conf.all.forwarding
     - net.ipv6.conf.default.forwarding
 
+# --- Route IPv6 par défaut (persistance au reboot) ---
+# /etc/network/interfaces a les post-up OVH mais ne s'exécute pas toujours au boot.
+
+- name: Déployer le script de route IPv6
+  template:
+    src: ipv6-default-route.sh.j2
+    dest: /usr/local/sbin/ipv6-default-route.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Déployer le service systemd ipv6-default-route
+  template:
+    src: ipv6-default-route.service.j2
+    dest: /etc/systemd/system/ipv6-default-route.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: ipv6_route_service
+
+- name: Recharger systemd si le service a changé
+  systemd:
+    daemon_reload: true
+  when: ipv6_route_service is changed
+
+- name: Activer et démarrer le service ipv6-default-route
+  systemd:
+    name: ipv6-default-route
+    state: started
+    enabled: true
+
 # --- Docker daemon (IPv6 + ip6tables) ---
 
 - name: Déployer la configuration du daemon Docker

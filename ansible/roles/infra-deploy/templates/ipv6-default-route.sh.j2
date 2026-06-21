@@ -1,0 +1,5 @@
+#!/bin/sh
+# Route IPv6 par défaut OVH — le post-up de /etc/network/interfaces
+# ne s'exécute pas systématiquement au boot, ce service garantit la persistance.
+/sbin/ip -6 route add {{ ipv6_gateway }} dev eth0 2>/dev/null || true
+/sbin/ip -6 route add default via {{ ipv6_gateway }} dev eth0 2>/dev/null || true
