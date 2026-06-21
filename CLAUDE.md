@@ -115,6 +115,12 @@ docker-compose -f /opt/mindwtr/docker-compose.traefik.yml ps
 docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 ```
 
+## Pièges Docker sur glaurung
+
+**seccomp Docker 19.03 + apps Rust/Go modernes** : le profil seccomp de Docker 19.03 ne whitelist pas `clone3` (ajouté Linux 5.3+). Les runtimes récents (Tokio 1.x pour Rust) l'utilisent pour spawner des threads → panic `OS can't spawn worker thread: Operation not permitted`. Fix : ajouter `security_opt: ["seccomp:unconfined"]` dans le compose du service concerné. Inutile si Docker est upgradé vers 20.10+.
+
+**URL clients Vaultwarden** : saisir uniquement `https://<domaine>:<port>` dans le champ "URL du serveur". Les autres champs (API, Identity, Icons, Notifications, Events) sont déduits automatiquement par le client.
+
 ## Ajouter un nouveau service Docker
 
 ### Derrière Traefik (recommandé)
@@ -159,6 +165,7 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 - Hook de renouvellement : `/etc/letsencrypt/renewal-hooks/deploy/reload-traefik.sh` — copie les certs dans `/opt/mindwtr/certs/` et `docker restart traefik`.
 - **Docker Compose** sur glaurung : version 1 (`docker-compose` avec trait d'union). Pas de plugin Compose v2 (`docker compose`) — le serveur tourne sur Debian stretch avec Docker installé manuellement.
 - Modules Apache actifs : proxy, proxy_http, proxy_fcgi, rewrite, ssl, headers.
+- **Filtre IPv6 dans les templates Apache** : `ansible_all_ipv6_addresses` inclut les IPs Docker internes (`fd00::/8`). Filtrer `^fe80` seul ne suffit pas — filtrer aussi `^fd` et `^fc`. Sans ça, le VirtualHost est déclaré sur `fd00:0:0:1::1` au lieu de l'IP publique OVH, Let's Encrypt ne trouve pas le challenge et échoue.
 
 ## Todos Phase 1 (restants)
 
