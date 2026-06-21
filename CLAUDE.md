@@ -122,7 +122,7 @@ docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 ## Todos Phase 1 (restants)
 
 - [ ] **Firewall** : INPUT ACCEPT sans règle + piège Docker/PREROUTING. Utiliser la chaîne `DOCKER-USER` pour filtrer. Ports à ouvrir : 22, 80, 443, 8000-8002, 8787, 22000.
-- [ ] **IPv6 Docker** : port 8787 inaccessible en IPv6 (Docker sur Debian stretch, ip6tables non configuré). Contournement actuel : `mindwtr.daneel.net` est un enregistrement A sans AAAA (Gandi). Fix propre : activer IPv6 dans le daemon Docker (`"ipv6": true` + subnet dans `/etc/docker/daemon.json`), vérifier ip6tables.
+- [ ] **IPv6 full-stack** : Docker a IPv6 activé (daemon.json `"ipv6":true`, réseau mindwtr `fd00:0:0:1::/64`, forwarding kernel). Mais le routage IPv6 externe est bloqué au niveau OVH (port 443 lui-même timeout en IPv6). Contournement actuel : `mindwtr.daneel.net` est un A sans AAAA. Fix requis : activer le bloc IPv6 /64 dans le panel OVH (Network → IP → IPv6), puis configurer la route sur glaurung.
 
 ## Dette technique / refactoring
 
