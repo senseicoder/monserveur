@@ -124,6 +124,10 @@ docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 - [ ] **Firewall** : INPUT ACCEPT sans règle + piège Docker/PREROUTING. Utiliser la chaîne `DOCKER-USER` pour filtrer. Ports à ouvrir : 22, 80, 443, 8000-8002, 8787, 22000.
 - [ ] **IPv6 Docker** : port 8787 inaccessible en IPv6 (Docker sur Debian stretch, ip6tables non configuré). Contournement actuel : `mindwtr.daneel.net` est un enregistrement A sans AAAA (Gandi). Fix propre : activer IPv6 dans le daemon Docker (`"ipv6": true` + subnet dans `/etc/docker/daemon.json`), vérifier ip6tables.
 
+## Dette technique / refactoring
+
+- **Découper le rôle `infra-deploy`** : il fait trop de choses. Candidats à extraire en rôles séparés : `docker-base` (install + daemon + kernel IPv6), `apache-certbot` (vhost + cert), `mindwtr` (réseau + stack Compose). Le playbook `install.yml` appellerait la séquence de rôles.
+
 ## Phase 2 (à faire)
 
 - **Traefik sur 80/443** : passer Apache sur port interne, Traefik prend 80/443

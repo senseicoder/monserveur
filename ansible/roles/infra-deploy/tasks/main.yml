@@ -1,5 +1,5 @@
 ---
-# --- Docker ---
+# --- Docker install ---
 
 - name: Vérifier si Docker est déjà installé
   command: docker --version
@@ -48,6 +48,71 @@
         state: present
         update_cache: true
 
+# --- Kernel IPv6 ---
+
+- name: Activer le forwarding IPv6
+  sysctl:
+    name: "{{ item }}"
+    value: "1"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-docker-ipv6.conf
+    reload: true
+  loop:
+    - net.ipv6.conf.all.forwarding
+    - net.ipv6.conf.default.forwarding
+
+# --- Docker daemon (IPv6 + ip6tables) ---
+
+- name: Déployer la configuration du daemon Docker
+  template:
+    src: docker-daemon.json.j2
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: "0644"
+  register: docker_daemon
+
+# --- Vérification état réseau mindwtr avant toute intervention ---
+
+- name: Inspecter le réseau Docker mindwtr
+  command: docker network inspect mindwtr
+  register: mindwtr_net_inspect
+  failed_when: false
+  changed_when: false
+
+- name: Détecter si le réseau mindwtr a IPv6 activé
+  set_fact:
+    mindwtr_net_ipv6: >-
+      {{ ((mindwtr_net_inspect.stdout | from_json)[0].EnableIPv6)
+         if mindwtr_net_inspect.rc == 0
+         else false }}
+
+# --- Reconfiguration Docker si daemon.json ou réseau a changé ---
+# Ordre : arrêt stack → redémarrage Docker → suppression réseau → recréation
+
+- name: Arrêter la stack mindwtr (avant reconfiguration)
+  command: docker-compose -f {{ deploy_dir }}/docker-compose.{{ item }}.yml down
+  args:
+    chdir: "{{ deploy_dir }}"
+  loop:
+    - traefik
+    - mindwtr
+  when: docker_daemon is changed or not mindwtr_net_ipv6
+  ignore_errors: true
+
+- name: Redémarrer Docker si daemon.json modifié
+  systemd:
+    name: docker
+    state: restarted
+  when: docker_daemon is changed
+
+- name: Supprimer le réseau mindwtr si IPv6 absent (sera recréé avec IPv6)
+  command: docker network rm mindwtr
+  when: not mindwtr_net_ipv6
+  register: net_rm
+  failed_when: net_rm.rc != 0 and 'No such network' not in net_rm.stderr
+  ignore_errors: "{{ ansible_check_mode }}"
+
 - name: Démarrer et activer Docker
   systemd:
     name: docker
@@ -56,8 +121,8 @@
 
 # --- Réseau Docker ---
 
-- name: Créer le réseau Docker mindwtr
-  command: docker network create mindwtr
+- name: Créer le réseau Docker mindwtr (IPv6)
+  command: docker network create --ipv6 --subnet fd00:0:0:1::/64 mindwtr
   register: network_result
   failed_when: network_result.rc != 0 and 'already exists' not in network_result.stderr
   changed_when: network_result.rc == 0
