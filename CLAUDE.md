@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Notes wiki** : `~/Sync/Central/Dossiers/obsidian/epiconcept/wiki/postes/glaurung.md` (synthèse opérationnelle) et `wiki/services/vaultwarden.md`.
+
 ## Objectif
 
 Infrastructure as code pour le VPS personnel `glaurung` (Debian 9 stretch). Déploie des services auto-hébergés via Docker + Ansible.
