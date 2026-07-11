@@ -110,12 +110,13 @@
   register: mindwtr_net_inspect
   failed_when: false
   changed_when: false
+  check_mode: false  # lecture seule, sans effet de bord — à exécuter aussi en --check
 
 - name: Détecter si le réseau mindwtr a IPv6 activé
   set_fact:
     mindwtr_net_ipv6: >-
-      {{ ((mindwtr_net_inspect.stdout | from_json)[0].EnableIPv6)
-         if mindwtr_net_inspect.rc == 0
+      {{ ((mindwtr_net_inspect.stdout | default('') | from_json)[0].EnableIPv6)
+         if (mindwtr_net_inspect.rc | default(1)) == 0 and (mindwtr_net_inspect.stdout | default('') | length > 0)
          else false }}
 
 # --- Reconfiguration Docker si daemon.json ou réseau a changé ---
