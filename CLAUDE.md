@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Notes wiki** : `~/Sync/Central/Dossiers/obsidian/epiconcept/wiki/postes/glaurung.md` (synthèse opérationnelle), `wiki/services/vaultwarden.md`, `wiki/services/rustdesk.md`.
+**Notes wiki** : voir le wiki personnel de Cédric, page `postes/glaurung.md` (synthèse opérationnelle), `services/vaultwarden.md`, `services/rustdesk.md`.
 
 ## Objectif
 
@@ -77,8 +77,8 @@ hook post-renewal            →  docker restart traefik
 
 ```
 ansible/
-├── ansible.cfg                   ← inventory Epiconcept, vault via .vault_passw.sh
-├── inventory/hosts.yml           ← doc seulement (inventaire réel : ~/Sync/Epiconcept/inventory/)
+├── ansible.cfg                   ← inventory local, vault via .vault_passw.sh
+├── inventory/hosts.yml           ← inventaire local (host unique : glaurung)
 ├── .vault_passw.sh               ← cmdp hebergements/mindwtr/vault | head -1
 ├── group_vars/all/
 │   ├── vars.yml                  ← mindwtr_domain, acme_email
@@ -174,7 +174,7 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 
 ## Infra Apache / certbot sur glaurung — points critiques
 
-- Vhosts dans `/etc/apache2/sites-available/*.conf` — **générés automatiquement** par l'outillage Epiconcept. Chaque vhost a un dossier `.d/` pour snippets additionnels.
+- Vhosts dans `/etc/apache2/sites-available/*.conf` — **générés automatiquement** par les templates Ansible de ce repo. Chaque vhost a un dossier `.d/` pour snippets additionnels.
 - Les vhosts existants écoutent sur les IPs **explicites** du serveur (`51.254.212.250:80` et `[2001:41d0:302:2100::4203]:80`). Un vhost `*:80` est dans un groupe de priorité inférieure et ne s'applique **jamais** — le vhost certbot doit déclarer les mêmes IPs explicites.
 - Certbot via snap, `--webroot -w /var/www/html`. Le challenge HTTP-01 nécessite un vhost Apache dédié pour le domaine (sans lui, Apache redirige vers `bots.plcoder.net:443` qui timeout).
 - Hook de renouvellement : `/etc/letsencrypt/renewal-hooks/deploy/reload-traefik.sh` — copie les certs dans `/opt/mindwtr/certs/` et `docker restart traefik`.
