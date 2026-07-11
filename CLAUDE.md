@@ -2,13 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Notes wiki** : `~/Sync/Central/Dossiers/obsidian/epiconcept/wiki/postes/glaurung.md` (synthèse opérationnelle) et `wiki/services/vaultwarden.md`.
+**Notes wiki** : `~/Sync/Central/Dossiers/obsidian/epiconcept/wiki/postes/glaurung.md` (synthèse opérationnelle), `wiki/services/vaultwarden.md`, `wiki/services/rustdesk.md`.
 
 ## Objectif
 
 Infrastructure as code pour le VPS personnel `glaurung` (Debian 9 stretch). Déploie des services auto-hébergés via Docker + Ansible.
 
-## État de production sur glaurung (au 2026-06-21)
+## État de production sur glaurung (au 2026-07-11)
 
 ### Réseau hôte
 | Port | Bind | Usage |
@@ -21,6 +21,8 @@ Infrastructure as code pour le VPS personnel `glaurung` (Debian 9 stretch). Dép
 | 8384 | 127.0.0.1 | Syncthing UI |
 | 8787 | 0.0.0.0 | Traefik → mindwtr-cloud ✅ Phase 1 déployée |
 | 22000 | ::: | Syncthing sync |
+| 21115-21116 | 0.0.0.0 | RustDesk hbbs (tcp), 21116 aussi udp — hors Traefik ✅ |
+| 21117 | 0.0.0.0 | RustDesk hbbr (tcp) — hors Traefik ✅ |
 
 ### Apache2 — vhosts actifs (`/etc/apache2/sites-enabled/`)
 | Vhost | Ports | Notes |
@@ -43,6 +45,8 @@ Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**. Certs : `bot
 | `vaultwarden` | `vaultwarden/server:latest` | vault.daneel.net:8787, réseau mindwtr |
 | `php` | `debian:11` | Shell PHP ponctuel, lancé manuellement hors Compose |
 | `ttrss-docker-*` (×4) | `cthulhoo/ttrss-*` + `postgres:12-alpine` | Géré depuis `~/ttrss-docker/` |
+| `rustdesk-hbbs` | `rustdesk/rustdesk-server:latest` | Ports directs sur l'hôte, hors réseau Docker mindwtr ✅ |
+| `rustdesk-hbbr` | `rustdesk/rustdesk-server:latest` | Ports directs sur l'hôte, hors réseau Docker mindwtr ✅ |
 
 ### Réseaux Docker existants
 | Réseau | Subnet | Conteneurs |
