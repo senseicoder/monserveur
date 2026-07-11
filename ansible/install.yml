@@ -2,3 +2,4 @@
 - hosts: glaurung
   roles:
     - infra-deploy
+    - rustdesk

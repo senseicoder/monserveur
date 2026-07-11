@@ -1,0 +1,24 @@
+services:
+  hbbs:
+    image: rustdesk/rustdesk-server:latest
+    container_name: rustdesk-hbbs
+    command: hbbs -r {{ rustdesk_domain }}:21117
+    restart: unless-stopped
+    ports:
+      - "21115:21115/tcp"
+      - "21116:21116/tcp"
+      - "21116:21116/udp"
+    volumes:
+      - "{{ deploy_dir }}/data:/root"
+    depends_on:
+      - hbbr
+
+  hbbr:
+    image: rustdesk/rustdesk-server:latest
+    container_name: rustdesk-hbbr
+    command: hbbr
+    restart: unless-stopped
+    ports:
+      - "21117:21117/tcp"
+    volumes:
+      - "{{ deploy_dir }}/data:/root"

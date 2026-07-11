@@ -1,4 +1,5 @@
 mindwtr_domain: "mindwtr.daneel.net"
 vaultwarden_domain: "vault.daneel.net"
+rustdesk_domain: "rustdesk.daneel.net"
 acme_email: "cedric@daneel.net"
 ipv6_gateway: "2001:41d0:302:2100::1"

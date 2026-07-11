@@ -145,6 +145,15 @@ docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 4. **Entrypoint unique** : `mindwtr` = port 8787. Tous les services Traefik actuels sont sur 8787 (non standard). Phase 2 = Traefik sur 80/443.
 5. **Healthcheck** : utiliser `127.0.0.1` et non `localhost` — avec IPv6 activé, `localhost` résout en `::1` et échoue si le service n'écoute qu'en IPv4.
 
+### Hors Traefik (services non-HTTP)
+
+Certains services ne parlent pas HTTP (protocole TCP/UDP brut avec chiffrement propre) et ne peuvent pas passer par le routeur HTTP de Traefik. Exemple : `rustdesk` (rôle `roles/rustdesk/`), qui expose `hbbs`/`hbbr` directement sur l'hôte via `ports:` dans le Compose, sans certbot ni Traefik.
+
+1. Nouveau rôle Ansible dédié plutôt que d'ajouter au rôle `infra-deploy` (déjà volumineux, cf. dette technique ci-dessous)
+2. `ports:` mappés directement sur l'hôte dans le template Compose (pas de réseau `mindwtr`, pas de labels Traefik)
+3. Si le service persiste un secret généré au premier démarrage (ex. clé RustDesk `id_ed25519`), monter un volume dédié — sinon chaque redéploiement/recréation régénère le secret et casse les clients déjà configurés
+4. Ajouter le rôle à `install.yml`
+
 ### DNS pour un nouveau domaine
 
 `glaurung.daneel.net` a un A (`51.254.212.250`) + AAAA (`2001:41d0:302:2100::4203`). Un CNAME vers `glaurung.daneel.net` hérite des deux enregistrements et fonctionnera en IPv4 et IPv6. Utiliser un A direct si on veut exclure l'IPv6.
@@ -171,7 +180,7 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 
 ## Todos Phase 1 (restants)
 
-- [ ] **Firewall** : INPUT ACCEPT sans règle + piège Docker/PREROUTING. Utiliser la chaîne `DOCKER-USER` pour filtrer. Ports à ouvrir : 22, 80, 443, 8000-8002, 8787, 22000.
+- [ ] **Firewall** : INPUT ACCEPT sans règle + piège Docker/PREROUTING. Utiliser la chaîne `DOCKER-USER` pour filtrer. Ports à ouvrir : 22, 80, 443, 8000-8002, 8787, 22000, 21115-21117 (rustdesk, tcp), 21116 (rustdesk, udp).
 - [x] **IPv6 full-stack** : activé — daemon.json, réseau mindwtr `fd00:0:0:1::/64`, forwarding kernel, route par défaut OVH via service systemd `ipv6-default-route`. `mindwtr.daneel.net` est un CNAME → `glaurung.daneel.net` (A + AAAA). Android vérifié en WiFi et mobile.
 
 ## Dette technique / refactoring
