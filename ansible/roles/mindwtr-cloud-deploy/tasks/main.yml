@@ -1,0 +1,78 @@
+---
+- name: Créer le répertoire data/cloud (uid 1000 — user interne mindwtr-cloud)
+  file:
+    path: "{{ mindwtr_deploy_dir }}/data/cloud"
+    state: directory
+    owner: 1000
+    group: 1000
+    mode: "0750"
+
+- name: Déployer docker-compose.mindwtr.yml
+  template:
+    src: docker-compose.mindwtr.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/docker-compose.mindwtr.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  diff: false
+  notify: restart mindwtr
+
+# Sans vhost dédié, Apache utilise bots.plcoder.net par défaut et redirige vers HTTPS,
+# ce qui casse la validation HTTP-01 de Let's Encrypt.
+
+- name: Déployer le vhost Apache pour {{ mindwtr_domain }}
+  template:
+    src: apache-mindwtr.conf.j2
+    dest: /etc/apache2/sites-available/{{ mindwtr_domain }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: apache_vhost
+
+- name: Activer le vhost Apache pour {{ mindwtr_domain }}
+  command: a2ensite {{ mindwtr_domain }}
+  register: apache_a2ensite
+  changed_when: "'Enabling site' in apache_a2ensite.stdout"
+  failed_when: apache_a2ensite.rc != 0
+
+- name: Recharger Apache si vhost modifié
+  service:
+    name: apache2
+    state: reloaded
+  when: apache_vhost is changed or apache_a2ensite is changed
+
+# certbot est installé via snap sur glaurung (pas apt).
+# --webroot : le vhost mindwtr.daneel.net sert /.well-known/ sans redirection.
+
+- name: Obtenir le certificat TLS pour {{ mindwtr_domain }}
+  command: >
+    certbot certonly --webroot
+    -w /var/www/html
+    --non-interactive
+    --agree-tos
+    --email {{ acme_email }}
+    -d {{ mindwtr_domain }}
+  args:
+    creates: /etc/letsencrypt/live/{{ mindwtr_domain }}/fullchain.pem
+
+- name: Copier les certs mindwtr dans mindwtr_deploy_dir/certs (isolation Traefik)
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ mindwtr_deploy_dir }}/certs/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - src: /etc/letsencrypt/live/{{ mindwtr_domain }}/fullchain.pem
+      dest: fullchain.pem
+    - src: /etc/letsencrypt/live/{{ mindwtr_domain }}/privkey.pem
+      dest: privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Démarrer mindwtr-cloud
+  command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.mindwtr.yml up -d
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"

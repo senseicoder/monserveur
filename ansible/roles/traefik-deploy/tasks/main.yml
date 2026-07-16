@@ -1,0 +1,46 @@
+---
+- name: Créer les répertoires de déploiement Traefik
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - "{{ mindwtr_deploy_dir }}"
+    - "{{ mindwtr_deploy_dir }}/traefik-dynamic"
+    - "{{ mindwtr_deploy_dir }}/certs"
+    - "{{ mindwtr_deploy_dir }}/certs/vault"
+
+- name: Déployer docker-compose.traefik.yml
+  template:
+    src: docker-compose.traefik.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/docker-compose.traefik.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart traefik
+
+- name: Déployer la configuration TLS dynamique Traefik
+  template:
+    src: traefik-tls.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/traefik-dynamic/tls.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart traefik
+
+- name: Installer le hook de renouvellement certbot
+  template:
+    src: certbot-renewal-hook.sh.j2
+    dest: /etc/letsencrypt/renewal-hooks/deploy/reload-traefik.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Démarrer Traefik
+  command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.traefik.yml up -d
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"

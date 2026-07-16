@@ -1,5 +1,8 @@
 # Stack mindwtr complète (Docker, IPv6, réseau, Traefik, mindwtr-cloud, Vaultwarden, certbot).
-# Rôle monolithique aujourd'hui — sera découpé en docker-engine-setup / network-ipv6-setup /
-# docker-network-mindwtr-setup / traefik-deploy / mindwtr-cloud-deploy / vaultwarden-deploy
-# à l'Étape 3 de RAPPROCHEMENT_INFRA_DEPLOY.md.
-infra-deploy
+# Ordre significatif : chaque rôle dépend des répertoires/réseau créés par les précédents.
+docker-engine-setup
+network-ipv6-setup
+docker-network-mindwtr-setup
+traefik-deploy
+mindwtr-cloud-deploy
+vaultwarden-deploy

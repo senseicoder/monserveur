@@ -2,5 +2,28 @@
 - hosts: glaurung
   gather_facts: true
 
+  # Handlers centralisés ici (pas dans les rôles individuels) : ./run list joue
+  # chaque rôle d'une liste dans une invocation ansible-playbook séparée, donc un
+  # handler défini dans un rôle n'est pas visible par un autre rôle notifiant sur
+  # le même nom (ex. vaultwarden-deploy notifie "restart traefik").
+  handlers:
+    - name: restart traefik
+      command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.traefik.yml restart
+      args:
+        chdir: "{{ mindwtr_deploy_dir }}"
+      ignore_errors: "{{ ansible_check_mode }}"
+
+    - name: restart mindwtr
+      command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.mindwtr.yml restart
+      args:
+        chdir: "{{ mindwtr_deploy_dir }}"
+      ignore_errors: "{{ ansible_check_mode }}"
+
+    - name: restart vaultwarden
+      command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.vaultwarden.yml restart
+      args:
+        chdir: "{{ mindwtr_deploy_dir }}"
+      ignore_errors: "{{ ansible_check_mode }}"
+
   roles:
     - role: "{{ role | basename }}"

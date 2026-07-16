@@ -81,35 +81,39 @@ ansible/
 ├── inventory/hosts.yml           ← inventaire local (host unique : glaurung)
 ├── .vault_passw.sh               ← cmdp hebergements/mindwtr/vault | head -1
 ├── group_vars/all/
-│   ├── vars.yml                  ← mindwtr_domain, acme_email
+│   ├── vars.yml                  ← mindwtr_deploy_dir, mindwtr_domain, acme_email
 │   ├── vault.yml                 ← mindwtr_token (chiffré, versionné)
 │   └── vault.yml.example         ← modèle
 ├── requirements.yml              ← collection community.docker
-├── install.yml                   ← playbook principal
+├── install.yml                   ← playbook legacy, joué via ./run legacy
+├── run                           ← wrapper, dry-run par défaut, ANSIBLE_ROLES_PATH → infra-deploy si présent
+├── run_role.yml                  ← playbook générique "role", handlers Compose centralisés (cf. note ci-dessous)
+├── mindwtr.list / rat.list / rustdesk.list / security.list
 └── roles/
-    ├── infra-deploy/             ← rôle Phase 1
-    │   ├── defaults/main.yml     ← deploy_dir=/opt/mindwtr
-    │   ├── handlers/main.yml     ← restart traefik, restart mindwtr
-    │   ├── tasks/main.yml
+    ├── docker-engine-setup/      ← install Docker CE + plugin Compose
+    ├── network-ipv6-setup/       ← forwarding IPv6 kernel + service systemd ipv6-default-route
+    ├── docker-network-mindwtr-setup/  ← daemon.json IPv6 + réseau Docker mindwtr (down/up des 3 stacks si reconfig)
+    ├── traefik-deploy/           ← répertoires, docker-compose.traefik.yml, TLS dynamique, hook certbot, start
     │   └── templates/
-    │       ├── apache-mindwtr.conf.j2            ← vhost HTTP-01 certbot mindwtr
-    │       ├── apache-vaultwarden.conf.j2        ← vhost HTTP-01 certbot vaultwarden
     │       ├── docker-compose.traefik.yml.j2
-    │       ├── docker-compose.mindwtr.yml.j2
-    │       ├── docker-compose.vaultwarden.yml.j2
     │       ├── traefik-tls.yml.j2                ← TLS file provider (mindwtr + vault)
-    │       ├── certbot-renewal-hook.sh.j2         ← copie certs + restart traefik
-    │       ├── ipv6-default-route.sh.j2
-    │       └── ipv6-default-route.service.j2
+    │       └── certbot-renewal-hook.sh.j2         ← copie certs + restart traefik
+    ├── mindwtr-cloud-deploy/     ← data/cloud, docker-compose.mindwtr.yml, vhost+certbot mindwtr, start
+    ├── vaultwarden-deploy/       ← data/vaultwarden, docker-compose.vaultwarden.yml, vhost+certbot vault, start
     └── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
 ```
+
+Découpage issu de l'ancien rôle monolithique `infra-deploy` (cf. `RAPPROCHEMENT_INFRA_DEPLOY.md` à la racine du repo pour l'historique et le détail par rôle). **Handlers `restart traefik`/`restart mindwtr`/`restart vaultwarden` centralisés dans `run_role.yml`** (pas dans les rôles) : `./run list` joue chaque rôle d'une liste dans une invocation `ansible-playbook` séparée, donc un handler défini dans un rôle ne serait pas visible par un autre rôle du même run qui le notifie (ex. `vaultwarden-deploy` notifie `restart traefik`).
 
 ## Commandes
 
 ### Déployer / redéployer
 
 ```bash
-cd ansible && ansible-playbook install.yml --limit glaurung
+cd ansible && ./run list mindwtr.list run   # stack mindwtr complète, exécution réelle
+cd ansible && ./run list mindwtr.list       # dry-run (par défaut, sans "run")
+cd ansible && ./run role traefik-deploy run # un seul rôle
+cd ansible && ansible-playbook install.yml --limit glaurung   # legacy, équivalent à ./run legacy run
 ```
 
 Les tâches sont idempotentes (Docker, réseau, certbot, vhost skippés si déjà en place).
@@ -153,7 +157,7 @@ docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 
 Certains services ne parlent pas HTTP (protocole TCP/UDP brut avec chiffrement propre) et ne peuvent pas passer par le routeur HTTP de Traefik. Exemple : `rustdesk` (rôle `roles/rustdesk/`), qui expose `hbbs`/`hbbr` directement sur l'hôte via `ports:` dans le Compose, sans certbot ni Traefik.
 
-1. Nouveau rôle Ansible dédié plutôt que d'ajouter au rôle `infra-deploy` (déjà volumineux, cf. dette technique ci-dessous)
+1. Nouveau rôle Ansible dédié plutôt que d'ajouter à un rôle existant (`traefik-deploy`, `mindwtr-cloud-deploy`, `vaultwarden-deploy` sont volontairement étroits, cf. `RAPPROCHEMENT_INFRA_DEPLOY.md`)
 2. `ports:` mappés directement sur l'hôte dans le template Compose (pas de réseau `mindwtr`, pas de labels Traefik)
 3. Si le service persiste un secret généré au premier démarrage (ex. clé RustDesk `id_ed25519`), monter un volume dédié — sinon chaque redéploiement/recréation régénère le secret et casse les clients déjà configurés
 4. Ajouter le rôle à `install.yml`
@@ -189,7 +193,8 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 
 ## Dette technique / refactoring
 
-- **Découper le rôle `infra-deploy`** : il fait trop de choses. Candidats à extraire en rôles séparés : `docker-base` (install + daemon + kernel IPv6), `apache-certbot` (vhost + cert), `mindwtr` (réseau + stack Compose). Le playbook `install.yml` appellerait la séquence de rôles.
+- ~~Découper le rôle `infra-deploy`~~ **Fait** — 6 rôles (`docker-engine-setup`, `network-ipv6-setup`, `docker-network-mindwtr-setup`, `traefik-deploy`, `mindwtr-cloud-deploy`, `vaultwarden-deploy`), joués en séquence via `./run list mindwtr.list`. Détail dans `RAPPROCHEMENT_INFRA_DEPLOY.md`.
+- **À vérifier** : dans `docker-network-mindwtr-setup`, le loop d'arrêt de la stack avant reconfiguration Docker/réseau ne couvre que `traefik` et `mindwtr`, pas `vaultwarden` — comportement repris tel quel de l'ancien rôle monolithique, jamais confirmé volontaire. Si le réseau `mindwtr` est recréé (IPv6 absent détecté), Vaultwarden pourrait rester connecté à l'ancien réseau jusqu'à son propre redémarrage.
 
 ## Phase 2 (à faire)
 

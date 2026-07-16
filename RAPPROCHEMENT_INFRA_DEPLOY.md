@@ -55,6 +55,8 @@ ansible/
 
 `ANSIBLE_ROLES_PATH`, exporté par le wrapper, prend le pas sur `roles_path` d'`ansible.cfg` (comportement standard Ansible : une variable d'environnement équivalente à un réglage de `ansible.cfg` est prioritaire). Pas de conflit à gérer, juste à documenter.
 
+**Piège de nommage rencontré à l'implémentation** : `deploy_dir` (générique) ne peut pas devenir un `group_vars/all` — `rustdesk` et, jusqu'à une modification concurrente pendant ce chantier, `rat-setup`/`rat-migratefromgandi` définissent chacun leur propre `deploy_dir` en *default de rôle*. Un `group_vars/all.deploy_dir` global aurait silencieusement écrasé ces defaults (précédence Ansible : `group_vars` bat les defaults de rôle), redirigeant par exemple `rustdesk` vers `/opt/mindwtr` au lieu de `/opt/rustdesk`. Retenu : `mindwtr_deploy_dir`, sur le même modèle que `rat_deploy_dir` déjà en place — chaque stack a son propre nom de variable qualifié, jamais de générique partagé au niveau `group_vars/all`.
+
 ## Profils de rôles proposés
 
 ### `base.list`
@@ -123,7 +125,7 @@ Le rôle actuel mélange plusieurs domaines indépendants (visibles dans les sec
 - `docker-engine-setup` — install Docker CE + plugin Compose. **Rôle local dédié**, pas un import `infra-deploy` : analysé et écarté — `epi-docker` n'est pas un obstacle (déployé sur les machines de Cédric), mais `docker_dockerce_setup`/`docker_dockercompose_setup` ne gèrent pas IPv6 dans leur `daemon.json.j2` (glaurung a `"ipv6": true` / `fixed-cidr-v6` en prod) et installent le binaire standalone `docker-compose` (v2.2.3) au lieu du plugin `docker-compose-plugin` (`docker compose`) déjà en place sur glaurung ; `docker_generic_setup`/`docker_dockerce_conf` sont du déploiement métier Epiconcept (semaphore, icanopee…), hors sujet.
 - `network-ipv6-setup` — forwarding IPv6 kernel + service systemd `ipv6-default-route`, host-level, indépendant de Docker.
 - `docker-network-mindwtr-setup` — `daemon.json` IPv6 + création/recréation du réseau Docker `mindwtr`. **⚠️ Point d'attention** : aujourd'hui couplé à l'arrêt/redémarrage des 3 stacks Compose (traefik/mindwtr/vaultwarden) quand `daemon.json` change ou que le réseau n'a pas IPv6. Préserver explicitement cette séquence (down avant redémarrage Docker/recréation réseau, up après) en la découpant — via handlers ou dépendances de rôles — sans la perdre.
-- `traefik-deploy` — répertoires `deploy_dir`, `docker-compose.traefik.yml`, config TLS dynamique, `notify: restart traefik`.
+- `traefik-deploy` — répertoires `mindwtr_deploy_dir`, `docker-compose.traefik.yml`, config TLS dynamique, `notify: restart traefik`.
 - `mindwtr-cloud-deploy` — répertoire `data/cloud`, `docker-compose.mindwtr.yml`, vhost Apache + certbot du domaine mindwtr, `notify: restart mindwtr`.
 - `vaultwarden-deploy` — répertoire `data/vaultwarden`, `docker-compose.vaultwarden.yml`, vhost Apache + certbot du domaine vaultwarden, `notify: restart vaultwarden`.
 

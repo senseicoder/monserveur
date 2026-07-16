@@ -1,3 +1,4 @@
+mindwtr_deploy_dir: "/opt/mindwtr"
 mindwtr_domain: "mindwtr.daneel.net"
 vaultwarden_domain: "vault.daneel.net"
 rustdesk_domain: "rustdesk.daneel.net"

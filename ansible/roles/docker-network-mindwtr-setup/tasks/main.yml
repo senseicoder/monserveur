@@ -1,0 +1,63 @@
+---
+- name: Déployer la configuration du daemon Docker
+  template:
+    src: docker-daemon.json.j2
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: "0644"
+  register: docker_daemon
+
+- name: Inspecter le réseau Docker mindwtr
+  command: docker network inspect mindwtr
+  register: mindwtr_net_inspect
+  failed_when: false
+  changed_when: false
+  check_mode: false  # lecture seule, sans effet de bord — à exécuter aussi en --check
+
+- name: Détecter si le réseau mindwtr a IPv6 activé
+  set_fact:
+    mindwtr_net_ipv6: >-
+      {{ ((mindwtr_net_inspect.stdout | default('') | from_json)[0].EnableIPv6)
+         if (mindwtr_net_inspect.rc | default(1)) == 0 and (mindwtr_net_inspect.stdout | default('') | length > 0)
+         else false }}
+
+# Reconfiguration Docker si daemon.json ou réseau a changé.
+# Ordre : arrêt stack → redémarrage Docker → suppression réseau → recréation.
+# Note : ce loop n'arrête que traefik/mindwtr, pas vaultwarden — comportement
+# préexistant à la découpe en rôles, repris tel quel (à vérifier si volontaire).
+
+- name: Arrêter la stack mindwtr (avant reconfiguration)
+  command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.{{ item }}.yml down
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  loop:
+    - traefik
+    - mindwtr
+  when: docker_daemon is changed or not mindwtr_net_ipv6
+  ignore_errors: true
+
+- name: Redémarrer Docker si daemon.json modifié
+  systemd:
+    name: docker
+    state: restarted
+  when: docker_daemon is changed
+
+- name: Supprimer le réseau mindwtr si IPv6 absent (sera recréé avec IPv6)
+  command: docker network rm mindwtr
+  when: not mindwtr_net_ipv6
+  register: net_rm
+  failed_when: net_rm.rc != 0 and 'No such network' not in net_rm.stderr
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Démarrer et activer Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Créer le réseau Docker mindwtr (IPv6)
+  command: docker network create --ipv6 --subnet fd00:0:0:1::/64 mindwtr
+  register: network_result
+  failed_when: network_result.rc != 0 and 'already exists' not in network_result.stderr
+  changed_when: network_result.rc == 0
