@@ -1,0 +1,26 @@
+---
+# Interface réseau publique de glaurung (OVH)
+firewall_external_iface: eth0
+
+# Nom DNS utilisé pour le test de non-lockout depuis le poste de contrôle
+firewall_check_host: glaurung.daneel.net
+
+# Services de l'HÔTE (chaîne INPUT).
+# 80/443 : Apache aujourd'hui — présents aussi dans la liste Docker pour que
+# la bascule Phase 2 (Traefik prend 80/443) ne demande aucune retouche firewall.
+firewall_host_tcp_ports: [22, 80, 443, 8000, 8001, 8002, 22000]
+firewall_host_udp_ports: [22000]
+
+# Ports publiés par Docker — chaîne DOCKER-USER en IPv4 (trafic DNATé/FORWARD).
+# En IPv6 ils passent par docker-proxy (Docker 19.03 sans NAT v6) = socket
+# local de l'hôte, donc chaîne INPUT v6 (union faite dans les tâches).
+firewall_docker_tcp_ports: [80, 443, 8787, 21115, 21116, 21117]
+firewall_docker_udp_ports: [21116]
+
+# MySQL natif (3306) : uniquement loopback + réseaux Docker listés ici.
+# Règles identiques à celles du rôle rat-setup (déduplication automatique).
+firewall_mysql_allowed_sources: ["172.18.0.0/16"]
+
+# Garde anti-lockout : minutes avant que le job `at` remette INPUT en ACCEPT
+# s'il n'est pas désarmé par la fin du rôle
+firewall_guard_minutes: 15

@@ -1,0 +1,203 @@
+---
+# Firewall à deux volets (étude complète : FIREWALL.md à la racine du repo) :
+# - INPUT : services de l'hôte. Le trafic à destination de l'hôte — y compris
+#   celui venant d'un conteneur vers la gateway du bridge — ne traverse QUE
+#   cette chaîne.
+# - DOCKER-USER : ports publiés par Docker. Le trafic est DNATé en PREROUTING
+#   puis routé (FORWARD) — il ne passe jamais par INPUT. Inversement,
+#   DOCKER-USER ne protège PAS un service hôte (leçon 3306 du 2026-07-16).
+# En IPv6, Docker 19.03 n'a pas de NAT v6 : les ports publiés passent par
+# docker-proxy = socket local sur l'hôte → chaîne INPUT v6.
+#
+# Piège DOCKER-USER : quand la chaîne est évaluée, le DNAT est déjà fait —
+# --dport y désigne le port INTERNE du conteneur. Fonctionne ici car tous les
+# mappings sont 1:1 (8787:8787, 21115:21115…) ; si un jour un mapping change
+# de numéro, utiliser `-m conntrack --ctorigdstport` (port original).
+
+- name: Pré-répondre debconf iptables-persistent (pas d'autosave à l'install)
+  debconf:
+    name: iptables-persistent
+    question: "{{ item }}"
+    value: "false"
+    vtype: boolean
+  loop:
+    - iptables-persistent/autosave_v4
+    - iptables-persistent/autosave_v6
+
+- name: Installer iptables-persistent et at
+  apt:
+    name:
+      - iptables-persistent
+      - at
+    state: present
+
+# --- Garde anti-lockout ------------------------------------------------------
+# Si la connexion ou le playbook meurt entre la pose des règles et la fin, ce
+# job remet les policies INPUT en ACCEPT. Désarmé par la dernière tâche, après
+# vérification qu'une NOUVELLE connexion TCP/22 passe encore.
+
+- name: Armer la garde anti-lockout (at +{{ firewall_guard_minutes }} min)
+  shell: echo "/sbin/iptables -P INPUT ACCEPT ; /sbin/ip6tables -P INPUT ACCEPT" | at now + {{ firewall_guard_minutes }} minutes 2>&1
+  register: firewall_guard
+  changed_when: false
+
+# --- IPv4 — INPUT (services hôte) ---------------------------------------------
+
+- name: INPUT v4 — loopback
+  iptables:
+    chain: INPUT
+    in_interface: lo
+    jump: ACCEPT
+  notify: save iptables
+
+- name: INPUT v4 — connexions établies
+  iptables:
+    chain: INPUT
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+  notify: save iptables
+
+- name: INPUT v4 — ICMP
+  iptables:
+    chain: INPUT
+    protocol: icmp
+    jump: ACCEPT
+  notify: save iptables
+
+- name: INPUT v4 — services hôte TCP
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_ports: "{{ firewall_host_tcp_ports }}"
+    jump: ACCEPT
+  notify: save iptables
+
+- name: INPUT v4 — services hôte UDP
+  iptables:
+    chain: INPUT
+    protocol: udp
+    destination_ports: "{{ firewall_host_udp_ports }}"
+    jump: ACCEPT
+  notify: save iptables
+
+# Mêmes spécifications que dans rat-setup (le module déduplique : une règle
+# déjà présente n'est pas recréée). Le DROP explicite reste utile même avec la
+# policy DROP : il protège aussi si la policy est remise en ACCEPT (garde,
+# debug manuel).
+- name: INPUT v4 — MySQL (3306) réservé à loopback + réseaux Docker
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "3306"
+    source: "{{ item.source | default(omit) }}"
+    in_interface: "{{ item.iface | default(omit) }}"
+    jump: "{{ item.jump }}"
+    action: insert
+    rule_num: "{{ item.num }}"
+  loop: "{{ [{'iface': 'lo', 'jump': 'ACCEPT', 'num': 1}]
+            + (firewall_mysql_allowed_sources | map('community.general.dict_kv', 'source') | map('combine', {'jump': 'ACCEPT', 'num': 2}) | list)
+            + [{'jump': 'DROP', 'num': 3}] }}"
+  loop_control:
+    label: "{{ item.iface | default(item.source | default('0.0.0.0/0')) }} -> {{ item.jump }}"
+  notify: save iptables
+
+- name: INPUT v4 — policy DROP
+  iptables:
+    chain: INPUT
+    policy: DROP
+  notify: save iptables
+
+# --- IPv6 — INPUT --------------------------------------------------------------
+# Union hôte + Docker : en v6 les ports publiés Docker arrivent aussi en INPUT
+# (docker-proxy). ICMPv6 jamais bloqué : NDP (résolution voisins) en dépend —
+# sans lui, plus AUCUN trafic v6.
+
+- name: INPUT v6 — loopback
+  iptables:
+    ip_version: ipv6
+    chain: INPUT
+    in_interface: lo
+    jump: ACCEPT
+  notify: save iptables
+
+- name: INPUT v6 — connexions établies
+  iptables:
+    ip_version: ipv6
+    chain: INPUT
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+  notify: save iptables
+
+- name: INPUT v6 — ICMPv6 (NDP indispensable)
+  iptables:
+    ip_version: ipv6
+    chain: INPUT
+    protocol: ipv6-icmp
+    jump: ACCEPT
+  notify: save iptables
+
+- name: INPUT v6 — services TCP (hôte + publiés Docker)
+  iptables:
+    ip_version: ipv6
+    chain: INPUT
+    protocol: tcp
+    destination_ports: "{{ (firewall_host_tcp_ports + firewall_docker_tcp_ports) | unique }}"
+    jump: ACCEPT
+  notify: save iptables
+
+- name: INPUT v6 — services UDP (hôte + publiés Docker)
+  iptables:
+    ip_version: ipv6
+    chain: INPUT
+    protocol: udp
+    destination_ports: "{{ (firewall_host_udp_ports + firewall_docker_udp_ports) | unique }}"
+    jump: ACCEPT
+  notify: save iptables
+
+- name: INPUT v6 — policy DROP
+  iptables:
+    ip_version: ipv6
+    chain: INPUT
+    policy: DROP
+  notify: save iptables
+
+# --- IPv4 — DOCKER-USER (ports publiés) ----------------------------------------
+# Insertion en tête obligatoire : Docker crée la chaîne avec un RETURN final,
+# tout append passerait après et serait mort.
+
+- name: DOCKER-USER v4 — filtrage des ports publiés depuis {{ firewall_external_iface }}
+  iptables:
+    chain: DOCKER-USER
+    in_interface: "{{ firewall_external_iface }}"
+    protocol: "{{ item.proto | default(omit) }}"
+    destination_ports: "{{ item.ports | default(omit) }}"
+    ctstate: "{{ item.ctstate | default(omit) }}"
+    jump: "{{ item.jump }}"
+    action: insert
+    rule_num: "{{ item.num }}"
+  loop:
+    - { ctstate: "ESTABLISHED,RELATED", jump: "ACCEPT", num: 1 }
+    - { proto: "tcp", ports: "{{ firewall_docker_tcp_ports }}", jump: "ACCEPT", num: 2 }
+    - { proto: "udp", ports: "{{ firewall_docker_udp_ports }}", jump: "ACCEPT", num: 3 }
+    - { jump: "DROP", num: 4 }
+  loop_control:
+    label: "{{ item.proto | default('all') }} {{ item.ports | default(item.ctstate | default('*')) }} -> {{ item.jump }}"
+  notify: save iptables
+
+# --- Vérification et désarmement de la garde -----------------------------------
+
+- name: Sauvegarder les règles (handlers) avant de désarmer la garde
+  meta: flush_handlers
+
+- name: Vérifier qu'une NOUVELLE connexion TCP/22 traverse le firewall
+  wait_for:
+    host: "{{ firewall_check_host }}"
+    port: 22
+    timeout: 20
+  delegate_to: localhost
+  become: false
+
+- name: Désarmer la garde anti-lockout
+  command: atrm {{ firewall_guard.stdout | regex_search('job (\\d+)', '\\1') | first }}
+  when: firewall_guard is not skipped
+  changed_when: true
