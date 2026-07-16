@@ -204,6 +204,7 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 - **TT-RSS** : intégrer `~/ttrss-docker/` dans ce repo (templates `.j2` + vault), labels Traefik sur `web-nginx`
 - **Dashboard Traefik** : activer derrière BasicAuth (`htpasswd -nB admin`, doubler les `$` dans le YAML)
 - **Conteneur php** : formaliser le lancement
+- **Backup des données** : analyser et mettre en place une sauvegarde effective des chemins listés en § Sauvegardes critiques (`data/cloud`, `data/vaultwarden`, `/etc/letsencrypt`) — aujourd'hui seulement documentés, aucun mécanisme de backup réel
 
 ## Vaultwarden — setup initial
 
