@@ -198,6 +198,6 @@
   become: false
 
 - name: Désarmer la garde anti-lockout
-  command: atrm {{ firewall_guard.stdout | regex_search('job (\\d+)', '\\1') | first }}
+  command: "atrm {{ firewall_guard.stdout | regex_search('job (\\d+)', '\\1') | first }}"
   when: firewall_guard is not skipped
   changed_when: true
