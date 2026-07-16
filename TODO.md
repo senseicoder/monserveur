@@ -4,3 +4,7 @@
   * firewall (en cours) 
 * services
   * annuaire SS personnel
+  * bots
+  * apifreebox/tuya
+  * crontab cedric déjà en place à intégrer
+  * plus largement, tout ce qui est dessus
