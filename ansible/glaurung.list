@@ -1,0 +1,10 @@
+ssh-securite
+firewall-setup
+docker-engine-setup
+network-ipv6-setup
+docker-network-mindwtr-setup
+traefik-deploy
+rustdesk-setup
+mindwtr-cloud-deploy
+vaultwarden-deploy
+rat-setup
