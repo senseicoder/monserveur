@@ -44,27 +44,24 @@ ansible all -m ping
 ### 4. Dry-run (check mode)
 
 ```bash
-ansible-playbook install.yml --limit glaurung --check --diff
+cd ansible && ./run list mindwtr.list
 ```
 
-Vérifie ce qui serait modifié sans toucher au serveur. Les tâches `command` (réseau Docker, certbot, compose up) ne sont pas simulables et s'affichent comme `skipped` — c'est normal.
+Dry-run par défaut (pas besoin de `--check --diff`, c'est le comportement du wrapper `run`). Vérifie ce qui serait modifié sans toucher au serveur. Les tâches `command` (réseau Docker, certbot, compose up) ne sont pas simulables et s'affichent comme `skipped` — c'est normal.
 
-### 5. Lancer le playbook
+### 5. Lancer les rôles
 
 ```bash
-ansible-playbook install.yml --limit glaurung
+cd ansible && ./run list mindwtr.list run
 ```
 
-Le playbook effectue dans l'ordre :
-1. Installation Docker + plugin Compose (idempotent)
-2. Création du réseau Docker `mindwtr`
-3. Création de `/opt/mindwtr/` et sous-dossiers
-4. Dépôt des fichiers Compose et config TLS Traefik
-5. Déploiement du vhost Apache pour `mindwtr.daneel.net` (challenge HTTP-01)
-6. Obtention du certificat TLS (`certbot certonly --webroot -d mindwtr.daneel.net`)
-7. Installation du hook certbot (`/etc/letsencrypt/renewal-hooks/deploy/reload-traefik.sh`)
-8. Démarrage de Traefik (port 8787/HTTPS)
-9. Démarrage de mindwtr-cloud
+La liste `mindwtr.list` joue dans l'ordre les 6 rôles suivants (idempotents) :
+1. `docker-engine-setup` — installation Docker CE + plugin Compose
+2. `network-ipv6-setup` — forwarding IPv6 kernel + route par défaut OVH
+3. `docker-network-mindwtr-setup` — daemon.json IPv6 + réseau Docker `mindwtr`
+4. `traefik-deploy` — répertoires, fichiers Compose et config TLS Traefik, démarrage
+5. `mindwtr-cloud-deploy` — vhost Apache + certbot pour `mindwtr.daneel.net`, Compose, démarrage
+6. `vaultwarden-deploy` — vhost Apache + certbot pour `vault.daneel.net`, Compose, démarrage
 
 ### 6. Vérifier le déploiement
 
@@ -87,7 +84,7 @@ curl -I https://mindwtr.daneel.net:8787/health
 ## Redéploiement
 
 ```bash
-cd ansible && ansible-playbook install.yml --limit glaurung
+cd ansible && ./run list mindwtr.list run
 ```
 
 Les tâches sont idempotentes : Docker, le réseau et le certificat sont skippés s'ils existent déjà.
@@ -96,4 +93,4 @@ Pour forcer la mise à jour des conteneurs : `docker-compose pull` sur le serveu
 ## Modifier le token
 
 1. Éditer le vault : `ansible-vault edit group_vars/all/vault.yml`
-2. Relancer : `ansible-playbook install.yml`
+2. Relancer : `cd ansible && ./run list mindwtr.list run`
