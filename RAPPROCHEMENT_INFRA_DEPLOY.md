@@ -35,7 +35,6 @@ ansible/
   requirements.yml
   run                         ← nouveau wrapper, dry-run par défaut, ANSIBLE_ROLES_PATH conditionnel
   run_role.yml                ← nouveau, playbook générique "role"
-  install.yml                 ← conservé tel quel, joué via "./run legacy"
   base.list
   mindwtr.list
   rat.list
@@ -115,8 +114,9 @@ Sans toucher au contenu des rôles existants :
 - `run_role.yml` minimal qui applique `role`
 - wrapper `run` inspiré de `maconfiguration` : dry-run par défaut (`-C -D`), mot-clé `run` pour exécuter réellement, `ANSIBLE_ROLES_PATH` conditionnel sur l'existence de `~/www/e/infra-deploy/ansible/roles`
 - `*.list` initiaux ci-dessus
-- `install.yml` conservé, jouable via `./run legacy`
 - `defaults/main.yml` sur `ssh-securite` (seul rôle actif qui n'en a pas)
+
+**Révision (2026-07-16)** : `install.yml` a finalement été supprimé plutôt que conservé comme legacy — les `*.list` couvrent déjà tous les rôles actifs, garder un second point d'entrée (`./run legacy`) n'apportait rien et avait déjà divergé une fois (référence à `infra-deploy` restée après son découpage en Étape 3). `legacy`/`hosts`/`tags` retirés du wrapper `run` en conséquence.
 
 ### Étape 3 — découper le rôle `infra-deploy`
 
