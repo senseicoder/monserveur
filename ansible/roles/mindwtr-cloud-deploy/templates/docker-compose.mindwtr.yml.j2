@@ -7,7 +7,7 @@ services:
       MINDWTR_CLOUD_AUTH_TOKENS: "{{ mindwtr_token }}"
       MINDWTR_CLOUD_CORS_ORIGIN: "https://{{ mindwtr_domain }}:8787"
     volumes:
-      - "{{ deploy_dir }}/data/cloud:/app/cloud_data"
+      - "{{ mindwtr_deploy_dir }}/data/cloud:/app/cloud_data"
     networks:
       - mindwtr
     labels:

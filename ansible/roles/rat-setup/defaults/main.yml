@@ -1,5 +1,4 @@
 ---
-deploy_dir: "{{ rat_deploy_dir }}"
 # Noyau glaurung (3.16, OVH) trop ancien pour getrandom() (Linux 3.17+) --
 # Apache/APR des images basées Debian bullseye+ plante au démarrage
 # (AH00141, testé empiriquement : 8.3-apache/8.2-apache-bullseye cassent,

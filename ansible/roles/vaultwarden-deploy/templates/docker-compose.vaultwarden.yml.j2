@@ -10,7 +10,7 @@ services:
       ADMIN_TOKEN: "{{ vaultwarden_admin_token }}"
 {% endif %}
     volumes:
-      - "{{ deploy_dir }}/data/vaultwarden:/data"
+      - "{{ mindwtr_deploy_dir }}/data/vaultwarden:/data"
     networks:
       - mindwtr
     labels:

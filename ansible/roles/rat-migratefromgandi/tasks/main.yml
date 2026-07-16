@@ -17,7 +17,7 @@
 - name: Synchroniser les données réelles de chaque site depuis Gandi (rsync sélectif)
   ansible.posix.synchronize:
     src: "{{ rat_gandi_mount }}/{{ item.domain }}/htdocs/"
-    dest: "{{ deploy_dir }}/data/{{ item.domain }}/htdocs/"
+    dest: "{{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs/"
     rsync_opts:
       - "--exclude=rat_code"
       - "--exclude=admin"
@@ -26,6 +26,15 @@
       - "--exclude=nimes2007"
       - "--exclude=brunstatt2007"
       - "--exclude=pub"
+      # rsync -a préserve les permissions d'origine Gandi (constaté :
+      # rat_sites/PLC/site.php en 600, owner cedric -- illisible par
+      # www-data dans le conteneur, "Permission denied" à l'include).
+      # Le contenu Gandi n'a jamais été pensé pour un autre user que le
+      # sien. Écriture nécessaire aussi (pas juste lecture) : la génération
+      # RAT réécrit des fichiers dans rat_sites/ (blocs, données, rss.php
+      # régénéré) -- constaté : "Permission denied" en écriture après un
+      # premier fix lecture-seule.
+      - "--chmod=Fugo+rw,Dugo+rwx"
   become: false
   loop: "{{ rat_sites }}"
   loop_control:

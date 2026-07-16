@@ -70,6 +70,12 @@
   no_log: true
   delegate_to: localhost
   become: false
+  # Simple lecture d'un secret, aucun effet de bord -- forcé même en mode
+  # check pour que les tâches suivantes (docker_login/docker_image, elles
+  # correctement soumises au mode check) disposent d'une valeur exploitable
+  # au lieu de planter sur "list object has no element 0" (tâche command
+  # normalement sautée en check mode, rat_ghcr_pat jamais rempli).
+  check_mode: false
 
 - name: Se connecter à ghcr.io (en local, pour build+push)
   community.docker.docker_login:
@@ -107,7 +113,7 @@
 
 - name: Créer l'arborescence de base
   ansible.builtin.file:
-    path: "{{ deploy_dir }}"
+    path: "{{ rat_deploy_dir }}"
     state: directory
     owner: cedric
     group: cedric
@@ -122,7 +128,7 @@
 # unable to read htaccess file, denying access to be safe").
 - name: Créer le dossier htdocs de chaque site (owner cedric, pour le rsync sans become)
   ansible.builtin.file:
-    path: "{{ deploy_dir }}/data/{{ item.domain }}/htdocs"
+    path: "{{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs"
     state: directory
     owner: cedric
     group: cedric
@@ -137,13 +143,53 @@
 # collision, ni de code dupliqué sur le disque de l'hôte). ADR : le code
 # commun ne doit jamais être synchronisé/collé dans le volume de données,
 # uniquement l'image le porte.
-- name: Créer les symlinks rat_code/admin vers le code cuit dans l'image
+- name: Créer le symlink rat_code vers le code cuit dans l'image
   ansible.builtin.file:
-    path: "{{ deploy_dir }}/data/{{ item.0.domain }}/htdocs/{{ item.1 }}"
-    src: "/opt/rat-code/{{ item.1 }}"
+    path: "{{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs/rat_code"
+    src: "/opt/rat-code/rat_code"
     state: link
     force: true
-  loop: "{{ rat_sites | product(['rat_code', 'admin']) | list }}"
+  loop: "{{ rat_sites }}"
+  loop_control:
+    label: "{{ item.domain }}"
+
+# admin/ ne peut PAS être un symlink de dossier entier comme rat_code/ :
+# admin/get.php est régénéré à l'exécution par admincore/regenere.fonc.php
+# (SauveSous(CHEMIN_ADMIN.'get.php', ...), par site -- pas du code statique
+# malgré son emplacement. Un symlink de dossier pointerait vers l'image
+# (lecture seule), constaté : "fopen(.../admin/get.php): Permission denied".
+# Fix : admin/ reste un vrai dossier par site (comme htdocs lui-même), avec
+# un symlink fichier-par-fichier vers le code image pour tout sauf get.php,
+# qui reste un vrai fichier écrit à la génération (créé si absent, pas
+# besoin de pré-création -- SauveSous fait fopen($fichier, 'w')).
+
+- name: Lister le contenu statique de admin/ (repo local, hors get.php)
+  ansible.builtin.find:
+    paths: "/home/cedric/www/c/rat-git/admin"
+    file_type: any
+    hidden: false
+  register: rat_admin_static_files
+  delegate_to: localhost
+  become: false
+
+- name: Créer le dossier admin/ réel de chaque site
+  ansible.builtin.file:
+    path: "{{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs/admin"
+    state: directory
+    owner: cedric
+    group: cedric
+    mode: "0755"
+  loop: "{{ rat_sites }}"
+  loop_control:
+    label: "{{ item.domain }}"
+
+- name: Créer les symlinks fichier-par-fichier pour le contenu statique de admin/
+  ansible.builtin.file:
+    path: "{{ rat_deploy_dir }}/data/{{ item.0.domain }}/htdocs/admin/{{ item.1 | basename }}"
+    src: "/opt/rat-code/admin/{{ item.1 | basename }}"
+    state: link
+    force: true
+  loop: "{{ rat_sites | product(rat_admin_static_files.files | map(attribute='path') | map('basename') | reject('equalto', 'get.php') | list) | list }}"
   loop_control:
     label: "{{ item.0.domain }}/{{ item.1 }}"
 
@@ -153,17 +199,34 @@
 
 - name: Créer l'arborescence rat_donnees writable de chaque site
   ansible.builtin.file:
-    path: "{{ deploy_dir }}/data/{{ item.0.domain }}/htdocs/rat_donnees/{{ item.1 }}"
+    path: "{{ rat_deploy_dir }}/data/{{ item.0.domain }}/htdocs/rat_donnees/{{ item.1 }}"
     state: directory
     owner: "33"    # www-data dans l'image php:apache (Debian)
     group: "33"
     mode: "0775"
   loop: "{{ rat_sites | product(['journaux', 'sessions', 'modeles', 'sessionsvitrine']) | list }}"
 
+# journaux/<site_central>/ : EcrireLog()/EcrireFichier() (fs.lib.php) ne
+# créent jamais le dossier -- normalement fait par l'installation d'un
+# module (mkdirAbsent, sessionsvitrine/installation.fonc.php), jamais
+# lancée ici puisqu'on part directement de la BDD importée sans passer par
+# l'installeur. Constaté : "fopen(.../journaux/PLC/...): No such file or
+# directory" en boucle pendant la génération.
+- name: Créer le sous-dossier journaux/<site_central> de chaque site
+  ansible.builtin.file:
+    path: "{{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs/rat_donnees/journaux/{{ item.site_central }}"
+    state: directory
+    owner: "33"
+    group: "33"
+    mode: "0775"
+  loop: "{{ rat_sites }}"
+  loop_control:
+    label: "{{ item.domain }}/{{ item.site_central }}"
+
 - name: Déployer le config.php adapté de chaque site
   ansible.builtin.template:
     src: config.php.j2
-    dest: "{{ deploy_dir }}/data/{{ site.domain }}/htdocs/rat_donnees/config.php"
+    dest: "{{ rat_deploy_dir }}/data/{{ site.domain }}/htdocs/rat_donnees/config.php"
     owner: "33"
     group: "33"
     mode: "0640"
@@ -175,7 +238,7 @@
 - name: Déployer le docker-compose rat-web (image tirée du registre, pas de build)
   ansible.builtin.template:
     src: docker-compose.rat.yml.j2
-    dest: "{{ deploy_dir }}/docker-compose.rat.yml"
+    dest: "{{ rat_deploy_dir }}/docker-compose.rat.yml"
 
 # glaurung (Debian 9 stretch) : Python3 système (3.5.3) est trop ancien pour
 # ansible-core (>=3.6 requis, testé) -- Python 2.7 est l'interpréteur
@@ -232,12 +295,14 @@
 # MySQL n'écoutait jusqu'ici que sur 127.0.0.1 (accès depuis le conteneur ad-hoc
 # "php" en network_mode host). rat-web doit rejoindre le réseau "mindwtr" (bridge)
 # pour être routable par Traefik, donc 127.0.0.1 ne suffit plus. On élargit le
-# bind à toutes les interfaces mais on verrouille explicitement l'accès depuis
-# l'extérieur via DOCKER-USER (glaurung n'a pas de règle INPUT, cf. CLAUDE.md
-# monserveur : Docker contourne INPUT via PREROUTING/DNAT, DOCKER-USER est la
-# bonne chaîne).
+# bind à toutes les interfaces mais on verrouille explicitement l'accès dans la
+# chaîne INPUT : MySQL est un service de l'HÔTE — son trafic (internet → hôte,
+# et conteneur → gateway 172.18.0.1) traverse INPUT, jamais FORWARD/DOCKER-USER.
+# DOCKER-USER ne filtre que le trafic forwardé vers les conteneurs (ports
+# publiés) — une première version de ce rôle y avait mis les règles à tort,
+# laissant 3306 ouvert sur internet (constaté le 2026-07-16).
 
-- name: Ouvrir MySQL sur toutes les interfaces (verrouillé ensuite par DOCKER-USER)
+- name: Ouvrir MySQL sur toutes les interfaces (verrouillé ensuite dans INPUT)
   ansible.builtin.copy:
     dest: /etc/mysql/mariadb.conf.d/60-rat-docker.cnf
     content: |
@@ -248,21 +313,37 @@
     mode: "0644"
   notify: restart mariadb
 
-- name: Bloquer l'accès MySQL (3306) depuis l'extérieur du réseau mindwtr et de localhost
+- name: Retirer les anciennes règles 3306 de DOCKER-USER (inefficaces pour un service hôte)
   ansible.builtin.iptables:
     chain: DOCKER-USER
     protocol: tcp
     destination_port: "3306"
     source: "{{ item.source }}"
     jump: "{{ item.jump }}"
+    state: absent
+  loop:
+    - { source: "127.0.0.1/32", jump: "ACCEPT" }
+    - { source: "172.18.0.0/16", jump: "ACCEPT" }
+    - { source: "0.0.0.0/0", jump: "DROP" }
+  loop_control:
+    label: "{{ item.source }} -> {{ item.jump }}"
+
+- name: Bloquer l'accès MySQL (3306) hors loopback et réseau mindwtr (chaîne INPUT)
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "3306"
+    source: "{{ item.source | default(omit) }}"
+    in_interface: "{{ item.iface | default(omit) }}"
+    jump: "{{ item.jump }}"
     action: insert
     rule_num: "{{ item.num }}"
   loop:
-    - { source: "127.0.0.1/32", jump: "ACCEPT", num: 1 }
+    - { iface: "lo", jump: "ACCEPT", num: 1 }
     - { source: "172.18.0.0/16", jump: "ACCEPT", num: 2 }
-    - { source: "0.0.0.0/0", jump: "DROP", num: 3 }
+    - { jump: "DROP", num: 3 }
   loop_control:
-    label: "{{ item.source }} -> {{ item.jump }}"
+    label: "{{ item.iface | default(item.source | default('0.0.0.0/0')) }} -> {{ item.jump }}"
 
 - name: Appliquer les handlers en attente (restart mariadb) avant de démarrer
   ansible.builtin.meta: flush_handlers
@@ -270,7 +351,7 @@
 - name: Tirer la dernière image et démarrer/mettre à jour le conteneur rat-web
   command: "{{ item }}"
   args:
-    chdir: "{{ deploy_dir }}"
+    chdir: "{{ rat_deploy_dir }}"
   loop:
     - "docker-compose -f docker-compose.rat.yml pull"
     - "docker-compose -f docker-compose.rat.yml up -d"

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copie les certs renouvelés et recharge Traefik.
 # Appelé par certbot après chaque renouvellement réussi (RENEWED_LINEAGE est positionné).
-DEPLOY_DIR="{{ deploy_dir }}"
+DEPLOY_DIR="{{ mindwtr_deploy_dir }}"
 
 case "$RENEWED_LINEAGE" in
   */{{ mindwtr_domain }})

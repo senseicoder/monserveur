@@ -17,7 +17,7 @@ services:
    réel, fichiers racine spécifiques). rat_code/admin ne sont PAS montés --
    ils sont cuits dans l'image (COPY vers /opt/rat-code/), accédés via les
    symlinks créés côté hôte dans ce même dossier de données. #}
-      - "{{ deploy_dir }}/data/{{ site.domain }}/htdocs:/srv/data/web/vhosts/{{ site.domain }}/htdocs"
+      - "{{ rat_deploy_dir }}/data/{{ site.domain }}/htdocs:/srv/data/web/vhosts/{{ site.domain }}/htdocs"
 {% endfor %}
     labels:
       - "traefik.enable=true"
