@@ -1,9 +1,0 @@
----
-- hosts: glaurung
-  roles:
-    - infra-deploy
-    - rustdesk-setup
-    - role: rat-setup
-      tags: rat-setup
-    - role: rat-migratefromgandi
-      tags: rat-migratefromgandi

@@ -4,7 +4,6 @@ set -u
 
 inventory=${ANSIBLE_INVENTORY:-inventory/hosts.yml}
 role_playbook=${MONSERVEUR_ROLE_PLAYBOOK:-run_role.yml}
-legacy_playbook=${MONSERVEUR_LEGACY_PLAYBOOK:-install.yml}
 local_roles_path="roles"
 infra_deploy_roles=${MONSERVEUR_INFRA_DEPLOY_ROLES:-/home/cedric/www/e/infra-deploy/ansible/roles}
 
@@ -21,13 +20,10 @@ Usage:
   ./run roles [PATTERN]
   ./run role ROLE [run] [ansible args...]
   ./run list FILE.list [run] [ansible args...]
-  ./run legacy [run] [ansible args...]
-  ./run hosts
-  ./run tags
   ./run status
 
-By default, role/list/legacy run in Ansible check mode.
-Add "run" after the role/list/legacy target to apply changes.
+By default, role/list run in Ansible check mode.
+Add "run" after the role/list target to apply changes.
 External roles can be resolved through ANSIBLE_ROLES_PATH.
 By default, infra-deploy roles are read from:
   /home/cedric/www/e/infra-deploy/ansible/roles
@@ -122,19 +118,6 @@ list)
 		echo "==> $role"
 		ansible-playbook -i "$inventory" "$role_playbook" -e "role=$role" $params
 	done < "$item"
-	;;
-
-legacy)
-	params=$(run_mode_args "$@")
-	ansible-playbook -i "$inventory" "$legacy_playbook" $params
-	;;
-
-hosts)
-	ansible-playbook -i "$inventory" --list-hosts "$legacy_playbook"
-	;;
-
-tags)
-	ansible-playbook -i "$inventory" --list-tags "$legacy_playbook"
 	;;
 
 status)
