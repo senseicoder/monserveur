@@ -193,8 +193,7 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 
 ## Phase 2 (à faire)
 
-- **Traefik sur 80/443** : passer Apache sur port interne, Traefik prend 80/443
-- **Traefik ACME DNS-01** : via API OVH — élimine certbot et le hook. HTTP-01 impossible tant qu'Apache tient 80/443.
+- **Traefik sur 80/443** : plan détaillé en étapes dans [PHASE2.md](PHASE2.md) (établi le 2026-07-16 — inclut la bascule ACME HTTP-01 natif Traefik, qui remplace l'ancienne piste DNS-01/OVH, erronée : le DNS est chez Gandi et HTTP-01 suffit une fois Traefik sur le port 80)
 - **TT-RSS** : intégrer `~/ttrss-docker/` dans ce repo (templates `.j2` + vault), labels Traefik sur `web-nginx`
 - **Dashboard Traefik** : activer derrière BasicAuth (`htpasswd -nB admin`, doubler les `$` dans le YAML)
 - **ssh-securite** : compléter le rôle (durcissement sshd)
