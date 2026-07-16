@@ -155,7 +155,7 @@ docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
 
 ### Hors Traefik (services non-HTTP)
 
-Certains services ne parlent pas HTTP (protocole TCP/UDP brut avec chiffrement propre) et ne peuvent pas passer par le routeur HTTP de Traefik. Exemple : `rustdesk` (rôle `roles/rustdesk/`), qui expose `hbbs`/`hbbr` directement sur l'hôte via `ports:` dans le Compose, sans certbot ni Traefik.
+Certains services ne parlent pas HTTP (protocole TCP/UDP brut avec chiffrement propre) et ne peuvent pas passer par le routeur HTTP de Traefik. Exemple : `rustdesk` (rôle `roles/rustdesk-setup/`), qui expose `hbbs`/`hbbr` directement sur l'hôte via `ports:` dans le Compose, sans certbot ni Traefik.
 
 1. Nouveau rôle Ansible dédié plutôt que d'ajouter à un rôle existant (`traefik-deploy`, `mindwtr-cloud-deploy`, `vaultwarden-deploy` sont volontairement étroits, cf. `RAPPROCHEMENT_INFRA_DEPLOY.md`)
 2. `ports:` mappés directement sur l'hôte dans le template Compose (pas de réseau `mindwtr`, pas de labels Traefik)
