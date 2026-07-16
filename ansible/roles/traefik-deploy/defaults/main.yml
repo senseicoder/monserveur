@@ -1,0 +1,4 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml (pas de default
+# local, cf. docker-network-mindwtr-setup/defaults/main.yml) :
+#   mindwtr_deploy_dir  — répertoire de la stack, ex. /opt/mindwtr

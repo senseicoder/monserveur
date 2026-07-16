@@ -133,7 +133,7 @@ Risque moyen à élevé : ce rôle pilote des services en production sur l'uniqu
 
 ### Étape 4 — defaults systématiques sur les nouveaux rôles
 
-Une fois le découpage fait, `defaults/main.yml` documenté pour chacun des 6 nouveaux rôles (aujourd'hui un seul `deploy_dir` minimal, à éclater par rôle).
+Fait. Aucune de leurs variables n'est un tunable propre au rôle — toutes viennent de `group_vars/all/vars.yml` (`mindwtr_deploy_dir`, `mindwtr_domain`, `vaultwarden_domain`, `acme_email`). Un default de rôle du même nom serait masqué par le group_var (cf. piège de nommage ci-dessus) sans rien apporter : les 6 `defaults/main.yml` documentent donc en commentaire la dépendance externe plutôt que de dupliquer une valeur ignorée.
 
 ## Position directe
 

@@ -1,0 +1,3 @@
+---
+# Aucune variable externe : ce rôle installe Docker CE + plugin Compose
+# sans paramètre, à partir des faits Ansible (ansible_distribution_release).

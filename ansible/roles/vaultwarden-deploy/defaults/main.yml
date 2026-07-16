@@ -1,0 +1,6 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml (pas de default
+# local, cf. docker-network-mindwtr-setup/defaults/main.yml) :
+#   mindwtr_deploy_dir  — répertoire de la stack, ex. /opt/mindwtr
+#   vaultwarden_domain  — domaine du vhost/certbot, ex. vault.daneel.net
+#   acme_email          — email de contact Let's Encrypt

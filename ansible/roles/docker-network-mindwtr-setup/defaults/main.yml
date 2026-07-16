@@ -1,0 +1,5 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml (pas de default
+# local : un default de rôle du même nom serait de toute façon masqué par le
+# group_var, cf. RAPPROCHEMENT_INFRA_DEPLOY.md § piège de nommage) :
+#   mindwtr_deploy_dir  — répertoire de la stack, ex. /opt/mindwtr
