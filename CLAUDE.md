@@ -85,7 +85,6 @@ ansible/
 │   ├── vault.yml                 ← mindwtr_token (chiffré, versionné)
 │   └── vault.yml.example         ← modèle
 ├── requirements.yml              ← collection community.docker
-├── install.yml                   ← playbook legacy, joué via ./run legacy
 ├── run                           ← wrapper, dry-run par défaut, ANSIBLE_ROLES_PATH → infra-deploy si présent
 ├── run_role.yml                  ← playbook générique "role", handlers Compose centralisés (cf. note ci-dessous)
 ├── mindwtr.list / rat.list / rustdesk.list / security.list
@@ -100,8 +99,11 @@ ansible/
     │       └── certbot-renewal-hook.sh.j2         ← copie certs + restart traefik
     ├── mindwtr-cloud-deploy/     ← data/cloud, docker-compose.mindwtr.yml, vhost+certbot mindwtr, start
     ├── vaultwarden-deploy/       ← data/vaultwarden, docker-compose.vaultwarden.yml, vhost+certbot vault, start
+    ├── rustdesk-setup/           ← hbbs/hbbr RustDesk, hors Traefik (ports directs sur l'hôte), joué via ./run list rustdesk.list
     └── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
 ```
+
+Plus de playbook global : chaque profil (`*.list`) se joue indépendamment via `./run list`, il n'y a plus de séquence unique équivalente à l'ancien `install.yml`.
 
 Découpage issu de l'ancien rôle monolithique `infra-deploy` (cf. `RAPPROCHEMENT_INFRA_DEPLOY.md` à la racine du repo pour l'historique et le détail par rôle). **Handlers `restart traefik`/`restart mindwtr`/`restart vaultwarden` centralisés dans `run_role.yml`** (pas dans les rôles) : `./run list` joue chaque rôle d'une liste dans une invocation `ansible-playbook` séparée, donc un handler défini dans un rôle ne serait pas visible par un autre rôle du même run qui le notifie (ex. `vaultwarden-deploy` notifie `restart traefik`).
 
@@ -113,7 +115,6 @@ Découpage issu de l'ancien rôle monolithique `infra-deploy` (cf. `RAPPROCHEMEN
 cd ansible && ./run list mindwtr.list run   # stack mindwtr complète, exécution réelle
 cd ansible && ./run list mindwtr.list       # dry-run (par défaut, sans "run")
 cd ansible && ./run role traefik-deploy run # un seul rôle
-cd ansible && ansible-playbook install.yml --limit glaurung   # legacy, équivalent à ./run legacy run
 ```
 
 Les tâches sont idempotentes (Docker, réseau, certbot, vhost skippés si déjà en place).
@@ -160,7 +161,7 @@ Certains services ne parlent pas HTTP (protocole TCP/UDP brut avec chiffrement p
 1. Nouveau rôle Ansible dédié plutôt que d'ajouter à un rôle existant (`traefik-deploy`, `mindwtr-cloud-deploy`, `vaultwarden-deploy` sont volontairement étroits, cf. `RAPPROCHEMENT_INFRA_DEPLOY.md`)
 2. `ports:` mappés directement sur l'hôte dans le template Compose (pas de réseau `mindwtr`, pas de labels Traefik)
 3. Si le service persiste un secret généré au premier démarrage (ex. clé RustDesk `id_ed25519`), monter un volume dédié — sinon chaque redéploiement/recréation régénère le secret et casse les clients déjà configurés
-4. Ajouter le rôle à `install.yml`
+4. Ajouter le rôle à un `*.list` existant, ou en créer un nouveau (cf. `RAPPROCHEMENT_INFRA_DEPLOY.md` § Profils de rôles)
 
 ### DNS pour un nouveau domaine
 
