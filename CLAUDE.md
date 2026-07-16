@@ -187,24 +187,11 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 - Modules Apache actifs : proxy, proxy_http, proxy_fcgi, rewrite, ssl, headers.
 - **Filtre IPv6 dans les templates Apache** : `ansible_all_ipv6_addresses` inclut les IPs Docker internes (`fd00::/8`). Filtrer `^fe80` seul ne suffit pas — filtrer aussi `^fd` et `^fc`. Sans ça, le VirtualHost est déclaré sur `fd00:0:0:1::1` au lieu de l'IP publique OVH, Let's Encrypt ne trouve pas le challenge et échoue.
 
-## Todos Phase 1 (restants)
+## Backlog
 
-- [ ] **Firewall** : INPUT ACCEPT sans règle + piège Docker/PREROUTING. Utiliser la chaîne `DOCKER-USER` pour filtrer. Ports à ouvrir : 22, 80, 443, 8000-8002, 8787, 22000, 21115-21117 (rustdesk, tcp), 21116 (rustdesk, udp).
-- [x] **IPv6 full-stack** : activé — daemon.json, réseau mindwtr `fd00:0:0:1::/64`, forwarding kernel, route par défaut OVH via service systemd `ipv6-default-route`. `mindwtr.daneel.net` est un CNAME → `glaurung.daneel.net` (A + AAAA). Android vérifié en WiFi et mobile.
+Voir [TODO.md](TODO.md) — le backlog du repo (Phase 1 restants, Phase 2, dette technique) vit là, pas ici.
 
-## Dette technique / refactoring
-
-- ~~Découper le rôle `infra-deploy`~~ **Fait** — 6 rôles (`docker-engine-setup`, `network-ipv6-setup`, `docker-network-mindwtr-setup`, `traefik-deploy`, `mindwtr-cloud-deploy`, `vaultwarden-deploy`), joués en séquence via `./run list mindwtr.list`. Détail dans `RAPPROCHEMENT_INFRA_DEPLOY.md`.
-- **À vérifier** : dans `docker-network-mindwtr-setup`, le loop d'arrêt de la stack avant reconfiguration Docker/réseau ne couvre que `traefik` et `mindwtr`, pas `vaultwarden` — comportement repris tel quel de l'ancien rôle monolithique, jamais confirmé volontaire. Si le réseau `mindwtr` est recréé (IPv6 absent détecté), Vaultwarden pourrait rester connecté à l'ancien réseau jusqu'à son propre redémarrage.
-- **À revoir** : cohérence du nommage réseau Docker `mindwtr` — créé indépendamment du conteneur/service `mindwtr-cloud` (rôle `docker-network-mindwtr-setup`) mais aussi rejoint par `vaultwarden` (et `traefik`). Le nom porte à confusion : ce n'est pas un réseau propre au service mindwtr, c'est le réseau bridge commun de toute la stack. À clarifier — renommage (ex. `stack` ou `glaurung`) ou documentation explicite du partage.
-
-## Phase 2 (à faire)
-
-- **Traefik sur 80/443** : plan détaillé en étapes dans [PHASE2.md](PHASE2.md) (établi le 2026-07-16 — inclut la bascule ACME HTTP-01 natif Traefik, qui remplace l'ancienne piste DNS-01/OVH, erronée : le DNS est chez Gandi et HTTP-01 suffit une fois Traefik sur le port 80)
-- **TT-RSS** : intégrer `~/ttrss-docker/` dans ce repo (templates `.j2` + vault), labels Traefik sur `web-nginx`
-- **Dashboard Traefik** : activer derrière BasicAuth (`htpasswd -nB admin`, doubler les `$` dans le YAML)
-- **Conteneur php** : formaliser le lancement
-- **Backup des données** : analyser et mettre en place une sauvegarde effective des chemins listés en § Sauvegardes critiques (`data/cloud`, `data/vaultwarden`, `/etc/letsencrypt`) — aujourd'hui seulement documentés, aucun mécanisme de backup réel
+**Fait récemment** : découpage du rôle `infra-deploy` monolithique en 6 rôles (`docker-engine-setup`, `network-ipv6-setup`, `docker-network-mindwtr-setup`, `traefik-deploy`, `mindwtr-cloud-deploy`, `vaultwarden-deploy`), joués en séquence via `./run list mindwtr.list`. Détail dans `RAPPROCHEMENT_INFRA_DEPLOY.md`. IPv6 full-stack activé (daemon.json, réseau mindwtr `fd00:0:0:1::/64`, forwarding kernel, route par défaut OVH via service systemd `ipv6-default-route`).
 
 ## Vaultwarden — setup initial
 
@@ -223,3 +210,6 @@ Données persistées dans `/opt/mindwtr/data/vaultwarden/` (uid 1000).
 - `/opt/mindwtr/data/cloud/` — données sync Mindwtr
 - `/opt/mindwtr/data/vaultwarden/` — données Vaultwarden (mots de passe)
 - `/etc/letsencrypt/` — certificats TLS (renouvellement auto via certbot snap)
+- `/opt/rat/data/` — données réelles migrées de Gandi (plcoder.net + placedusport2.com, cf. rôle `rat-setup`/`rat-migratefromgandi`)
+
+Aucun mécanisme de backup réel pour ces chemins à ce jour — seulement documentés (cf. [TODO.md](TODO.md)).
