@@ -63,7 +63,7 @@ client → 80/443 → Traefik v3 (frontal unique, ACME HTTP-01 natif)
 
 - [ ] 5.1 Décommissionner `:8787` après migration des URLs clientes (apps Vaultwarden, clients MindWTR + MCP M6/M7) — garder quelques semaines en double écoute
 - [ ] 5.2 Optionnel : router `reader.daneel.net` directement vers le conteneur ttrss-nginx (Traefik rejoint `ttrss-docker_default`) — retire l'intermédiaire Apache
-- [ ] 5.3 Firewall à deux volets (todo Phase 1 jamais fait, re-priorisé) : chaîne INPUT pour les services hôte (22, 8000-8002, 22000), chaîne `DOCKER-USER` pour les ports publiés Docker (80/443, 8787 transitoire, 21115-21117) — le trafic vers les conteneurs passe par PREROUTING/FORWARD et contourne INPUT
+- [ ] 5.3 Firewall à deux volets : étude et rôle `firewall-setup` créés le 2026-07-16 — voir **FIREWALL.md**. À jouer **avant** la bascule (80/443 déjà prévus dans les deux chaînes, aucune retouche à la bascule) ; après 5.1, retirer 8787 de `firewall_docker_tcp_ports`
 - [ ] 5.4 Doc : `wiki/postes/glaurung.md`, ce CLAUDE.md, `wiki/log.md`, `wiki/projets/migration-rat-docker.md`, `sujets/machines-postes.md`
 
 ## Points de vigilance

@@ -1,3 +1,4 @@
 # Durcissement hôte. ssh-securite est un stub (Phase 2 applicative à compléter,
 # cf. CLAUDE.md § Phase 2).
+firewall-setup
 ssh-securite

@@ -25,5 +25,9 @@
         chdir: "{{ mindwtr_deploy_dir }}"
       ignore_errors: "{{ ansible_check_mode }}"
 
+    - name: save iptables
+      command: netfilter-persistent save
+      ignore_errors: "{{ ansible_check_mode }}"
+
   roles:
     - role: "{{ role | basename }}"
