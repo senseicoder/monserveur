@@ -3,3 +3,7 @@
   roles:
     - infra-deploy
     - rustdesk
+    - role: rat-setup
+      tags: rat-setup
+    - role: rat-migratefromgandi
+      tags: rat-migratefromgandi

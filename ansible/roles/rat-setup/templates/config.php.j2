@@ -1,0 +1,42 @@
+{#
+Genere par le role Ansible "rat" pour {{ site.domain }} -- ne pas editer a la
+main sur le serveur (le prochain deploiement ecrasera les changements).
+
+Adapte depuis le config.php reel de prod (Gandi) : DB_SERVEUR pointe vers le
+MySQL natif de l'hote glaurung via la gateway du reseau Docker "mindwtr"
+(le conteneur n'est pas en network_mode host). error_reporting n'est PAS
+surchargee ici -- rat.php impose E_ALL au niveau global (ADR : jamais de
+suppression d'erreur par confort, voir memoire feedback_rat_adr_pas_esperluette).
+#}
+<?php
+date_default_timezone_set('Europe/Paris');
+
+ini_set("register_globals", "Off");
+ini_set("allow_url_fopen", "Off");
+
+define('ROOT_MAIL', '{{ site.root_mail }}');
+define('SITE_CENTRAL', '{{ site.site_central }}');
+define('SITE_REDIRECT', '{{ site.site_redirect }}');
+define('SERVEUR_NOM', '{{ site.serveur_nom }}');
+define('URLADMIN', '{{ site.urladmin }}');
+{% if site.contact_verscourrier %}
+define('CONTACT_VERSCOURRIER', 1);
+{% endif %}
+
+define('LIEU', '{{ site.lieu }}');
+function suppr($file) { return unlink($file); }
+
+define('CHEMIN_ROOT', dirname(__FILE__) . '/../');
+define('PREFIXE_TABLES', 'rat');
+
+define('SESSIONLIFE', 20*60);    //timeout des sessions en secondes
+define('DB_SERVEUR', '{{ rat_mindwtr_gateway }}');
+define('DB_NAME', '{{ site.db_name }}');
+define('DB_LOGIN', '{{ site.db_user }}');
+define('DB_MDP', '{{ site.db_password }}');
+
+function DatesARetenir_Site()
+{
+  return array(
+    '{{ ansible_date_time.date }}' => 'Deploiement de test glaurung (etape 4, migration a blanc)');
+}

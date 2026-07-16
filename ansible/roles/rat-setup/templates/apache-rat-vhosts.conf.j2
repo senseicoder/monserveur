@@ -1,0 +1,20 @@
+{# Vhosts Apache internes au conteneur rat-web -- un par install rat, chemin
+   DocumentRoot identique au chemin absolu Gandi (/srv/data/web/vhosts/<domaine>/htdocs)
+   pour que le code avec chemins codes en dur (rss.php, rat_sites/*/index.php,
+   .htaccess) fonctionne sans modification. Genere par le role Ansible "rat",
+   ne pas editer a la main sur le serveur. #}
+{% for site in rat_sites %}
+<VirtualHost *:80>
+    ServerName {{ site.domain }}
+    DocumentRoot /srv/data/web/vhosts/{{ site.domain }}/htdocs
+
+    <Directory /srv/data/web/vhosts/{{ site.domain }}/htdocs>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog /proc/self/fd/2
+    CustomLog /proc/self/fd/1 combined
+</VirtualHost>
+{% endfor %}

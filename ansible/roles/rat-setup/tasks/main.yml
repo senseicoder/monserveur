@@ -1,0 +1,278 @@
+---
+# rat-setup : construit + publie l'image rat-web (en local, sur ce poste --
+# jamais de code déposé/construit sur glaurung), puis déploie sur glaurung en
+# tirant l'image depuis le registre (ghcr.io). Cohérent avec le pattern déjà
+# en place pour mindwtr-cloud/vaultwarden (images tirées d'un registre,
+# jamais construites sur place). Ne touche jamais au montage Gandi. Rejouable
+# indépendamment de rat-migratefromgandi. Voir aussi
+# /home/cedric/.claude/plans/adaptive-rolling-meteor.md et l'ADR "code commun
+# toujours dans l'image" dans la mémoire/wiki du projet.
+
+# --- Build + publication de l'image (en local, jamais sur glaurung) ---
+
+- name: Créer le dossier de build local (gitignoré, dans le repo rat-git)
+  ansible.builtin.file:
+    path: "/home/cedric/www/c/rat-git/docker"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  become: false
+
+- name: Rendre les vhosts Apache internes (multi-domaine) dans le contexte de build local
+  ansible.builtin.template:
+    src: apache-rat-vhosts.conf.j2
+    dest: "/home/cedric/www/c/rat-git/docker/apache-rat-vhosts.conf"
+  delegate_to: localhost
+  become: false
+
+- name: Rendre le Dockerfile dans le contexte de build local (= le repo rat-git lui-même)
+  ansible.builtin.template:
+    src: Dockerfile.j2
+    dest: "/home/cedric/www/c/rat-git/docker/Dockerfile.prod"
+  delegate_to: localhost
+  become: false
+
+# --- Versionnage de l'image : jamais "latest" (ADR) ---
+# Compteur persisté dans ce repo (files/rat-web.version, versionné dans git),
+# incrémenté à chaque build. Démarre à 0.1 si le fichier n'existe pas encore.
+
+- name: Initialiser le compteur de version à 0.0 s'il n'existe pas encore
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/rat-web.version"
+    content: "0.0"
+    force: false
+  delegate_to: localhost
+  become: false
+
+- name: Lire la version actuelle
+  ansible.builtin.set_fact:
+    rat_web_current_version: "{{ lookup('file', role_path + '/files/rat-web.version') | trim }}"
+
+- name: Calculer la prochaine version (incrémente le dernier nombre)
+  ansible.builtin.set_fact:
+    rat_web_next_version: "{{ (rat_web_current_version.split('.')[:-1] + [(rat_web_current_version.split('.')[-1] | int + 1) | string]) | join('.') }}"
+
+- name: Enregistrer la nouvelle version (avant le build, pour rester incrémental même en cas d'échec du build)
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/rat-web.version"
+    content: "{{ rat_web_next_version }}"
+  delegate_to: localhost
+  become: false
+
+- name: Fixer le tag d'image à construire/publier (jamais "latest")
+  ansible.builtin.set_fact:
+    rat_image: "{{ rat_image_repo }}:{{ rat_web_next_version }}"
+
+- name: Récupérer le PAT ghcr.io (cmdp, jamais loggé)
+  ansible.builtin.command: cmdp show services/github.com/docker_registry
+  register: rat_ghcr_pat
+  changed_when: false
+  no_log: true
+  delegate_to: localhost
+  become: false
+
+- name: Se connecter à ghcr.io (en local, pour build+push)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ rat_ghcr_pat.stdout_lines[0] }}"
+  # Pas de no_log ici : le paramètre "password" du module est déjà protégé
+  # au niveau de son argspec (no_log=True intégré), donc son contenu
+  # n'apparaîtra jamais en clair -- mais on garde le vrai message d'erreur
+  # visible en cas d'échec (censurer toute la tâche masquait le diagnostic).
+  delegate_to: localhost
+  become: false
+
+# Contexte de build = le repo rat-git lui-même (pas de dossier assemblé à
+# part) : COPY rat_code / COPY admin lisent directement le checkout réel,
+# aucune synchronisation de code n'est nécessaire.
+- name: Construire et publier l'image rat-web sur ghcr.io
+  community.docker.docker_image:
+    name: "{{ rat_image }}"
+    build:
+      path: "/home/cedric/www/c/rat-git"
+      dockerfile: "docker/Dockerfile.prod"
+      pull: true
+    source: build
+    # Sans force_source, le module ne reconstruit pas si un tag du même nom
+    # existe déjà en local -- même si le Dockerfile source a changé (constaté :
+    # image restée sur l'ancien FROM php:8.3-apache malgré la mise à jour du
+    # tag vers 8.2-apache-buster).
+    force_source: true
+    push: true
+  delegate_to: localhost
+  become: false
+
+# --- Déploiement sur glaurung : uniquement pull + run, aucun code ni build ---
+
+- name: Créer l'arborescence de base
+  ansible.builtin.file:
+    path: "{{ deploy_dir }}"
+    state: directory
+    owner: cedric
+    group: cedric
+    mode: "0750"
+
+# Owner cedric (pas root) : rat-migratefromgandi rsync sans become dans ce
+# dossier (sudo non-interactif indisponible sur la connexion synchronize,
+# cf. "sudo: no tty present and no askpass program specified"). Mode 0755
+# (pas 0750) : ce dossier est bind-monté dans le conteneur où Apache tourne
+# en www-data (uid différent de cedric) -- sans le bit "other" en lecture/
+# traversée, www-data n'a même pas accès au contenu (constaté : "Server
+# unable to read htaccess file, denying access to be safe").
+- name: Créer le dossier htdocs de chaque site (owner cedric, pour le rsync sans become)
+  ansible.builtin.file:
+    path: "{{ deploy_dir }}/data/{{ item.domain }}/htdocs"
+    state: directory
+    owner: cedric
+    group: cedric
+    mode: "0755"
+  loop: "{{ rat_sites }}"
+  loop_control:
+    label: "{{ item.domain }}"
+
+# Symlinks côté hôte, dans le dossier de DATA (donc visibles une fois le
+# bind-mount monté), pointant vers le code cuit dans l'image à un chemin
+# neutre (/opt/rat-code, hors de l'arborescence bind-montée -- pas de
+# collision, ni de code dupliqué sur le disque de l'hôte). ADR : le code
+# commun ne doit jamais être synchronisé/collé dans le volume de données,
+# uniquement l'image le porte.
+- name: Créer les symlinks rat_code/admin vers le code cuit dans l'image
+  ansible.builtin.file:
+    path: "{{ deploy_dir }}/data/{{ item.0.domain }}/htdocs/{{ item.1 }}"
+    src: "/opt/rat-code/{{ item.1 }}"
+    state: link
+    force: true
+  loop: "{{ rat_sites | product(['rat_code', 'admin']) | list }}"
+  loop_control:
+    label: "{{ item.0.domain }}/{{ item.1 }}"
+
+# config.php + rat_donnees writable : artefacts de config/infra (générés par
+# ce rôle depuis les vars + le vault), pas des données Gandi -- restent dans
+# rat-setup, pas rat-migratefromgandi (qui ne traite que les vraies données).
+
+- name: Créer l'arborescence rat_donnees writable de chaque site
+  ansible.builtin.file:
+    path: "{{ deploy_dir }}/data/{{ item.0.domain }}/htdocs/rat_donnees/{{ item.1 }}"
+    state: directory
+    owner: "33"    # www-data dans l'image php:apache (Debian)
+    group: "33"
+    mode: "0775"
+  loop: "{{ rat_sites | product(['journaux', 'sessions', 'modeles', 'sessionsvitrine']) | list }}"
+
+- name: Déployer le config.php adapté de chaque site
+  ansible.builtin.template:
+    src: config.php.j2
+    dest: "{{ deploy_dir }}/data/{{ site.domain }}/htdocs/rat_donnees/config.php"
+    owner: "33"
+    group: "33"
+    mode: "0640"
+  loop: "{{ rat_sites }}"
+  loop_control:
+    label: "{{ site.domain }}"
+    loop_var: site
+
+- name: Déployer le docker-compose rat-web (image tirée du registre, pas de build)
+  ansible.builtin.template:
+    src: docker-compose.rat.yml.j2
+    dest: "{{ deploy_dir }}/docker-compose.rat.yml"
+
+# glaurung (Debian 9 stretch) : Python3 système (3.5.3) est trop ancien pour
+# ansible-core (>=3.6 requis, testé) -- Python 2.7 est l'interpréteur
+# effectivement utilisé ici. Les paquets python3-* installés plus tôt étaient
+# une fausse piste (mauvais interpréteur) : il faut les équivalents Python 2.
+- name: Installer les paquets Python 2 requis par community.docker sur glaurung
+  ansible.builtin.apt:
+    name:
+      - python-docker
+      - python-backports.ssl-match-hostname
+    state: present
+
+- name: Se connecter à ghcr.io sur glaurung (pour pull, l'image rat-web est privée)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ rat_ghcr_pat.stdout_lines[0] }}"
+  # Pas de no_log ici : le paramètre "password" est déjà protégé par son
+  # propre argspec (no_log=True intégré au module) -- on garde le vrai
+  # message d'erreur visible en cas d'échec.
+
+# --- MySQL natif glaurung : bases + comptes vides, restreints au réseau mindwtr ---
+# L'import des données réelles se fait dans rat-migratefromgandi — ici on ne
+# crée que le schéma d'accès (base + compte), pas le contenu.
+
+- name: Installer le module Python MySQL requis par community.mysql sur glaurung
+  ansible.builtin.apt:
+    name: python-pymysql
+    state: present
+
+- name: Créer les bases MariaDB natives
+  community.mysql.mysql_db:
+    name: "{{ item.db_name }}"
+    encoding: latin1
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  loop: "{{ rat_sites }}"
+  loop_control:
+    label: "{{ item.db_name }}"
+
+- name: Créer les comptes MariaDB, restreints au subnet du réseau mindwtr
+  community.mysql.mysql_user:
+    name: "{{ item.db_user }}"
+    password: "{{ item.db_password }}"
+    host: "172.18.%.%"
+    priv: "{{ item.db_name }}.*:ALL"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  loop: "{{ rat_sites }}"
+  loop_control:
+    label: "{{ item.db_user }}@172.18.%.%"
+
+# --- Accès réseau conteneur → MySQL natif (point ouvert résolu ici) ---
+# MySQL n'écoutait jusqu'ici que sur 127.0.0.1 (accès depuis le conteneur ad-hoc
+# "php" en network_mode host). rat-web doit rejoindre le réseau "mindwtr" (bridge)
+# pour être routable par Traefik, donc 127.0.0.1 ne suffit plus. On élargit le
+# bind à toutes les interfaces mais on verrouille explicitement l'accès depuis
+# l'extérieur via DOCKER-USER (glaurung n'a pas de règle INPUT, cf. CLAUDE.md
+# monserveur : Docker contourne INPUT via PREROUTING/DNAT, DOCKER-USER est la
+# bonne chaîne).
+
+- name: Ouvrir MySQL sur toutes les interfaces (verrouillé ensuite par DOCKER-USER)
+  ansible.builtin.copy:
+    dest: /etc/mysql/mariadb.conf.d/60-rat-docker.cnf
+    content: |
+      # Géré par le rôle Ansible "rat-setup" — permet à rat-web (réseau Docker
+      # "mindwtr", bridge) d'atteindre le MySQL natif de l'hôte.
+      [mysqld]
+      bind-address = 0.0.0.0
+    mode: "0644"
+  notify: restart mariadb
+
+- name: Bloquer l'accès MySQL (3306) depuis l'extérieur du réseau mindwtr et de localhost
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    protocol: tcp
+    destination_port: "3306"
+    source: "{{ item.source }}"
+    jump: "{{ item.jump }}"
+    action: insert
+    rule_num: "{{ item.num }}"
+  loop:
+    - { source: "127.0.0.1/32", jump: "ACCEPT", num: 1 }
+    - { source: "172.18.0.0/16", jump: "ACCEPT", num: 2 }
+    - { source: "0.0.0.0/0", jump: "DROP", num: 3 }
+  loop_control:
+    label: "{{ item.source }} -> {{ item.jump }}"
+
+- name: Appliquer les handlers en attente (restart mariadb) avant de démarrer
+  ansible.builtin.meta: flush_handlers
+
+- name: Tirer la dernière image et démarrer/mettre à jour le conteneur rat-web
+  command: "{{ item }}"
+  args:
+    chdir: "{{ deploy_dir }}"
+  loop:
+    - "docker-compose -f docker-compose.rat.yml pull"
+    - "docker-compose -f docker-compose.rat.yml up -d"
+  loop_control:
+    label: "{{ item }}"

@@ -3,3 +3,31 @@ vaultwarden_domain: "vault.daneel.net"
 rustdesk_domain: "rustdesk.daneel.net"
 acme_email: "cedric@daneel.net"
 ipv6_gateway: "2001:41d0:302:2100::1"
+
+# rat — étape 4 : déploiement de test (migration à blanc, pas de bascule DNS/HTTPS)
+rat_deploy_dir: "/opt/rat"
+rat_repo_url: "git@github.com:senseicoder/rat.git"
+rat_gandi_mount: "/home/cedric/srvgandi/lamp0/web/vhosts"
+rat_sites:
+  - domain: www.plcoder.net
+    db_name: rat_plc
+    db_user: rat_plc
+    db_password: "{{ vault_rat_plc_db_password }}"
+    lieu: NEXEN
+    site_central: PLC
+    root_mail: cedric@daneel.net
+    site_redirect: "http://plcoder.net"
+    urladmin: "http://adm.daneel.net/"
+    serveur_nom: "PLC&co"
+    contact_verscourrier: false
+  - domain: www.placedusport2.com
+    db_name: pds
+    db_user: pds
+    db_password: "{{ vault_rat_pds_db_password }}"
+    lieu: OASIS
+    site_central: pds2
+    root_mail: contact@placedusport2.com
+    site_redirect: "http://placedusport2.com"
+    urladmin: "http://www.placedusport2.com/admin/"
+    serveur_nom: "PlaceDuSport2.com"
+    contact_verscourrier: true

@@ -1,0 +1,54 @@
+{# Genere par le role Ansible "rat" -- ne pas editer a la main. Construit et
+   publié EN LOCAL (jamais sur glaurung, cf. rat-setup/tasks/main.yml) avec
+   pour contexte de build le repo rat-git lui-même -- COPY rat_code/admin
+   lisent directement le checkout reel, aucune synchronisation de code
+   n'est necessaire. Meme base que le test local etape 3
+   (~/www/c/rat-git/docker/Dockerfile), adaptee pour 2 vhosts internes
+   (plcoder + placedusport2) au lieu d'un DocumentRoot unique. Seules les
+   données par site (config.php, rat_sites, logs/sessions) restent en
+   bind-mount, cf. docker-compose.rat.yml.j2. #}
+FROM php:{{ rat_php_image_tag }}
+
+# Debian buster est EOL -- deb.debian.org/security.debian.org ne le servent
+# plus (404), les paquets sont archivés sur archive.debian.org. Basculer les
+# sources + désactiver la validité des dates (Release archivé = expiré).
+RUN sed -i \
+        -e 's|deb.debian.org|archive.debian.org|g' \
+        -e 's|security.debian.org/debian-security|archive.debian.org/debian-security|g' \
+        -e '/buster-updates/d' \
+        /etc/apt/sources.list \
+    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpng-dev libjpeg62-turbo-dev libfreetype6-dev zlib1g-dev libxml2-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install mysqli gd xml \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Base php.ini-production (pas -development) : deploiement de test avec les
+# vraies donnees prod, pas d'affichage d'erreurs aux visiteurs -- le log
+# (docker logs rat-web) reste la source de verite (cf. ADR "zero erreur log").
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && sed -ri -e 's/^error_reporting\s*=.*/error_reporting = E_ALL/' \
+               -e 's/^display_errors\s*=.*/display_errors = Off/' \
+               -e 's/^log_errors\s*=.*/log_errors = On/' \
+        "$PHP_INI_DIR/php.ini"
+
+# Code de ~2001 en tags courts <? -- short_open_tag Off par defaut depuis PHP 5.4.
+RUN echo "short_open_tag = On" > /usr/local/etc/php/conf.d/rat-legacy.ini
+
+# Vhosts internes (un par domaine rat), DocumentRoot = chemin absolu Gandi.
+# Fichier rendu par Ansible dans docker/apache-rat-vhosts.conf (contexte de
+# build = racine du repo rat-git).
+COPY docker/apache-rat-vhosts.conf /etc/apache2/sites-available/rat-vhosts.conf
+RUN a2dissite 000-default && a2ensite rat-vhosts
+
+# Code générique cuit dans l'image (pas de bind-mount), à un chemin neutre
+# hors de l'arborescence bind-montée /srv/data/web/vhosts/<domaine>/htdocs/ --
+# rat_code/admin sont accédés via un symlink créé côté hôte dans chaque
+# htdocs (voir rat-setup/tasks/main.yml), pointant vers ce chemin interne au
+# conteneur. Une seule copie sert les deux domaines (même code). Chemins
+# relatifs à la racine du repo (le contexte de build), pas de dossier
+# "code/" assemblé à part.
+COPY rat_code /opt/rat-code/rat_code
+COPY admin /opt/rat-code/admin

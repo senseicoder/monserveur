@@ -1,0 +1,2 @@
+---
+deploy_dir: "{{ rat_deploy_dir }}"

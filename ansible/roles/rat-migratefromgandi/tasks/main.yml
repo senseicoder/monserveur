@@ -1,0 +1,67 @@
+---
+# rat-migratefromgandi : rapatrie UNIQUEMENT les données réelles depuis Gandi
+# (montage sshfs) et importe les dumps prod dans les bases créées par
+# rat-setup. Ne s'occupe ni de config.php ni de l'arborescence rat_donnees
+# (déplacés vers rat-setup — ce sont des artefacts de config/infra, pas des
+# données Gandi). Rejouable indépendamment (ex. rafraîchir les données avant
+# la bascule finale) sans reconstruire l'image ni retoucher la conf MySQL/
+# Traefik/config.php. Prérequis : rat-setup déjà passé (dossiers + bases +
+# comptes + config.php + rat_donnees existants).
+
+# --- Données spécifiques par site, depuis le montage sshfs Gandi ---
+# Exclusions : rat_code/admin (vieux PHP5, gérés par rat-setup depuis rat-git),
+# rat_donnees (logs/sessions sans valeur, et config.php géré par rat-setup —
+# ne pas écraser), et le contenu legacy statique (hors périmètre, décidé avec
+# Cédric : reste sur Gandi).
+
+- name: Synchroniser les données réelles de chaque site depuis Gandi (rsync sélectif)
+  ansible.posix.synchronize:
+    src: "{{ rat_gandi_mount }}/{{ item.domain }}/htdocs/"
+    dest: "{{ deploy_dir }}/data/{{ item.domain }}/htdocs/"
+    rsync_opts:
+      - "--exclude=rat_code"
+      - "--exclude=admin"
+      - "--exclude=rat_donnees"
+      - "--exclude=nimes2006"
+      - "--exclude=nimes2007"
+      - "--exclude=brunstatt2007"
+      - "--exclude=pub"
+  become: false
+  loop: "{{ rat_sites }}"
+  loop_control:
+    label: "{{ item.domain }}"
+
+# --- Import des dumps prod dans les bases (créées vides par rat-setup) ---
+
+- name: Copier les dumps prod (déjà rapatriés) vers glaurung pour import
+  ansible.builtin.copy:
+    src: "/space/Work/ArchivesGandi/mysql/{{ item.dump }}"
+    dest: "/tmp/{{ item.dump }}"
+    mode: "0600"
+  loop:
+    - { db_name: rat_plc, dump: "rat_plc_2026-07-14_00h56m44s.sql.gz" }
+    - { db_name: pds, dump: "pds_2026-07-14_00h55m55s.sql.gz" }
+  loop_control:
+    label: "{{ item.db_name }}"
+
+- name: Importer les dumps prod dans les bases natives
+  ansible.builtin.shell: |
+    set -euo pipefail
+    zcat /tmp/{{ item.dump }} | mysql --default-character-set=latin1 {{ item.db_name }}
+  args:
+    executable: /bin/bash
+  loop:
+    - { db_name: rat_plc, dump: "rat_plc_2026-07-14_00h56m44s.sql.gz" }
+    - { db_name: pds, dump: "pds_2026-07-14_00h55m55s.sql.gz" }
+  loop_control:
+    label: "{{ item.db_name }}"
+
+- name: Nettoyer les dumps temporaires
+  ansible.builtin.file:
+    path: "/tmp/{{ item.dump }}"
+    state: absent
+  loop:
+    - { dump: "rat_plc_2026-07-14_00h56m44s.sql.gz" }
+    - { dump: "pds_2026-07-14_00h55m55s.sql.gz" }
+  loop_control:
+    label: "{{ item.dump }}"

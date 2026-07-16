@@ -1,0 +1,33 @@
+# Genere par le role Ansible "rat" -- ne pas editer a la main sur le serveur.
+# Etape 4 : deploiement de test (migration a blanc, pas de bascule DNS/HTTPS).
+# Conteneur unique, vhosts Apache internes par domaine (Option A validee).
+# Image tiree du registre (ghcr.io) -- jamais construite sur glaurung, cf.
+# ADR "code commun toujours dans l'image, build+push en local".
+version: "3"
+
+services:
+  rat-web:
+    image: "{{ rat_image }}"
+    restart: unless-stopped
+    networks:
+      - mindwtr
+    volumes:
+{% for site in rat_sites %}
+{# Un seul bind-mount par site : données uniquement (config.php, rat_sites
+   réel, fichiers racine spécifiques). rat_code/admin ne sont PAS montés --
+   ils sont cuits dans l'image (COPY vers /opt/rat-code/), accédés via les
+   symlinks créés côté hôte dans ce même dossier de données. #}
+      - "{{ deploy_dir }}/data/{{ site.domain }}/htdocs:/srv/data/web/vhosts/{{ site.domain }}/htdocs"
+{% endfor %}
+    labels:
+      - "traefik.enable=true"
+{% for site in rat_sites %}
+      - "traefik.http.routers.rat-{{ site.site_central | lower }}.rule=Host(`{{ site.domain }}`)"
+      - "traefik.http.routers.rat-{{ site.site_central | lower }}.entrypoints=mindwtr"
+      - "traefik.http.routers.rat-{{ site.site_central | lower }}.tls=true"
+{% endfor %}
+      - "traefik.http.services.rat-web.loadbalancer.server.port=80"
+
+networks:
+  mindwtr:
+    external: true

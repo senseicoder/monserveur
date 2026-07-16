@@ -1,0 +1,21 @@
+---
+deploy_dir: "{{ rat_deploy_dir }}"
+# Noyau glaurung (3.16, OVH) trop ancien pour getrandom() (Linux 3.17+) --
+# Apache/APR des images basées Debian bullseye+ plante au démarrage
+# (AH00141, testé empiriquement : 8.3-apache/8.2-apache-bullseye cassent,
+# 8.1/8.2-apache-buster fonctionnent). 8.3+ n'existe pas en variante buster
+# (Debian 10 trop ancienne pour avoir reçu ces versions) -- 8.2-apache-buster
+# est le plus récent qui tourne sur ce noyau tout en gardant Apache (pas de
+# migration vers nginx nécessaire pour les .htaccess).
+rat_php_image_tag: "8.2-apache-buster"
+rat_mindwtr_gateway: "172.18.0.1"
+# ADR : jamais de tag "latest" -- rat_image (le tag complet effectif) est
+# calculé dynamiquement dans tasks/main.yml à partir de ce préfixe + un
+# numéro de version incrémenté à chaque build (files/rat-web.version).
+rat_image_repo: "ghcr.io/senseicoder/rat-web"
+
+# glaurung (Debian 9 stretch) : le Python3 système (3.5.3) est trop ancien
+# pour ansible-core (>=3.6 requis, échec dès "Gathering Facts" en le forçant
+# -- testé). Python 2.7 reste donc l'interpréteur viable ici ; le fix pour
+# community.docker n'est pas de changer d'interpréteur mais d'installer le
+# paquet manquant pour Python 2 (voir tasks/main.yml).
