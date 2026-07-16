@@ -1,0 +1,159 @@
+#!/bin/bash
+
+set -u
+
+inventory=${ANSIBLE_INVENTORY:-inventory/hosts.yml}
+role_playbook=${MONSERVEUR_ROLE_PLAYBOOK:-run_role.yml}
+legacy_playbook=${MONSERVEUR_LEGACY_PLAYBOOK:-install.yml}
+local_roles_path="roles"
+infra_deploy_roles=${MONSERVEUR_INFRA_DEPLOY_ROLES:-/home/cedric/www/e/infra-deploy/ansible/roles}
+
+if [ -d "$infra_deploy_roles" ]; then
+	export ANSIBLE_ROLES_PATH="${ANSIBLE_ROLES_PATH:-$local_roles_path:$infra_deploy_roles}"
+else
+	export ANSIBLE_ROLES_PATH="${ANSIBLE_ROLES_PATH:-$local_roles_path}"
+fi
+
+usage() {
+	cat <<'EOF'
+Usage:
+  ./run ls
+  ./run roles [PATTERN]
+  ./run role ROLE [run] [ansible args...]
+  ./run list FILE.list [run] [ansible args...]
+  ./run legacy [run] [ansible args...]
+  ./run hosts
+  ./run tags
+  ./run status
+
+By default, role/list/legacy run in Ansible check mode.
+Add "run" after the role/list/legacy target to apply changes.
+External roles can be resolved through ANSIBLE_ROLES_PATH.
+By default, infra-deploy roles are read from:
+  /home/cedric/www/e/infra-deploy/ansible/roles
+EOF
+}
+
+role_exists() {
+	role_name=$1
+	old_ifs=$IFS
+	IFS=:
+	for path in $ANSIBLE_ROLES_PATH; do
+		if [ -d "$path/$role_name" ]; then
+			IFS=$old_ifs
+			return 0
+		fi
+	done
+	IFS=$old_ifs
+	return 1
+}
+
+run_mode_args() {
+	if [ "${1:-}" = "run" ]; then
+		shift
+		echo "-D $*"
+	else
+		echo "-C -D $*"
+	fi
+}
+
+cmd=${1:-}
+if [ -z "$cmd" ]; then
+	usage
+	exit 1
+fi
+shift
+
+case "$cmd" in
+ls)
+	find roles -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%f\n' | sort
+	;;
+
+roles)
+	pattern=${1:-}
+	if [ -z "$pattern" ]; then
+		find $(echo "$ANSIBLE_ROLES_PATH" | tr ':' ' ') -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%f\n' | sort -u
+	else
+		find $(echo "$ANSIBLE_ROLES_PATH" | tr ':' ' ') -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%f\n' | sort -u | grep "$pattern"
+	fi
+	;;
+
+role)
+	item=${1:-}
+	if [ -z "$item" ]; then
+		echo "role manquant"
+		exit 1
+	fi
+	shift
+
+	if ! role_exists "$item"; then
+		echo "role $item non trouve"
+		exit 1
+	fi
+
+	params=$(run_mode_args "$@")
+	ansible-playbook -i "$inventory" "$role_playbook" -e "role=$item" $params
+	;;
+
+list)
+	item=${1:-}
+	if [ -z "$item" ]; then
+		echo "liste manquante"
+		exit 1
+	fi
+	shift
+
+	if [ ! -f "$item" ]; then
+		echo "liste $item non trouvee"
+		exit 1
+	fi
+
+	params=$(run_mode_args "$@")
+	while IFS= read -r line; do
+		role=${line%%#*}
+		role=$(echo "$role" | xargs)
+		if [ -z "$role" ]; then
+			continue
+		fi
+		if ! role_exists "$role"; then
+			echo "role $role non trouve"
+			exit 1
+		fi
+		echo "==> $role"
+		ansible-playbook -i "$inventory" "$role_playbook" -e "role=$role" $params
+	done < "$item"
+	;;
+
+legacy)
+	params=$(run_mode_args "$@")
+	ansible-playbook -i "$inventory" "$legacy_playbook" $params
+	;;
+
+hosts)
+	ansible-playbook -i "$inventory" --list-hosts "$legacy_playbook"
+	;;
+
+tags)
+	ansible-playbook -i "$inventory" --list-tags "$legacy_playbook"
+	;;
+
+status)
+	echo "Roles absents des listes simples:"
+	comm -23 \
+		<(find roles -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%f\n' | sort) \
+		<(find . -maxdepth 1 -name '*.list' -type f -print0 | xargs -0 grep -hve '^#' -e '^$' | sed 's/#.*//' | xargs -n1 echo | sort -u) \
+		|| true
+	echo
+	echo "Roles listes introuvables:"
+	find . -maxdepth 1 -name '*.list' -type f -print0 | xargs -0 grep -hve '^#' -e '^$' | sed 's/#.*//' | xargs -n1 echo | sort -u | while IFS= read -r listed_role; do
+		if ! role_exists "$listed_role"; then
+			echo "$listed_role"
+		fi
+	done
+	;;
+
+*)
+	usage
+	exit 1
+	;;
+esac

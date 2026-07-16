@@ -1,0 +1,4 @@
+# Migration rat depuis Gandi (étape 4 validée le 2026-07-16, déploiement à blanc,
+# pas de bascule DNS/HTTPS).
+rat-setup
+rat-migratefromgandi

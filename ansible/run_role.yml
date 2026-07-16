@@ -1,0 +1,6 @@
+---
+- hosts: glaurung
+  gather_facts: true
+
+  roles:
+    - role: "{{ role | basename }}"
