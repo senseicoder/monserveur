@@ -196,6 +196,7 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 
 - ~~Découper le rôle `infra-deploy`~~ **Fait** — 6 rôles (`docker-engine-setup`, `network-ipv6-setup`, `docker-network-mindwtr-setup`, `traefik-deploy`, `mindwtr-cloud-deploy`, `vaultwarden-deploy`), joués en séquence via `./run list mindwtr.list`. Détail dans `RAPPROCHEMENT_INFRA_DEPLOY.md`.
 - **À vérifier** : dans `docker-network-mindwtr-setup`, le loop d'arrêt de la stack avant reconfiguration Docker/réseau ne couvre que `traefik` et `mindwtr`, pas `vaultwarden` — comportement repris tel quel de l'ancien rôle monolithique, jamais confirmé volontaire. Si le réseau `mindwtr` est recréé (IPv6 absent détecté), Vaultwarden pourrait rester connecté à l'ancien réseau jusqu'à son propre redémarrage.
+- **À revoir** : cohérence du nommage réseau Docker `mindwtr` — créé indépendamment du conteneur/service `mindwtr-cloud` (rôle `docker-network-mindwtr-setup`) mais aussi rejoint par `vaultwarden` (et `traefik`). Le nom porte à confusion : ce n'est pas un réseau propre au service mindwtr, c'est le réseau bridge commun de toute la stack. À clarifier — renommage (ex. `stack` ou `glaurung`) ou documentation explicite du partage.
 
 ## Phase 2 (à faire)
 
