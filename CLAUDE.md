@@ -101,7 +101,7 @@ ansible/
     │       ├── certbot-renewal-hook.sh.j2         ← copie certs + restart traefik
     │       ├── ipv6-default-route.sh.j2
     │       └── ipv6-default-route.service.j2
-    └── ssh-securite/             ← durcissement SSH (stub, Phase 2)
+    └── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
 ```
 
 ## Commandes
@@ -196,7 +196,6 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 - **Traefik sur 80/443** : plan détaillé en étapes dans [PHASE2.md](PHASE2.md) (établi le 2026-07-16 — inclut la bascule ACME HTTP-01 natif Traefik, qui remplace l'ancienne piste DNS-01/OVH, erronée : le DNS est chez Gandi et HTTP-01 suffit une fois Traefik sur le port 80)
 - **TT-RSS** : intégrer `~/ttrss-docker/` dans ce repo (templates `.j2` + vault), labels Traefik sur `web-nginx`
 - **Dashboard Traefik** : activer derrière BasicAuth (`htpasswd -nB admin`, doubler les `$` dans le YAML)
-- **ssh-securite** : compléter le rôle (durcissement sshd)
 - **Conteneur php** : formaliser le lancement
 
 ## Vaultwarden — setup initial
