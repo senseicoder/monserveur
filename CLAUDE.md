@@ -87,7 +87,7 @@ ansible/
 ├── requirements.yml              ← collection community.docker
 ├── run                           ← wrapper, dry-run par défaut, ANSIBLE_ROLES_PATH → infra-deploy si présent
 ├── run_role.yml                  ← playbook générique "role", handlers Compose centralisés (cf. note ci-dessous)
-├── mindwtr.list / rat.list / rustdesk.list / security.list
+├── glaurung.list / mindwtr.list / rat.list / rustdesk.list / security.list
 └── roles/
     ├── docker-engine-setup/      ← install Docker CE + plugin Compose
     ├── network-ipv6-setup/       ← forwarding IPv6 kernel + service systemd ipv6-default-route
@@ -100,8 +100,13 @@ ansible/
     ├── mindwtr-cloud-deploy/     ← data/cloud, docker-compose.mindwtr.yml, vhost+certbot mindwtr, start
     ├── vaultwarden-deploy/       ← data/vaultwarden, docker-compose.vaultwarden.yml, vhost+certbot vault, start
     ├── rustdesk-setup/           ← hbbs/hbbr RustDesk, hors Traefik (ports directs sur l'hôte), joué via ./run list rustdesk.list
+    ├── firewall-setup/           ← iptables INPUT (hôte) + DOCKER-USER (conteneurs), garde anti-lockout via job `at`, joué via ./run list security.list ou glaurung.list
+    ├── rat-setup/                ← app PHP `rat` (Apache vhost + Docker Compose), migration à blanc depuis Gandi
+    ├── rat-migratefromgandi/     ← import des données réelles (plcoder.net + placedusport2.com), joué via ./run list rat.list
     └── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
 ```
+
+`glaurung.list` = profil complet de l'hôte (tous les rôles actifs sauf `rat-migratefromgandi`, cf. `ansible/glaurung.list`).
 
 Plus de playbook global : chaque profil (`*.list`) se joue indépendamment via `./run list`, il n'y a plus de séquence unique équivalente à l'ancien `install.yml`.
 
