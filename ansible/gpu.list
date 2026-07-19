@@ -1,0 +1,9 @@
+# Instance GPU OVH dédiée (LLM perso Qwen3.6-35B-A3B + génération image/vidéo ComfyUI).
+# Serveur séparé de glaurung — base complète à jouer (pas de socle partagé).
+# wireguard-setup, gpu-driver-setup et gpu-stack-deploy restent à écrire.
+ssh-securite
+firewall-setup
+wireguard-setup
+docker-engine-setup
+gpu-driver-setup
+gpu-stack-deploy
