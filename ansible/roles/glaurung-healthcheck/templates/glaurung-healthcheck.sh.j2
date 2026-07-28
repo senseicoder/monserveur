@@ -1,0 +1,83 @@
+#!/bin/bash
+set -uo pipefail
+
+NTFY_URL="https://{{ ntfy_domain }}:8787/{{ ntfy_health_topic }}"
+NTFY_TOKEN="{{ ntfy_healthcheck_token }}"
+STATE_DIR="{{ healthcheck_state_dir }}"
+REMINDER_SECONDS={{ healthcheck_reminder_seconds }}
+DISK_WARN={{ healthcheck_disk_warn_pct }}
+DISK_CRIT={{ healthcheck_disk_crit_pct }}
+CERT_WARN_DAYS={{ healthcheck_cert_warn_days }}
+
+mkdir -p "$STATE_DIR"
+now=$(date +%s)
+
+# send_alert KEY PRIORITY TITLE MESSAGE
+# Envoie immédiatement si le contenu diffère de la dernière alerte "KEY" envoyée
+# (nouveau problème, ou aggravation/changement du problème existant).
+# Si le contenu est identique, respecte REMINDER_SECONDS avant de rappeler
+# (évite le spam pendant qu'un problème strictement identique persiste).
+send_alert() {
+  local key="$1" priority="$2" title="$3" message="$4"
+  local state_file="$STATE_DIR/${key}.last"
+  local msg_hash last_sent=0 last_hash=""
+  msg_hash=$(printf '%s' "$message" | md5sum | cut -d' ' -f1)
+  if [ -f "$state_file" ]; then
+    last_sent=$(sed -n '1p' "$state_file")
+    last_hash=$(sed -n '2p' "$state_file")
+  fi
+  if [ "$msg_hash" != "$last_hash" ] || [ $((now - last_sent)) -ge "$REMINDER_SECONDS" ]; then
+    curl -s -o /dev/null -H "Authorization: Bearer $NTFY_TOKEN" -H "Priority: $priority" -H "Title: $title" -d "$message" "$NTFY_URL"
+    printf '%s\n%s\n' "$now" "$msg_hash" > "$state_file"
+  fi
+}
+
+# clear_alert KEY — efface l'état pour que la prochaine occurrence réalerte immédiatement
+clear_alert() {
+  rm -f "$STATE_DIR/$1.last"
+}
+
+# --- Conteneurs Docker attendus en permanence (restart policy != no) mais pas "running" ---
+bad_containers=""
+for name in $(docker ps -a --format '{{ "{{.Names}}" }}'); do
+  policy=$(docker inspect -f '{{ "{{.HostConfig.RestartPolicy.Name}}" }}' "$name" 2>/dev/null)
+  status=$(docker inspect -f '{{ "{{.State.Status}}" }}' "$name" 2>/dev/null)
+  if [ -n "$policy" ] && [ "$policy" != "no" ] && [ "$status" != "running" ]; then
+    bad_containers="${bad_containers}${name}: ${status} (restart=${policy})\n"
+  fi
+done
+if [ -n "$bad_containers" ]; then
+  send_alert "containers" "urgent" "Glaurung — conteneur(s) en défaut" "$(echo -e "$bad_containers")"
+else
+  clear_alert "containers"
+fi
+
+# --- Disque / ---
+disk_pct=$(df --output=pcent / | tail -1 | tr -dc '0-9')
+if [ "$disk_pct" -ge "$DISK_CRIT" ]; then
+  send_alert "disk" "urgent" "Glaurung — disque critique" "Disque / à ${disk_pct}% (seuil critique ${DISK_CRIT}%)"
+elif [ "$disk_pct" -ge "$DISK_WARN" ]; then
+  send_alert "disk" "default" "Glaurung — disque élevé" "Disque / à ${disk_pct}% (seuil ${DISK_WARN}%)"
+else
+  clear_alert "disk"
+fi
+
+# --- Certificats Let's Encrypt (tous les domaines actifs, découverte automatique) ---
+cert_issues=""
+for domain_dir in /etc/letsencrypt/live/*/; do
+  [ -d "$domain_dir" ] || continue
+  domain=$(basename "$domain_dir")
+  cert_file="${domain_dir}fullchain.pem"
+  [ -f "$cert_file" ] || continue
+  expiry=$(openssl x509 -enddate -noout -in "$cert_file" | cut -d= -f2)
+  expiry_epoch=$(date -d "$expiry" +%s)
+  days_left=$(( (expiry_epoch - now) / 86400 ))
+  if [ "$days_left" -lt "$CERT_WARN_DAYS" ]; then
+    cert_issues="${cert_issues}${domain}: ${days_left}j restants\n"
+  fi
+done
+if [ -n "$cert_issues" ]; then
+  send_alert "certs" "high" "Glaurung — certificat(s) proche expiration" "$(echo -e "$cert_issues")"
+else
+  clear_alert "certs"
+fi

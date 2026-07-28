@@ -1,6 +1,8 @@
 mindwtr_deploy_dir: "/opt/mindwtr"
 mindwtr_domain: "mindwtr.daneel.net"
 vaultwarden_domain: "vault.daneel.net"
+ntfy_domain: "ntfy.daneel.net"
+ntfy_health_topic: "glaurung-health"
 rustdesk_domain: "rustdesk.daneel.net"
 acme_email: "cedric@daneel.net"
 ipv6_gateway: "2001:41d0:302:2100::1"

@@ -1,0 +1,7 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml / vault.yml
+# (pas de default local, cf. docker-network-mindwtr-setup/defaults/main.yml) :
+#   mindwtr_deploy_dir  — répertoire de la stack, ex. /opt/mindwtr
+#   ntfy_domain         — domaine du vhost/certbot, ex. ntfy.daneel.net
+#   acme_email          — email de contact Let's Encrypt
+#   ntfy_admin_password — mot de passe du compte admin ntfy (vault.yml, chiffré)

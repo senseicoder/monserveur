@@ -1,0 +1,36 @@
+services:
+  ntfy:
+    image: binwiederhier/ntfy
+    container_name: ntfy
+    restart: unless-stopped
+    command:
+      - serve
+    environment:
+      TZ: "Europe/Paris"
+      NTFY_BASE_URL: "https://{{ ntfy_domain }}:8787"
+      NTFY_LISTEN_HTTP: ":80"
+      NTFY_AUTH_FILE: "/var/lib/ntfy/auth.db"
+      NTFY_AUTH_DEFAULT_ACCESS: "deny-all"
+      NTFY_BEHIND_PROXY: "true"
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/ntfy/cache:/var/cache/ntfy"
+      - "{{ mindwtr_deploy_dir }}/data/ntfy/lib:/var/lib/ntfy"
+    networks:
+      - mindwtr
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ntfy.rule=Host(`{{ ntfy_domain }}`)"
+      - "traefik.http.routers.ntfy.entrypoints=mindwtr"
+      - "traefik.http.routers.ntfy.tls=true"
+      - "traefik.http.services.ntfy.loadbalancer.server.port=80"
+    security_opt:
+      - seccomp:unconfined
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 http://127.0.0.1/v1/health -O - | grep -Eo '\"healthy\"[[:space:]]*:[[:space:]]*true' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  mindwtr:
+    external: true

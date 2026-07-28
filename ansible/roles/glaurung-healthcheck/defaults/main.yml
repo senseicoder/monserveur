@@ -1,0 +1,13 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml / vault.yml :
+#   ntfy_domain             — domaine ntfy (ex. ntfy.daneel.net)
+#   ntfy_health_topic       — topic ntfy pour les alertes santé glaurung
+#   ntfy_healthcheck_token  — token d'accès ntfy dédié (vault.yml, chiffré)
+
+healthcheck_script_dir: /opt/glaurung-healthcheck
+healthcheck_state_dir: /var/lib/glaurung-healthcheck
+healthcheck_disk_warn_pct: 80
+healthcheck_disk_crit_pct: 90
+healthcheck_cert_warn_days: 15
+healthcheck_reminder_seconds: 14400  # 4h — délai avant de rappeler une alerte toujours active
+healthcheck_cron_minute: "*/10"

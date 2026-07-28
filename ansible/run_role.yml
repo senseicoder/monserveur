@@ -25,6 +25,12 @@
         chdir: "{{ mindwtr_deploy_dir }}"
       ignore_errors: "{{ ansible_check_mode }}"
 
+    - name: restart ntfy
+      command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.ntfy.yml restart
+      args:
+        chdir: "{{ mindwtr_deploy_dir }}"
+      ignore_errors: "{{ ansible_check_mode }}"
+
     - name: save iptables
       command: netfilter-persistent save
       ignore_errors: "{{ ansible_check_mode }}"
