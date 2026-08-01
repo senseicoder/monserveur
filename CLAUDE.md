@@ -211,5 +211,6 @@ Données persistées dans `/opt/mindwtr/data/vaultwarden/` (uid 1000).
 - `/opt/mindwtr/data/vaultwarden/` — données Vaultwarden (mots de passe)
 - `/etc/letsencrypt/` — certificats TLS (renouvellement auto via certbot snap)
 - `/opt/rat/data/` — données réelles migrées de Gandi (plcoder.net + placedusport2.com, cf. rôle `rat-setup`/`rat-migratefromgandi`)
+- `/opt/mindwtr/data/ntfy/` — comptes/tokens et cache des messages ntfy (cf. rôle `ntfy-deploy`)
 
 Aucun mécanisme de backup réel pour ces chemins à ce jour — seulement documentés (cf. [TODO.md](TODO.md)).

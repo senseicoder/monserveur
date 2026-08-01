@@ -1,0 +1,217 @@
+{
+  ".claude/settings.local.json": {
+    "mtime": 1782060163.43531,
+    "ast_hash": "f4d9f7a2a18933fe6558182acca0e244",
+    "semantic_hash": "f4d9f7a2a18933fe6558182acca0e244"
+  },
+  "ansible/.vault_passw.sh": {
+    "mtime": 1781955012.6354923,
+    "ast_hash": "f7c04b0a86b0396d45d0e3f270e1884e",
+    "semantic_hash": "f7c04b0a86b0396d45d0e3f270e1884e"
+  },
+  "ansible/run": {
+    "mtime": 1784237559.6858447,
+    "ast_hash": "633000094239f82ca787b49144f639d4",
+    "semantic_hash": "633000094239f82ca787b49144f639d4"
+  },
+  "CLAUDE.md": {
+    "mtime": 1785277640.4803493,
+    "ast_hash": "d111420d203598d5abef9269bec0ad7c",
+    "semantic_hash": "d111420d203598d5abef9269bec0ad7c"
+  },
+  "FIREWALL.md": {
+    "mtime": 1784238802.5395546,
+    "ast_hash": "764aed90298567cd38188725fadb0ec1",
+    "semantic_hash": "764aed90298567cd38188725fadb0ec1"
+  },
+  "INSTALL.md": {
+    "mtime": 1784237790.1414719,
+    "ast_hash": "de2078ebd2031ebb24ea6086f819687c",
+    "semantic_hash": "de2078ebd2031ebb24ea6086f819687c"
+  },
+  "PHASE2.md": {
+    "mtime": 1784238811.923005,
+    "ast_hash": "e63b58a7fc8f57c6d889de423397043f",
+    "semantic_hash": "e63b58a7fc8f57c6d889de423397043f"
+  },
+  "RAPPROCHEMENT_INFRA_DEPLOY.md": {
+    "mtime": 1784237736.3915899,
+    "ast_hash": "162d0949cb87c59826852e0e683b7faa",
+    "semantic_hash": "162d0949cb87c59826852e0e683b7faa"
+  },
+  "README.md": {
+    "mtime": 1780995122.00323,
+    "ast_hash": "2636a0fa87019b768cb17b0f2646ec94",
+    "semantic_hash": "2636a0fa87019b768cb17b0f2646ec94"
+  },
+  "TODO.md": {
+    "mtime": 1785253565.7723598,
+    "ast_hash": "ff61408c309dc1b1d5990147867b3bb8",
+    "semantic_hash": "ff61408c309dc1b1d5990147867b3bb8"
+  },
+  "ansible/group_vars/all/vars.yml": {
+    "mtime": 1785248877.9805863,
+    "ast_hash": "e58211dac7445486375b2deb816bb848",
+    "semantic_hash": "e58211dac7445486375b2deb816bb848"
+  },
+  "ansible/group_vars/all/vault.yml": {
+    "mtime": 1785249441.8098567,
+    "ast_hash": "fbb21510e42bc5545bebf72773a09a47",
+    "semantic_hash": "fbb21510e42bc5545bebf72773a09a47"
+  },
+  "ansible/inventory/hosts.yml": {
+    "mtime": 1784232623.6792042,
+    "ast_hash": "21d667fc85d4a90bf811828110e6de24",
+    "semantic_hash": "21d667fc85d4a90bf811828110e6de24"
+  },
+  "ansible/requirements.yml": {
+    "mtime": 1784202078.6959426,
+    "ast_hash": "eb639ace13baeecece0a15314e3be682",
+    "semantic_hash": "eb639ace13baeecece0a15314e3be682"
+  },
+  "ansible/roles/docker-engine-setup/defaults/main.yml": {
+    "mtime": 1784236529.729943,
+    "ast_hash": "fc6ac371b7e1e14c2d518b3eee6e3bb0",
+    "semantic_hash": "fc6ac371b7e1e14c2d518b3eee6e3bb0"
+  },
+  "ansible/roles/docker-engine-setup/tasks/main.yml": {
+    "mtime": 1784235274.8029597,
+    "ast_hash": "187f8882d76b999eae762355bd6bc191",
+    "semantic_hash": "187f8882d76b999eae762355bd6bc191"
+  },
+  "ansible/roles/docker-network-mindwtr-setup/defaults/main.yml": {
+    "mtime": 1784236537.2624993,
+    "ast_hash": "8fa62e3c3f1dc8150e87822aff9b6633",
+    "semantic_hash": "8fa62e3c3f1dc8150e87822aff9b6633"
+  },
+  "ansible/roles/docker-network-mindwtr-setup/tasks/main.yml": {
+    "mtime": 1784236326.5332713,
+    "ast_hash": "dd402e82384f48e3063724a62612b20b",
+    "semantic_hash": "dd402e82384f48e3063724a62612b20b"
+  },
+  "ansible/roles/firewall-setup/defaults/main.yml": {
+    "mtime": 1784238712.3498404,
+    "ast_hash": "5450b8f78da25134f5b1b84cdb59fd38",
+    "semantic_hash": "5450b8f78da25134f5b1b84cdb59fd38"
+  },
+  "ansible/roles/firewall-setup/tasks/main.yml": {
+    "mtime": 1784240473.4096801,
+    "ast_hash": "c88b60033894a8c6a5e69fd22659c0ff",
+    "semantic_hash": "c88b60033894a8c6a5e69fd22659c0ff"
+  },
+  "ansible/roles/glaurung-healthcheck/defaults/main.yml": {
+    "mtime": 1785248845.8056116,
+    "ast_hash": "e6e4d23344cd064677883f7223b89a9f",
+    "semantic_hash": "e6e4d23344cd064677883f7223b89a9f"
+  },
+  "ansible/roles/glaurung-healthcheck/tasks/main.yml": {
+    "mtime": 1785248870.0558393,
+    "ast_hash": "c9c75440c113793aa9538dbd8c3279aa",
+    "semantic_hash": "c9c75440c113793aa9538dbd8c3279aa"
+  },
+  "ansible/roles/mindwtr-cloud-deploy/defaults/main.yml": {
+    "mtime": 1784236546.0009847,
+    "ast_hash": "e4332f6633995ac510726445eec12a1f",
+    "semantic_hash": "e4332f6633995ac510726445eec12a1f"
+  },
+  "ansible/roles/mindwtr-cloud-deploy/tasks/main.yml": {
+    "mtime": 1784236326.5352583,
+    "ast_hash": "1e794f46d37f0f93fb6721364120667d",
+    "semantic_hash": "1e794f46d37f0f93fb6721364120667d"
+  },
+  "ansible/roles/network-ipv6-setup/defaults/main.yml": {
+    "mtime": 1784236532.9207551,
+    "ast_hash": "62c94c1cec57baf05ffce6f1e8fb5609",
+    "semantic_hash": "62c94c1cec57baf05ffce6f1e8fb5609"
+  },
+  "ansible/roles/network-ipv6-setup/tasks/main.yml": {
+    "mtime": 1784235280.8286135,
+    "ast_hash": "c16bb97857ffab0f007a30a20f4a28c1",
+    "semantic_hash": "c16bb97857ffab0f007a30a20f4a28c1"
+  },
+  "ansible/roles/ntfy-deploy/defaults/main.yml": {
+    "mtime": 1785234733.224078,
+    "ast_hash": "9508386aa8b2aecab769a5b48e913903",
+    "semantic_hash": "9508386aa8b2aecab769a5b48e913903"
+  },
+  "ansible/roles/ntfy-deploy/tasks/main.yml": {
+    "mtime": 1785236547.0808249,
+    "ast_hash": "8365c9c5ffe2bb79c05bda50245f0588",
+    "semantic_hash": "8365c9c5ffe2bb79c05bda50245f0588"
+  },
+  "ansible/roles/rat-migratefromgandi/defaults/main.yml": {
+    "mtime": 1784235985.6794271,
+    "ast_hash": "6105347ebb9825ac754615ca55ff3b0c",
+    "semantic_hash": "6105347ebb9825ac754615ca55ff3b0c"
+  },
+  "ansible/roles/rat-migratefromgandi/tasks/main.yml": {
+    "mtime": 1784235965.9580402,
+    "ast_hash": "e16f6a5197beeefde41597e8d7307a39",
+    "semantic_hash": "e16f6a5197beeefde41597e8d7307a39"
+  },
+  "ansible/roles/rat-setup/defaults/main.yml": {
+    "mtime": 1784235975.086072,
+    "ast_hash": "47b35df807bb006edb556e2750966ea8",
+    "semantic_hash": "47b35df807bb006edb556e2750966ea8"
+  },
+  "ansible/roles/rat-setup/handlers/main.yml": {
+    "mtime": 1784210783.2615907,
+    "ast_hash": "d605e66ba2b29537939d713ac177a24b",
+    "semantic_hash": "d605e66ba2b29537939d713ac177a24b"
+  },
+  "ansible/roles/rat-setup/tasks/main.yml": {
+    "mtime": 1784236420.4183965,
+    "ast_hash": "64be07b6a706e68a1a60ed798392d1f2",
+    "semantic_hash": "64be07b6a706e68a1a60ed798392d1f2"
+  },
+  "ansible/roles/rustdesk-setup/defaults/main.yml": {
+    "mtime": 1783763908.0078406,
+    "ast_hash": "0d77a860899910058ba4eca25f625952",
+    "semantic_hash": "0d77a860899910058ba4eca25f625952"
+  },
+  "ansible/roles/rustdesk-setup/tasks/main.yml": {
+    "mtime": 1783763913.7954972,
+    "ast_hash": "58e8cecba989e315d34d87d8ab9d6b3a",
+    "semantic_hash": "58e8cecba989e315d34d87d8ab9d6b3a"
+  },
+  "ansible/roles/ssh-securite/defaults/main.yml": {
+    "mtime": 1784234490.2080858,
+    "ast_hash": "c66b63e3e476122ec246d42513f7a3ef",
+    "semantic_hash": "c66b63e3e476122ec246d42513f7a3ef"
+  },
+  "ansible/roles/ssh-securite/handlers/main.yml": {
+    "mtime": 1784234493.3169067,
+    "ast_hash": "d167b9f0aadfeb87d68b9b0f464fb724",
+    "semantic_hash": "d167b9f0aadfeb87d68b9b0f464fb724"
+  },
+  "ansible/roles/ssh-securite/tasks/main.yml": {
+    "mtime": 1784234500.4034984,
+    "ast_hash": "894135ee5dd0370e288eb45012b0a6f8",
+    "semantic_hash": "894135ee5dd0370e288eb45012b0a6f8"
+  },
+  "ansible/roles/traefik-deploy/defaults/main.yml": {
+    "mtime": 1784236541.5222483,
+    "ast_hash": "f1ce0b1050f59defaaa4cc539cdf11bf",
+    "semantic_hash": "f1ce0b1050f59defaaa4cc539cdf11bf"
+  },
+  "ansible/roles/traefik-deploy/tasks/main.yml": {
+    "mtime": 1784236326.5342538,
+    "ast_hash": "cb31a4ba624840e8ff9aec27540ec349",
+    "semantic_hash": "cb31a4ba624840e8ff9aec27540ec349"
+  },
+  "ansible/roles/vaultwarden-deploy/defaults/main.yml": {
+    "mtime": 1784236549.2077956,
+    "ast_hash": "cebc6126f9dd8c8585e4ba92957a73d8",
+    "semantic_hash": "cebc6126f9dd8c8585e4ba92957a73d8"
+  },
+  "ansible/roles/vaultwarden-deploy/tasks/main.yml": {
+    "mtime": 1785276882.3618357,
+    "ast_hash": "a6012e966eb476e86f55b083a1de3816",
+    "semantic_hash": "a6012e966eb476e86f55b083a1de3816"
+  },
+  "ansible/run_role.yml": {
+    "mtime": 1785234783.1034474,
+    "ast_hash": "0e983dede8534fe2f64e4ed97fae1b86",
+    "semantic_hash": "0e983dede8534fe2f64e4ed97fae1b86"
+  }
+}

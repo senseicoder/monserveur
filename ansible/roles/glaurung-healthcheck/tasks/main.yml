@@ -1,0 +1,31 @@
+---
+- name: Créer le répertoire du script
+  file:
+    path: "{{ healthcheck_script_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Créer le répertoire d'état (anti-spam des alertes)
+  file:
+    path: "{{ healthcheck_state_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Déployer le script glaurung-healthcheck.sh
+  template:
+    src: glaurung-healthcheck.sh.j2
+    dest: "{{ healthcheck_script_dir }}/glaurung-healthcheck.sh"
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Planifier le cron glaurung-healthcheck
+  cron:
+    name: "glaurung-healthcheck"
+    minute: "{{ healthcheck_cron_minute }}"
+    job: "{{ healthcheck_script_dir }}/glaurung-healthcheck.sh >> /var/log/glaurung-healthcheck.log 2>&1"
+    user: root

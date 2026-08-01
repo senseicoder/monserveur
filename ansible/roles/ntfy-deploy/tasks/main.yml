@@ -1,0 +1,104 @@
+---
+- name: Créer les répertoires data/ntfy (cache + lib — conteneur ntfy tourne en root)
+  file:
+    path: "{{ mindwtr_deploy_dir }}/data/ntfy/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - cache
+    - lib
+
+- name: Déployer le vhost Apache pour {{ ntfy_domain }}
+  template:
+    src: apache-ntfy.conf.j2
+    dest: /etc/apache2/sites-available/{{ ntfy_domain }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: apache_vhost_ntfy
+
+- name: Activer le vhost Apache pour {{ ntfy_domain }}
+  command: a2ensite {{ ntfy_domain }}
+  register: apache_a2ensite_ntfy
+  changed_when: "'Enabling site' in apache_a2ensite_ntfy.stdout"
+  failed_when: apache_a2ensite_ntfy.rc != 0
+
+- name: Recharger Apache si vhost ntfy modifié
+  service:
+    name: apache2
+    state: reloaded
+  when: apache_vhost_ntfy is changed or apache_a2ensite_ntfy is changed
+
+- name: Créer le répertoire certs/ntfy (copy ne crée pas les parents manquants)
+  file:
+    path: "{{ mindwtr_deploy_dir }}/certs/ntfy"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Obtenir le certificat TLS pour {{ ntfy_domain }}
+  command: >
+    certbot certonly --webroot
+    -w /var/www/html
+    --non-interactive
+    --agree-tos
+    --email {{ acme_email }}
+    -d {{ ntfy_domain }}
+  args:
+    creates: /etc/letsencrypt/live/{{ ntfy_domain }}/fullchain.pem
+
+- name: Copier les certs ntfy dans mindwtr_deploy_dir/certs/ntfy
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ mindwtr_deploy_dir }}/certs/ntfy/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - src: /etc/letsencrypt/live/{{ ntfy_domain }}/fullchain.pem
+      dest: fullchain.pem
+    - src: /etc/letsencrypt/live/{{ ntfy_domain }}/privkey.pem
+      dest: privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: restart traefik
+
+- name: Déployer docker-compose.ntfy.yml
+  template:
+    src: docker-compose.ntfy.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/docker-compose.ntfy.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  diff: false
+  notify: restart ntfy
+
+- name: Démarrer ntfy
+  command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.ntfy.yml up -d
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Créer le compte admin ntfy (idempotent — échoue silencieusement si déjà créé)
+  command:
+    argv:
+      - docker
+      - exec
+      - "-e"
+      - "NTFY_PASSWORD={{ ntfy_admin_password }}"
+      - ntfy
+      - ntfy
+      - user
+      - add
+      - --role=admin
+      - cedric
+  no_log: true
+  register: ntfy_user_add
+  changed_when: "'created' in ntfy_user_add.stdout"
+  failed_when: >
+    ntfy_user_add.rc != 0 and 'already exists' not in ntfy_user_add.stderr
+  ignore_errors: "{{ ansible_check_mode }}"

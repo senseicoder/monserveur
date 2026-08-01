@@ -29,6 +29,7 @@
   - Vhosts Apache hors périmètre : `reader.daneel.net`, `bots.plcoder.net`, `ntfy.daneel.net`, `lescoursdesophie.com` + 3 variantes (`ssl.`, `sophie.daneel.net`, `sslsophie.daneel.net`)
   - Rôle `glaurung-healthcheck` référencé dans le wiki (cron `*/10 * * * *`) mais introuvable dans `ansible/roles/` — à vérifier (renommé ? jamais commité ?)
   - Host keys SSH, `sudoers`, inventaire des paquets hors Ansible (Python compilés à la main) — non auditables sans accès `become`, à faire avec Cédric présent
+- [ ] **Backup des données** : analyser et mettre en place une sauvegarde effective des chemins listés en § Sauvegardes critiques de `CLAUDE.md` — aujourd'hui seulement documentés, aucun mécanisme de backup réel. Inclut désormais `/opt/rat/data/` (données réelles migrées de Gandi, plcoder.net + placedusport2.com — pas de sauvegarde du tout à ce jour) et `/opt/mindwtr/data/ntfy/` (comptes/tokens ntfy, ajouté 2026-07-28).
 
 ## Dette technique / refactoring
 

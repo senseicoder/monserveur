@@ -8,3 +8,5 @@ rustdesk-setup
 mindwtr-cloud-deploy
 vaultwarden-deploy
 rat-setup
+ntfy-deploy
+glaurung-healthcheck

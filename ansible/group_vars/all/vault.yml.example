@@ -1,2 +1,4 @@
 # Copier en vault.yml et chiffrer : ansible-vault encrypt vault.yml
 mindwtr_token: "CHANGEME"
+ntfy_admin_password: "CHANGEME"
+ntfy_healthcheck_token: "CHANGEME"
