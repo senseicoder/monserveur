@@ -21,7 +21,14 @@
 - [ ] **TT-RSS** : intégrer `~/ttrss-docker/` dans ce repo (templates `.j2` + vault), labels Traefik sur `web-nginx`
 - [ ] **Dashboard Traefik** : activer derrière BasicAuth (`htpasswd -nB admin`, doubler les `$` dans le YAML)
 - [ ] **Conteneur php** : formaliser le lancement
-- [ ] **Backup des données** : analyser et mettre en place une sauvegarde effective des chemins listés en § Sauvegardes critiques de `CLAUDE.md` — aujourd'hui seulement documentés, aucun mécanisme de backup réel. Inclut désormais `/opt/rat/data/` (données réelles migrées de Gandi, plcoder.net + placedusport2.com — pas de sauvegarde du tout à ce jour).
+- [ ] **Backup des données** : analyser et mettre en place une sauvegarde effective des chemins listés en § Sauvegardes critiques de `CLAUDE.md` — aujourd'hui seulement documentés, aucun mécanisme de backup réel. Inclut désormais `/opt/rat/data/` (données réelles migrées de Gandi, plcoder.net + placedusport2.com — pas de sauvegarde du tout à ce jour). Étendu par l'audit du 2026-07-31 (voir wiki `postes/glaurung.md` § Audit reconstruction totale) : s'applique aussi à ntfy (`/opt/mindwtr/data/ntfy/`, jamais documenté avant cet audit), MariaDB natif (VOOSO/ttrss) et au volume Postgres TT-RSS.
+- [ ] **Gaps de reconstruction identifiés par l'audit du 2026-07-31** (détail complet dans wiki `postes/glaurung.md` § Audit reconstruction totale) — rôles Ansible manquants pour que `glaurung.list` couvre tout ce qui tourne réellement sur l'hôte :
+  - Installation de Certbot (snap) lui-même — les rôles existants scriptent l'obtention de certs mais supposent Certbot déjà présent
+  - `ntfy-deploy` (conteneur actif en prod, absent de `mindwtr.list`/`glaurung.list`/`roles/`)
+  - MariaDB natif hôte (installation + dump/restore de `VOOSO` et `ttrss`)
+  - Vhosts Apache hors périmètre : `reader.daneel.net`, `bots.plcoder.net`, `ntfy.daneel.net`, `lescoursdesophie.com` + 3 variantes (`ssl.`, `sophie.daneel.net`, `sslsophie.daneel.net`)
+  - Rôle `glaurung-healthcheck` référencé dans le wiki (cron `*/10 * * * *`) mais introuvable dans `ansible/roles/` — à vérifier (renommé ? jamais commité ?)
+  - Host keys SSH, `sudoers`, inventaire des paquets hors Ansible (Python compilés à la main) — non auditables sans accès `become`, à faire avec Cédric présent
 
 ## Dette technique / refactoring
 
