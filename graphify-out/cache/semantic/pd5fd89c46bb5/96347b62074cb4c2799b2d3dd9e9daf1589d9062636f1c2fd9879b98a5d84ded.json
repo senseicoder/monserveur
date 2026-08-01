@@ -1,0 +1,1 @@
+{"nodes": [{"id": "ansible_roles_network_ipv6_setup_defaults_main_defaults", "label": "network-ipv6-setup defaults", "file_type": "code", "source_file": "ansible/roles/network-ipv6-setup/defaults/main.yml", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

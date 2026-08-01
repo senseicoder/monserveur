@@ -1,0 +1,1 @@
+{"nodes": [{"id": "ansible_roles_rat_setup_defaults_main_defaults", "label": "rat-setup defaults", "file_type": "code", "source_file": "ansible/roles/rat-setup/defaults/main.yml", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

@@ -1,0 +1,1 @@
+{"nodes": [{"id": "ansible_group_vars_all_vault_encrypted_store", "label": "group_vars/all/vault.yml \u2014 magasin de secrets chiffr\u00e9 (ansible-vault)", "file_type": "code", "source_file": "ansible/group_vars/all/vault.yml", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}
