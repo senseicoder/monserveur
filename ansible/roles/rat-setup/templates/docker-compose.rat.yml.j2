@@ -23,7 +23,7 @@ services:
       - "traefik.enable=true"
 {% for site in rat_sites %}
       - "traefik.http.routers.rat-{{ site.site_central | lower }}.rule=Host(`{{ site.domain }}`)"
-      - "traefik.http.routers.rat-{{ site.site_central | lower }}.entrypoints=mindwtr"
+      - "traefik.http.routers.rat-{{ site.site_central | lower }}.entrypoints=mindwtr,websecure"
       - "traefik.http.routers.rat-{{ site.site_central | lower }}.tls=true"
 {% endfor %}
       - "traefik.http.services.rat-web.loadbalancer.server.port=80"

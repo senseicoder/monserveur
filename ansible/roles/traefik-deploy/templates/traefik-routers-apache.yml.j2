@@ -1,0 +1,80 @@
+# Routers file-provider vers Apache backend (172.18.0.1:8081) — Phase 2.
+# Un seul router "acme-challenge" (priorité haute, sans Host()) sert le renouvellement
+# certbot webroot de tous les domaines (mindwtr/vault/ntfy/phpbb-integralsport ET
+# reader/bots) : sans lui, les routers Docker de ces apps intercepteraient aussi
+# /.well-known/acme-challenge/ et casseraient le renouvellement.
+http:
+  middlewares:
+    redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  routers:
+    acme-challenge:
+      rule: "PathPrefix(`/.well-known/acme-challenge/`)"
+      entryPoints:
+        - web
+      service: apache-backend
+      priority: 1000
+
+    # reader.daneel.net et bots.plcoder.net avaient un cert + redirection 301
+    # gérés par Apache lui-même — repris ici à l'identique côté Traefik.
+    apache-bots-plcoder-web:
+      rule: "Host(`bots.plcoder.net`)"
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-https
+      service: apache-backend
+      priority: 10
+    apache-bots-plcoder-secure:
+      rule: "Host(`bots.plcoder.net`)"
+      entryPoints:
+        - websecure
+      tls: {}
+      service: apache-backend
+
+    apache-reader-daneel-web:
+      rule: "Host(`reader.daneel.net`)"
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-https
+      service: apache-backend
+      priority: 10
+    apache-reader-daneel-secure:
+      rule: "Host(`reader.daneel.net`)"
+      entryPoints:
+        - websecure
+      tls: {}
+      service: apache-backend
+
+    # Domaines HTTP seul, jamais eu de TLS (cf. CLAUDE.md) — pas de redirection,
+    # pas d'entrypoint websecure : comportement inchangé, HTTPS réel = Étape 4.
+    apache-lescoursdesophie:
+      rule: "Host(`lescoursdesophie.com`)"
+      entryPoints:
+        - web
+      service: apache-backend
+    apache-ssl-lescoursdesophie:
+      rule: "Host(`ssl.lescoursdesophie.com`)"
+      entryPoints:
+        - web
+      service: apache-backend
+    apache-sophie-daneel:
+      rule: "Host(`sophie.daneel.net`)"
+      entryPoints:
+        - web
+      service: apache-backend
+    apache-sslsophie-daneel:
+      rule: "Host(`sslsophie.daneel.net`)"
+      entryPoints:
+        - web
+      service: apache-backend
+
+  services:
+    apache-backend:
+      loadBalancer:
+        servers:
+          - url: "http://172.18.0.1:8081"

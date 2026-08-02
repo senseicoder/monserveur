@@ -9,12 +9,16 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=mindwtr"
       - "--entrypoints.mindwtr.address=:8787"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
       - "--log.level=INFO"
       - "--accesslog=true"
     ports:
       - "8787:8787"
+      - "80:80"
+      - "443:443"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "{{ mindwtr_deploy_dir }}/certs:/certs:ro"

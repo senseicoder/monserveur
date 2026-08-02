@@ -17,10 +17,10 @@ phpbb_integralsport_image_repo: "ghcr.io/senseicoder/phpbb-integralsport-web"
 # cours de revue, cf. décision Cédric 2026-08-02).
 phpbb_integralsport_repo_path: "/home/cedric/www/c/phpbb-integralsport-import/repo"
 
-phpbb_integralsport_domain: "migration.integralsport.com"
-
 phpbb_integralsport_basicauth_user: "cedric"
 
-# phpbb_integralsport_deploy_dir / db_name / db_user : dans group_vars/all/vars.yml
-# (pas ici) -- partagés avec le rôle phpbb-integralsport-importdata, qui n'a pas
-# accès aux defaults d'un autre rôle (constaté : "db_name is undefined" au 1er run).
+# phpbb_integralsport_deploy_dir / domain / db_name / db_user : dans
+# group_vars/all/vars.yml (pas ici) -- partagés avec phpbb-integralsport-importdata
+# et traefik-deploy, rôles isolés sans accès aux defaults les uns des autres
+# (constaté : "db_name is undefined" au 1er run ; même risque pour "domain" dès
+# qu'un autre rôle en a besoin, cf. certbot-renewal-hook.sh.j2).
