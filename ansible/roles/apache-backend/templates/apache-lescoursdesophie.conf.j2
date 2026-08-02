@@ -1,0 +1,29 @@
+# Généré par le rôle Ansible apache-backend, ne pas modifier à la main sur le serveur.
+# TLS retiré : terminé par Traefik (frontal 80/443), Apache reste backend interne sur 8081.
+
+<VirtualHost 172.18.0.1:8081>
+	ServerName lescoursdesophie.com
+	ServerAdmin infra@epiconcept.fr
+
+	DocumentRoot /var/www/lescoursdesophie.com
+
+	FileETag none
+
+	<Directory />
+		Options FollowSymLinks
+		AllowOverride None
+		Include auth/denied
+	</Directory>
+
+	<Directory /var/www/lescoursdesophie.com>
+		Options FollowSymLinks
+		AllowOverride None
+		Include auth/access
+	</Directory>
+
+	LogLevel warn
+	ErrorLog /space/log/lescoursdesophie.com/error.log
+	CustomLog /space/log/lescoursdesophie.com/access.log combined
+
+	Include /etc/apache2/sites-available/lescoursdesophie.com.d/
+</VirtualHost>

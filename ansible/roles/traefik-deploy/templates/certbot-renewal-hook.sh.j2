@@ -14,6 +14,26 @@ case "$RENEWED_LINEAGE" in
     cp /etc/letsencrypt/live/{{ vaultwarden_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/vault/privkey.pem
     chmod 640 ${DEPLOY_DIR}/certs/vault/fullchain.pem ${DEPLOY_DIR}/certs/vault/privkey.pem
     ;;
+  */{{ ntfy_domain }})
+    cp /etc/letsencrypt/live/{{ ntfy_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/ntfy/fullchain.pem
+    cp /etc/letsencrypt/live/{{ ntfy_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/ntfy/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/ntfy/fullchain.pem ${DEPLOY_DIR}/certs/ntfy/privkey.pem
+    ;;
+  */{{ phpbb_integralsport_domain }})
+    cp /etc/letsencrypt/live/{{ phpbb_integralsport_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/phpbb-integralsport/fullchain.pem
+    cp /etc/letsencrypt/live/{{ phpbb_integralsport_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/phpbb-integralsport/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/phpbb-integralsport/fullchain.pem ${DEPLOY_DIR}/certs/phpbb-integralsport/privkey.pem
+    ;;
+  */reader.daneel.net)
+    cp /etc/letsencrypt/live/reader.daneel.net/fullchain.pem ${DEPLOY_DIR}/certs/reader-daneel/fullchain.pem
+    cp /etc/letsencrypt/live/reader.daneel.net/privkey.pem  ${DEPLOY_DIR}/certs/reader-daneel/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/reader-daneel/fullchain.pem ${DEPLOY_DIR}/certs/reader-daneel/privkey.pem
+    ;;
+  */bots.plcoder.net)
+    cp /etc/letsencrypt/live/bots.plcoder.net/fullchain.pem ${DEPLOY_DIR}/certs/bots-plcoder/fullchain.pem
+    cp /etc/letsencrypt/live/bots.plcoder.net/privkey.pem  ${DEPLOY_DIR}/certs/bots-plcoder/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/bots-plcoder/fullchain.pem ${DEPLOY_DIR}/certs/bots-plcoder/privkey.pem
+    ;;
 esac
 
 docker restart traefik

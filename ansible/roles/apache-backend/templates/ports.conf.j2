@@ -1,0 +1,9 @@
+# Généré par le rôle Ansible apache-backend, ne pas modifier à la main sur le serveur.
+# Apache 2.0 - Phase 2 : Traefik est frontal unique sur 80/443, Apache ne sert
+# plus que de backend interne sur 8081 (Traefik y proxy pour les vhosts legacy
+# et les vhosts webroot certbot).
+
+Listen 127.0.0.1:8081
+Listen 172.18.0.1:8081
+
+# vim: syntax=apache ts=4 sw=4 sts=4 sr noet

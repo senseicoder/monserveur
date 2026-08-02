@@ -1,0 +1,4 @@
+# Généré par le rôle Ansible apache-backend, ne pas modifier à la main sur le serveur.
+# Restaure la vraie IP cliente dans les logs Apache : les requêtes arrivent
+# maintenant via Traefik (172.18.0.1), pas directement du client.
+RemoteIPInternalProxy 172.18.0.1

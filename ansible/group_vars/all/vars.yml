@@ -40,6 +40,7 @@ rat_sites:
 # Ici (pas dans les defaults d'un rôle) car partagé entre phpbb-integralsport-setup
 # et phpbb-integralsport-importdata (rôles isolés, pas d'accès aux defaults l'un de l'autre).
 phpbb_integralsport_deploy_dir: "/opt/phpbb-integralsport"
+phpbb_integralsport_domain: "migration.integralsport.com"
 phpbb_integralsport_db_name: "phpbb_migration"
 phpbb_integralsport_db_user: "phpbb_migration"
 phpbb_integralsport_db_password: "{{ vault_phpbb_integralsport_db_password }}"
