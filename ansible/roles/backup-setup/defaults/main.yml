@@ -33,6 +33,7 @@ backup_fs_paths:
   - /opt/mindwtr/data/ntfy
   - /etc/letsencrypt
   - /opt/rat/data
+  - /opt/phpbb-integralsport/data
   - /home/cedric/bot1
   - /home/cedric/chatbot
   - /home/cedric/chatbots
@@ -54,6 +55,7 @@ backup_fs_paths:
 backup_mysql_databases:
   - VOOSO
   - ttrss
+  - phpbb_migration
 
 # Postgres TT-RSS (volume Docker ttrss-docker_db) — credentials lus depuis le .env
 # du docker-compose existant, pas dupliqués dans le vault Ansible.
