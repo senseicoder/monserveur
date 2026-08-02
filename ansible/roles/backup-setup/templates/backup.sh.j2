@@ -25,10 +25,16 @@ alert() {
     -H "Title: Glaurung — echec backup ($DATE)" -d "$1" "$NTFY_URL"
 }
 
-# --- Niveau : full le 1er du mois (reset du snapshot), différentiel les autres jours
-# (toujours recalculé contre ce full, pas en chaine — cf. TODO.md) ---
+# --- Niveau : full le 1er du mois (reset du snapshot) OU si aucun snapshot n'existe
+# encore (tout premier run, ou snapshot perdu) — dans les deux cas c'est un vrai full,
+# pas juste une date qui tombe le 1er. Différentiel les autres jours (toujours recalculé
+# contre ce full, pas en chaine — cf. TODO.md). WAS_FULL sert de marqueur explicite pour
+# la rétention côté M6 (ne pas déduire "full" depuis le jour du mois : un full peut très
+# bien avoir lieu un autre jour, ex. tout premier run).
 SNAR="$SNAPSHOT_DIR/glaurung.snar"
-if [ "$DAY" = "01" ]; then
+WAS_FULL=0
+if [ "$DAY" = "01" ] || [ ! -f "$SNAR" ]; then
+  WAS_FULL=1
   rm -f "$SNAR"
 fi
 
@@ -85,6 +91,14 @@ done
 
 # Nettoyage des erreurs vides (pas d'intérêt à garder un fichier .err de 0 octet)
 find "$DEST" -maxdepth 1 -name "*.err" -empty -delete
+
+# Marqueur FULL — lu par backup-pull-pcloud.sh (M6) pour decider la retention 6 mois,
+# plutot que de redeviner "full" depuis le jour du mois.
+if [ "$WAS_FULL" -eq 1 ]; then
+  touch "$DEST/FULL"
+  chgrp "$EXPORT_GROUP" "$DEST/FULL"
+  chmod 0640 "$DEST/FULL"
+fi
 
 # Le dossier du jour devient traversable par le groupe cedric seulement maintenant
 # (plus aucun fichier en clair dedans a ce stade) — necessaire pour que le pull M6
