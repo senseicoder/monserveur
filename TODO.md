@@ -16,7 +16,10 @@
 
 ## Phase 2
 
-- [ ] **Traefik sur 80/443** : plan détaillé dans [PHASE2.md](PHASE2.md) (ACME HTTP-01 natif Traefik, remplace Apache+certbot)
+- [x] **Traefik sur 80/443 (Étapes 0-3)** : fait et mergé le 2026-08-02 (PR #2) — Traefik frontal 80/443, Apache backend interne 8081, `:8787` gardé en double écoute. Détail dans [PHASE2.md](PHASE2.md).
+- [ ] **Traefik sur 80/443 (Étapes 4-5)** : ACME natif Traefik + retrait certbot, puis décommission `:8787` — hors périmètre de la bascule du 2026-08-02, à faire séparément.
+- [ ] **Test reboot glaurung** : valider le drop-in systemd `apache2.service.d/after-docker.conf` (After=docker.service) en conditions réelles — jamais testé, à planifier avec Cédric (coupure de service pendant le reboot).
+- [ ] **CLAUDE.md périmé** : tableau "État de production" (réseau/vhosts/conteneurs) daté du 2026-07-11, jamais mis à jour depuis (ntfy, rat, phpbb-integralsport absents) — à refaire entièrement, pas juste retoucher pour Phase 2.
 - [ ] **Prérequis pour la bascule réelle de rat** (voir `~/www/c/rat-git/TODO.md`, backlog) : la bascule DNS/HTTPS réelle de `plcoder.net`/`placedusport2.com` suppose un accès public propre sur le port 443 standard — tant que Traefik reste sur `:8787` (non standard), la bascule réelle de rat est bloquée ou nécessite un pont intermédiaire (proxy Apache existant ?) à définir. À trancher avant de lancer la bascule réelle PLC/PDS2.
 - [ ] **TT-RSS** : intégrer `~/ttrss-docker/` dans ce repo (templates `.j2` + vault), labels Traefik sur `web-nginx`
 - [ ] **Dashboard Traefik** : activer derrière BasicAuth (`htpasswd -nB admin`, doubler les `$` dans le YAML)

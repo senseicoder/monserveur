@@ -8,18 +8,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Infrastructure as code pour le VPS personnel `glaurung` (Debian 9 stretch). Déploie des services auto-hébergés via Docker + Ansible.
 
-## État de production sur glaurung (au 2026-07-11)
+## État de production sur glaurung (au 2026-07-11, tableau réseau mis à jour Phase 2 le 2026-08-02)
+
+**Tableaux vhosts/conteneurs ci-dessous périmés au-delà de la ligne réseau** (ntfy, rat, phpbb-integralsport absents — cf. TODO.md, à refaire entièrement).
 
 ### Réseau hôte
 | Port | Bind | Usage |
 |------|------|-------|
 | 22 | 0.0.0.0 | SSH |
-| 80 / 443 | ::: | Apache2 hôte (vhosts, certbot) |
+| 80 / 443 | 0.0.0.0 | Traefik v3 (frontal unique depuis Phase 2, 2026-08-02) — voir `PHASE2.md` |
 | 3306 | 127.0.0.1 | MySQL (conteneur `php`) |
 | 8000–8002 | 0.0.0.0 | Chatbots (publics, hors scope) |
 | 8028 | 127.0.0.1 | TT-RSS nginx |
+| 8081 | 127.0.0.1 + 172.18.0.1 | Apache2 — backend interne depuis Phase 2 (plus de bind public), joignable uniquement depuis le réseau Docker `mindwtr` (règle firewall dédiée) |
 | 8384 | 127.0.0.1 | Syncthing UI |
-| 8787 | 0.0.0.0 | Traefik → mindwtr-cloud ✅ Phase 1 déployée |
+| 8787 | 0.0.0.0 | Traefik → mindwtr-cloud (double écoute transitoire avec 80/443, cf. PHASE2.md étape 5.1) |
 | 22000 | ::: | Syncthing sync |
 | 21115-21116 | 0.0.0.0 | RustDesk hbbs (tcp), 21116 aussi udp — hors Traefik ✅ |
 | 21117 | 0.0.0.0 | RustDesk hbbr (tcp) — hors Traefik ✅ |
@@ -92,6 +95,7 @@ ansible/
     ├── docker-engine-setup/      ← install Docker CE + plugin Compose
     ├── network-ipv6-setup/       ← forwarding IPv6 kernel + service systemd ipv6-default-route
     ├── docker-network-mindwtr-setup/  ← daemon.json IPv6 + réseau Docker mindwtr (down/up des 3 stacks si reconfig)
+    ├── apache-backend/           ← Phase 2 : Apache en backend interne :8081 (ports.conf, 6 vhosts legacy, mod_remoteip, drop-in systemd After=docker.service)
     ├── traefik-deploy/           ← répertoires, docker-compose.traefik.yml, TLS dynamique, hook certbot, start
     │   └── templates/
     │       ├── docker-compose.traefik.yml.j2

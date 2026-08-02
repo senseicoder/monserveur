@@ -1,5 +1,7 @@
 # Phase 2 — Traefik prend les ports 80/443
 
+> **Statut (2026-08-02)** : Étapes 0-3 ci-dessous **faites et mergées** (branche `phase2-apache-backend`, PR #2). Deux incidents rencontrés en exécution (snippet SSL vestige `bots.plcoder.net.d/ssl` faisant planter mod_ssl ; règle firewall manquante pour le nouveau port interne 8081) — corrigés, détail dans l'historique git et le wiki (`ansible-avance.md`, `docker-avance.md`). Étapes 4 et 5 restent à faire, hors périmètre de cette bascule.
+
 Plan établi le 2026-07-16, après vérification de l'état réel sur glaurung.
 Objectif : Traefik devient le frontal unique sur 80/443 (en plus de 8787 pendant la transition), Apache passe en backend interne.
 
