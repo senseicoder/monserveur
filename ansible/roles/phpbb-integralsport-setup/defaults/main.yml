@@ -18,9 +18,9 @@ phpbb_integralsport_image_repo: "ghcr.io/senseicoder/phpbb-integralsport-web"
 phpbb_integralsport_repo_path: "/home/cedric/www/c/phpbb-integralsport-import/repo"
 
 phpbb_integralsport_domain: "migration.integralsport.com"
-phpbb_integralsport_deploy_dir: "/opt/phpbb-integralsport"
-
-phpbb_integralsport_db_name: "phpbb_migration"
-phpbb_integralsport_db_user: "phpbb_migration"
 
 phpbb_integralsport_basicauth_user: "cedric"
+
+# phpbb_integralsport_deploy_dir / db_name / db_user : dans group_vars/all/vars.yml
+# (pas ici) -- partagés avec le rôle phpbb-integralsport-importdata, qui n'a pas
+# accès aux defaults d'un autre rôle (constaté : "db_name is undefined" au 1er run).

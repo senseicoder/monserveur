@@ -164,6 +164,14 @@
   args:
     creates: /etc/letsencrypt/live/{{ phpbb_integralsport_domain }}/fullchain.pem
 
+- name: Créer le répertoire de certs dédié (traefik-deploy ne connaît que certs/vault)
+  ansible.builtin.file:
+    path: "{{ mindwtr_deploy_dir }}/certs/phpbb-integralsport"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
 - name: Copier le certificat dans mindwtr_deploy_dir/certs/phpbb-integralsport
   ansible.builtin.copy:
     src: "{{ item.src }}"

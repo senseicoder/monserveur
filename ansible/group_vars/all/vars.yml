@@ -37,6 +37,11 @@ rat_sites:
 
 # phpBB integralsport.com — déploiement de test protégé (BasicAuth), version
 # master (sans les PR de sécurité en cours de revue), décision Cédric 2026-08-02
+# Ici (pas dans les defaults d'un rôle) car partagé entre phpbb-integralsport-setup
+# et phpbb-integralsport-importdata (rôles isolés, pas d'accès aux defaults l'un de l'autre).
+phpbb_integralsport_deploy_dir: "/opt/phpbb-integralsport"
+phpbb_integralsport_db_name: "phpbb_migration"
+phpbb_integralsport_db_user: "phpbb_migration"
 phpbb_integralsport_db_password: "{{ vault_phpbb_integralsport_db_password }}"
 phpbb_integralsport_basicauth_hash: "{{ vault_phpbb_integralsport_basicauth_hash }}"
 phpbb_integralsport_dump_file: "phpbb_2026-07-14_00h56m13s.sql.gz"
