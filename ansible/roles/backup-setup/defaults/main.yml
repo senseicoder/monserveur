@@ -39,6 +39,13 @@ backup_fs_paths:
   - /home/cedric/inbox0
   - /home/cedric/oneclickpocket
   - /home/cedric/mbox
+  - /home/cedric/discord_bot.py
+
+# Clé privée RustDesk (/opt/rustdesk/data/id_ed25519) volontairement EXCLUE du
+# périmètre (décision 2026-08-02) : la clé publique correspondante existe déjà
+# dans le pass perso (weyr/rustdesk_clef, utilisée par rustdesk-install côté
+# client) — en cas de perte, le serveur régénère une identité, on met à jour
+# cette entrée pass et on redéploie les clients. Documenté dans RESTORE.md.
 
 # MariaDB natif hôte — bases identifiées dans wiki postes/glaurung.md § Bases de données.
 # ttrss = ancienne base MySQL, TT-RSS tourne maintenant sur Postgres (cf. ci-dessous) :
