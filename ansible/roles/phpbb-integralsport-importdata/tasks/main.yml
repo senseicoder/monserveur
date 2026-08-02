@@ -46,7 +46,7 @@
     set -euo pipefail
     mysql --default-character-set=latin1 {{ phpbb_integralsport_db_name }} <<'SQL'
     UPDATE phpbb_config SET config_value='{{ phpbb_integralsport_domain }}' WHERE config_name='server_name';
-    UPDATE phpbb_config SET config_value='8787' WHERE config_name='server_port';
+    UPDATE phpbb_config SET config_value='443' WHERE config_name='server_port';
     UPDATE phpbb_config SET config_value='1' WHERE config_name='cookie_secure';
     SQL
   args:

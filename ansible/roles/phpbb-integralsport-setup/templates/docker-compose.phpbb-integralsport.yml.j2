@@ -23,7 +23,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.phpbb-integralsport.rule=Host(`{{ phpbb_integralsport_domain }}`)"
-      - "traefik.http.routers.phpbb-integralsport.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.phpbb-integralsport.entrypoints=websecure"
       - "traefik.http.routers.phpbb-integralsport.tls=true"
       - "traefik.http.routers.phpbb-integralsport.middlewares=phpbb-integralsport-auth"
       # $ doublés : docker-compose interprète sinon $apr1$... comme une
