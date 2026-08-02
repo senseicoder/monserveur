@@ -24,6 +24,12 @@
     label: "{{ item.domain }}"
   register: apache_vhosts_legacy
 
+- name: Retirer le snippet SSL vestige de bots.plcoder.net.d/ (SSLEngine on inconditionnel -> mod_ssl refuse de démarrer sur le nouveau vhost :8081 sans cert)
+  file:
+    path: /etc/apache2/sites-available/bots.plcoder.net.d/ssl
+    state: absent
+  register: apache_bots_ssl_snippet_removed
+
 - name: Activer les vhosts legacy
   command: a2ensite {{ item.domain }}
   loop: "{{ apache_backend_legacy_vhosts }}"
@@ -78,4 +84,4 @@
   when: >
     apache_vhosts_legacy.changed or apache_a2ensite_legacy.changed or
     apache_a2enmod_remoteip.changed or apache_remoteip_conf.changed or
-    apache_a2enconf_remoteip.changed
+    apache_a2enconf_remoteip.changed or apache_bots_ssl_snippet_removed.changed

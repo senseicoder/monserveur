@@ -21,6 +21,13 @@ firewall_docker_udp_ports: [21116]
 # Règles identiques à celles du rôle rat-setup (déduplication automatique).
 firewall_mysql_allowed_sources: ["172.18.0.0/16"]
 
+# Apache backend Phase 2 (8081, cf. rôle apache-backend) : uniquement les
+# réseaux Docker listés ici (Traefik y proxy depuis le conteneur). Oublié à
+# la conception de apache-backend/traefik-deploy — trouvé en prod le
+# 2026-08-02 (Traefik → Apache dropé silencieusement par la policy DROP,
+# les 6 vhosts legacy inaccessibles).
+firewall_apache_backend_allowed_sources: ["172.18.0.0/16"]
+
 # Garde anti-lockout : minutes avant que le job `at` remette INPUT en ACCEPT
 # s'il n'est pas désarmé par la fin du rôle
 firewall_guard_minutes: 15
