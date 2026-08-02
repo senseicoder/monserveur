@@ -1,0 +1,123 @@
+---
+# pub-daneel-net-setup : migration du vhost statique Gandi pub.daneel.net
+# (symlink vers public.plcoder.net/htdocs -- fichiers personnels de Cédric,
+# aucun PHP, cf. investigation 2026-08-03 partie de l'avatar phpBB en
+# http://pub.daneel.net/avatar.gif). Pas de build/push d'image : nginx stock,
+# contenu traité comme de la donnée (rsync depuis Gandi), pas comme du code.
+# DNS (CNAME pub.daneel.net) volontairement PAS basculé par ce rôle -- migration
+# à blanc d'abord (curl --resolve), bascule réelle seulement après validation
+# explicite de Cédric (cf. skill /gandi-dns).
+
+- name: Créer l'arborescence de déploiement
+  ansible.builtin.file:
+    path: "{{ pub_daneel_net_deploy_dir }}"
+    state: directory
+    owner: cedric
+    group: cedric
+    mode: "0750"
+
+# Owner cedric (pas root/www-data) : contenu en lecture seule pour nginx (mode
+# monde-lisible suffit, pas besoin des bits 0777 utilisés pour les avatars phpBB
+# -- ici rien n'écrit jamais dans ce dossier après le rsync initial).
+- name: Créer le répertoire de données
+  ansible.builtin.file:
+    path: "{{ pub_daneel_net_deploy_dir }}/data"
+    state: directory
+    owner: cedric
+    group: cedric
+    mode: "0755"
+
+- name: Synchroniser le contenu statique réel depuis Gandi
+  ansible.posix.synchronize:
+    src: "{{ pub_daneel_net_gandi_htdocs }}/"
+    dest: "{{ pub_daneel_net_deploy_dir }}/data/"
+    rsync_opts:
+      - "--chmod=Fugo+r,Dugo+rx"
+  become: false
+
+- name: Déployer nginx.conf
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ pub_daneel_net_deploy_dir }}/nginx.conf"
+    owner: cedric
+    group: cedric
+    mode: "0644"
+
+# --- Conteneur (démarré ici, AVANT le certificat) ---
+# Le router Traefik "web" (http, sans TLS) est indépendant du certificat --
+# testable tout de suite en migration à blanc (curl --resolve/-H Host), sans
+# attendre la bascule DNS. Le router "websecure" sera opérationnel seulement
+# une fois le certificat obtenu (section suivante) + traefik-deploy rejoué.
+
+- name: Déployer docker-compose pub-daneel-net
+  ansible.builtin.template:
+    src: docker-compose.pub-daneel-net.yml.j2
+    dest: "{{ pub_daneel_net_deploy_dir }}/docker-compose.pub-daneel-net.yml"
+
+- name: Démarrer/mettre à jour le conteneur pub-daneel-net-web
+  ansible.builtin.command: docker-compose -f docker-compose.pub-daneel-net.yml up -d
+  args:
+    chdir: "{{ pub_daneel_net_deploy_dir }}"
+  changed_when: false
+
+# --- Vhost Apache (backend 8081, Phase 2) + certificat TLS ---
+# Prérequis externe (pas géré par ce rôle) : DNS pub.daneel.net doit résoudre
+# vers glaurung avant que certbot puisse valider le challenge HTTP-01 -- donc
+# avant que cette section puisse aboutir. Rejouable : le reste du rôle
+# (ci-dessus) est déjà idempotent et n'a pas besoin d'attendre la bascule DNS.
+
+- name: Déployer le vhost Apache backend pour {{ pub_daneel_net_domain }}
+  ansible.builtin.template:
+    src: apache-pub-daneel-net.conf.j2
+    dest: /etc/apache2/sites-available/{{ pub_daneel_net_domain }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: pub_daneel_net_apache_vhost
+
+- name: Activer le vhost Apache pour {{ pub_daneel_net_domain }}
+  ansible.builtin.command: a2ensite {{ pub_daneel_net_domain }}
+  register: pub_daneel_net_a2ensite
+  changed_when: "'Enabling site' in pub_daneel_net_a2ensite.stdout"
+  failed_when: pub_daneel_net_a2ensite.rc != 0
+
+- name: Recharger Apache si vhost modifié
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  when: pub_daneel_net_apache_vhost is changed or pub_daneel_net_a2ensite is changed
+
+- name: Obtenir le certificat TLS pour {{ pub_daneel_net_domain }}
+  ansible.builtin.command: >
+    certbot certonly --webroot
+    -w /var/www/html
+    --non-interactive
+    --agree-tos
+    --email {{ acme_email }}
+    -d {{ pub_daneel_net_domain }}
+  args:
+    creates: /etc/letsencrypt/live/{{ pub_daneel_net_domain }}/fullchain.pem
+
+- name: Créer le répertoire de certs dédié (traefik-deploy ne connaît que certs/vault)
+  ansible.builtin.file:
+    path: "{{ mindwtr_deploy_dir }}/certs/pub-daneel-net"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Copier le certificat dans mindwtr_deploy_dir/certs/pub-daneel-net
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ mindwtr_deploy_dir }}/certs/pub-daneel-net/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - src: /etc/letsencrypt/live/{{ pub_daneel_net_domain }}/fullchain.pem
+      dest: fullchain.pem
+    - src: /etc/letsencrypt/live/{{ pub_daneel_net_domain }}/privkey.pem
+      dest: privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: restart traefik

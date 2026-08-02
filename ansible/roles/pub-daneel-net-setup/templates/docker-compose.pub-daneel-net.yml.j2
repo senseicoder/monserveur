@@ -1,0 +1,32 @@
+# Généré par le rôle Ansible "pub-daneel-net-setup" -- ne pas éditer à la main
+# sur le serveur. nginx stock (aucun code applicatif à construire/publier :
+# contenu 100% statique importé depuis Gandi, cf. tasks/main.yml).
+version: "3"
+
+services:
+  pub-daneel-net-web:
+    image: "{{ pub_daneel_net_image }}"
+    restart: unless-stopped
+    networks:
+      - mindwtr
+    volumes:
+      - "{{ pub_daneel_net_deploy_dir }}/data:/usr/share/nginx/html:ro"
+      - "{{ pub_daneel_net_deploy_dir }}/nginx.conf:/etc/nginx/conf.d/default.conf:ro"
+    labels:
+      - "traefik.enable=true"
+      # Deux routers distincts (pas un seul avec entrypoints=web,websecure) :
+      # on veut TLS uniquement sur websecure, jamais sur web -- garder le http
+      # actif sans redirection (cf. usage externe existant en http://, décision
+      # Cédric 2026-08-03), contrairement aux autres vhosts du repo qui font du
+      # tls=true unique sur plusieurs entrypoints (tls s'appliquerait alors
+      # partout, y compris sur web).
+      - "traefik.http.routers.pub-daneel-net-web.rule=Host(`{{ pub_daneel_net_domain }}`)"
+      - "traefik.http.routers.pub-daneel-net-web.entrypoints=web"
+      - "traefik.http.routers.pub-daneel-net-secure.rule=Host(`{{ pub_daneel_net_domain }}`)"
+      - "traefik.http.routers.pub-daneel-net-secure.entrypoints=websecure"
+      - "traefik.http.routers.pub-daneel-net-secure.tls=true"
+      - "traefik.http.services.pub-daneel-net.loadbalancer.server.port=80"
+
+networks:
+  mindwtr:
+    external: true

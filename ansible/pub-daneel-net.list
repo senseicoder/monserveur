@@ -1,0 +1,14 @@
+# Migration du vhost statique Gandi pub.daneel.net vers glaurung (contenu
+# personnel de Cédric, 100% statique, aucun PHP -- cf. investigation avatar
+# phpBB 2026-08-03). http ET https actifs simultanément (pas de redirection),
+# décision Cédric 2026-08-03 -- l'avatar phpBB en http://pub.daneel.net/... doit
+# continuer de fonctionner tel quel.
+#
+# traefik-deploy après pub-daneel-net-setup (pas avant) : le certificat TLS
+# n'existe qu'après le passage de pub-daneel-net-setup (certbot), traefik-deploy
+# re-rend ensuite tls.yml pour l'y référencer et redémarre Traefik.
+#
+# DNS (CNAME pub.daneel.net -> glaurung) volontairement PAS inclus ici --
+# bascule manuelle après migration à blanc validée (curl --resolve).
+pub-daneel-net-setup
+traefik-deploy

@@ -34,6 +34,7 @@ backup_fs_paths:
   - /etc/letsencrypt
   - /opt/rat/data
   - /opt/phpbb-integralsport/data
+  - /opt/pub-daneel-net/data
   - /home/cedric/bot1
   - /home/cedric/chatbot
   - /home/cedric/chatbots

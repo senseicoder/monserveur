@@ -1,0 +1,10 @@
+---
+pub_daneel_net_deploy_dir: "/opt/pub-daneel-net"
+pub_daneel_net_domain: "pub.daneel.net"
+pub_daneel_net_image: "nginx:1.27-alpine"
+
+# Montage sshfs Gandi (non persistant -- à remonter manuellement si retombé) :
+# sshfs 121723@sftp.sd3.gpaas.net:/ /home/cedric/srvgandi -o reconnect
+# pub.daneel.net/htdocs est un symlink vers public.plcoder.net/htdocs (vhost
+# réel qui porte le contenu, constaté 2026-08-03).
+pub_daneel_net_gandi_htdocs: "/home/cedric/srvgandi/vhosts/public.plcoder.net/htdocs"

@@ -1,0 +1,16 @@
+# Généré par le rôle Ansible "pub-daneel-net-setup" -- ne pas éditer à la main
+# sur le serveur. Contenu 100% statique (aucun PHP, vérifié 2026-08-03),
+# autoindex conservé pour reproduire le "Options +Indexes" du vhost Gandi
+# d'origine.
+server {
+    listen 80;
+    server_name {{ pub_daneel_net_domain }};
+
+    root /usr/share/nginx/html;
+
+    autoindex on;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
