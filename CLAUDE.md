@@ -42,7 +42,7 @@ Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**. Certs : `bot
 |-----------|-------|-------|
 | `traefik` | `traefik:v3` | Port 8787/HTTPS, réseau mindwtr ✅ |
 | `mindwtr-cloud` | `ghcr.io/dongdongbh/mindwtr-cloud:latest` | Healthy, réseau mindwtr ✅ |
-| `vaultwarden` | `vaultwarden/server:latest` | vault.daneel.net:8787, réseau mindwtr |
+| `vaultwarden` | `vaultwarden/server:1.37.0` | vault.daneel.net:8787, réseau mindwtr |
 | `php` | `debian:11` | Shell PHP ponctuel, lancé manuellement hors Compose |
 | `ttrss-docker-*` (×4) | `cthulhoo/ttrss-*` + `postgres:12-alpine` | Géré depuis `~/ttrss-docker/` |
 | `rustdesk-hbbs` | `rustdesk/rustdesk-server:latest` | Ports directs sur l'hôte, hors réseau Docker mindwtr ✅ |

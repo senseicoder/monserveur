@@ -65,6 +65,14 @@
   diff: false
   notify: restart vaultwarden
 
+- name: Pull l'image vaultwarden (garantit le tag épinglé à jour, même si retour à :latest un jour)
+  command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.vaultwarden.yml pull vaultwarden
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  register: vaultwarden_pull
+  changed_when: "'Downloaded newer image' in vaultwarden_pull.stdout"
+  ignore_errors: "{{ ansible_check_mode }}"
+
 - name: Démarrer vaultwarden
   command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.vaultwarden.yml up -d
   args:
