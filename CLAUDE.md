@@ -219,6 +219,7 @@ Backup effectif depuis le 2026-08-02 (rôle `backup-setup`, cf. [TODO.md](TODO.m
 - `/etc/letsencrypt/` — certificats TLS (renouvellement auto via certbot snap)
 - `/opt/rat/data/` — données réelles migrées de Gandi (plcoder.net + placedusport2.com, cf. rôle `rat-setup`/`rat-migratefromgandi`)
 - `/opt/mindwtr/data/ntfy/` — comptes/tokens et cache des messages ntfy (cf. rôle `ntfy-deploy`)
+- `/opt/pub-daneel-net/data/` — contenu statique perso migré de Gandi (avatars, photos, PDFs — cf. rôle `pub-daneel-net-setup`)
 - MariaDB natif hôte (`VOOSO`, `ttrss`) et volume Postgres `ttrss-docker_db`
 - Dossiers home : `bot1/`, `chatbot/`, `chatbots/`, `inbox0/`, `oneclickpocket/`, `mbox`
 
