@@ -33,12 +33,11 @@
   - Alerting : notification `ntfy` (déjà déployé sur glaurung) en cas d'échec du dump ou du pull M6.
   - **Process de restauration complète à documenter et tester sur une VM locale au poste de dev** (VirtualBox sur ramoth2, déjà installé) avant de considérer le backup fiable — restaurer depuis un export pCloud vers une VM neuve, valider chaque service (Vaultwarden, mindwtr, ntfy, rat, MariaDB, ttrss).
   - Volumes Docker orphelins `deb` et `c34a0b6f0136...` : vérifiés vides (créés nov. 2024, jamais utilisés), hors périmètre, candidats à `docker volume prune`.
-- [ ] **Gaps de reconstruction identifiés par l'audit du 2026-07-31** (détail complet dans wiki `postes/glaurung.md` § Audit reconstruction totale) — rôles Ansible manquants pour que `glaurung.list` couvre tout ce qui tourne réellement sur l'hôte (distinct du backup de données ci-dessus : ici il s'agit de pouvoir *redéployer* ces services depuis zéro, pas seulement sauvegarder leurs données) :
-  - Installation de Certbot (snap) lui-même — les rôles existants scriptent l'obtention de certs mais supposent Certbot déjà présent
-  - `ntfy-deploy` (conteneur actif en prod, absent de `mindwtr.list`/`glaurung.list`/`roles/`)
-  - MariaDB natif hôte (installation + dump/restore de `VOOSO` et `ttrss`)
-  - Vhosts Apache hors périmètre : `reader.daneel.net`, `bots.plcoder.net`, `ntfy.daneel.net`, `lescoursdesophie.com` + 3 variantes (`ssl.`, `sophie.daneel.net`, `sslsophie.daneel.net`)
-  - Rôle `glaurung-healthcheck` référencé dans le wiki (cron `*/10 * * * *`) mais introuvable dans `ansible/roles/` — à vérifier (renommé ? jamais commité ?)
+- [ ] **Gaps de reconstruction identifiés par l'audit du 2026-07-31** (détail complet dans wiki `postes/glaurung.md` § Audit reconstruction totale) — rôles Ansible manquants pour que `glaurung.list` couvre tout ce qui tourne réellement sur l'hôte (distinct du backup de données ci-dessus : ici il s'agit de pouvoir *redéployer* ces services depuis zéro, pas seulement sauvegarder leurs données). **Deux points de l'audit corrigés le 2026-08-02** après vérification du repo — `ntfy-deploy` et `glaurung-healthcheck` existent en fait depuis le 2026-07-28 (avant l'audit du 31/07, donc déjà faux au moment où l'audit a été écrit) et sont déjà dans `glaurung.list` :
+  - Installation de Certbot (snap) lui-même — confirmé réel : les rôles existants (`ntfy-deploy`, `mindwtr-cloud-deploy`, `traefik-deploy`, `vaultwarden-deploy`) appellent tous `certbot certonly` mais aucun n'installe Certbot lui-même
+  - MariaDB natif hôte (installation + dump/restore de `VOOSO` et `ttrss`) — confirmé réel : `firewall-setup` protège le port 3306 mais aucun rôle n'installe/configure MariaDB
+  - Vhosts Apache hors périmètre : `reader.daneel.net`, `bots.plcoder.net`, `lescoursdesophie.com` + 3 variantes (`ssl.`, `sophie.daneel.net`, `sslsophie.daneel.net`) — **`ntfy.daneel.net` retiré de cette liste**, en fait déjà géré par le rôle `ntfy-deploy` (vhost + certbot, même pattern que mindwtr/vault)
+  - ~~`ntfy-deploy` absent~~ / ~~rôle `glaurung-healthcheck` introuvable~~ : **obsolète, les deux rôles existent et sont dans `glaurung.list`** (vérifié 2026-08-02)
   - Host keys SSH, `sudoers`, inventaire des paquets hors Ansible (Python compilés à la main) — non auditables sans accès `become`, à faire avec Cédric présent
 
 ## Dette technique / refactoring
