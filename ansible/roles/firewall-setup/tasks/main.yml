@@ -101,6 +101,21 @@
     label: "{{ item.iface | default(item.source | default('0.0.0.0/0')) }} -> {{ item.jump }}"
   notify: save iptables
 
+- name: INPUT v4 — Apache backend (8081) réservé aux réseaux Docker
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "8081"
+    source: "{{ item.source | default(omit) }}"
+    jump: "{{ item.jump }}"
+    action: insert
+    rule_num: "{{ item.num }}"
+  loop: "{{ (firewall_apache_backend_allowed_sources | map('community.general.dict_kv', 'source') | map('combine', {'jump': 'ACCEPT', 'num': 1}) | list)
+            + [{'jump': 'DROP', 'num': 2}] }}"
+  loop_control:
+    label: "{{ item.source | default('0.0.0.0/0') }} -> {{ item.jump }}"
+  notify: save iptables
+
 - name: INPUT v4 — policy DROP
   iptables:
     chain: INPUT
