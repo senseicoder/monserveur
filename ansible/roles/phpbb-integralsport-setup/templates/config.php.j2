@@ -1,0 +1,29 @@
+{#
+Genere par le role Ansible "phpbb-integralsport-setup" -- ne pas editer a la
+main sur le serveur (le prochain deploiement ecrasera les changements).
+
+Adapte depuis le config.php reel de prod (Gandi) : dbhost pointe vers le
+MySQL natif de l'hote glaurung via la gateway du reseau Docker "mindwtr"
+(le conteneur n'est pas en network_mode host, meme pattern que rat).
+#}
+<?php
+
+// phpBB 2.x config file - déploiement Ansible glaurung (migration.integralsport.com)
+
+$dbms = 'mysql4';
+
+$dbhost = '{{ phpbb_integralsport_mindwtr_gateway }}';
+$dbname = '{{ phpbb_integralsport_db_name }}';
+$dbuser = '{{ phpbb_integralsport_db_user }}';
+$dbpasswd = '{{ phpbb_integralsport_db_password }}';
+
+define('DB_HOST', $dbhost);
+define('DB_NAME', $dbname);
+define('DB_USER', $dbuser);
+define('DB_PWD', $dbpasswd);
+
+$table_prefix = 'phpbb_';
+
+define('PHPBB_INSTALLED', true);
+
+?>

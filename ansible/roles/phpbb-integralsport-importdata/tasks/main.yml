@@ -1,0 +1,47 @@
+---
+# phpbb-integralsport-importdata : importe le dump prod réel (déjà rapatrié
+# localement, pas de montage Gandi -- contrairement à rat, phpBB n'a pas de
+# contenu statique volumineux sur disque Gandi en dehors des uploads
+# utilisateurs, hors périmètre de cette première passe, cf. wiki). Rejouable
+# indépendamment de phpbb-integralsport-setup (rafraîchir les données sans
+# reconstruire l'image). Prérequis : phpbb-integralsport-setup déjà passé
+# (base + compte + config.php + conteneur existants).
+#
+# Hors périmètre de ce rôle (à faire dans une passe ultérieure si besoin) :
+# images/avatars, files/ (pièces jointes), cedric/rss (cache RSS) -- restent
+# vides pour cette première migration de test, le forum reste fonctionnel
+# sans (juste des avatars/pièces jointes manquants).
+
+- name: Copier le dump prod (déjà rapatrié) vers glaurung pour import
+  ansible.builtin.copy:
+    src: "/space/Work/ArchivesGandi/mysql/{{ phpbb_integralsport_dump_file }}"
+    dest: "/tmp/{{ phpbb_integralsport_dump_file }}"
+    mode: "0600"
+
+- name: Importer le dump prod dans la base native (latin1, pas de passage UTF8)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    zcat /tmp/{{ phpbb_integralsport_dump_file }} | mysql --default-character-set=latin1 {{ phpbb_integralsport_db_name }}
+  args:
+    executable: /bin/bash
+
+- name: Créer la table phpbb_search_results (absente du dump, cf. TESTS.md du repo)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    mysql --default-character-set=latin1 {{ phpbb_integralsport_db_name }} <<'SQL'
+    CREATE TABLE IF NOT EXISTS `phpbb_search_results` (
+      `search_id` int(11) unsigned NOT NULL DEFAULT '0',
+      `session_id` varchar(32) NOT NULL DEFAULT '',
+      `search_array` text NOT NULL,
+      `search_time` int(11) NOT NULL DEFAULT '0',
+      PRIMARY KEY (`search_id`),
+      KEY `session_id` (`session_id`)
+    ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+    SQL
+  args:
+    executable: /bin/bash
+
+- name: Nettoyer le dump temporaire
+  ansible.builtin.file:
+    path: "/tmp/{{ phpbb_integralsport_dump_file }}"
+    state: absent

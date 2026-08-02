@@ -1,0 +1,225 @@
+---
+# phpbb-integralsport-setup : construit + publie l'image phpbb-integralsport-web
+# (en local, jamais sur glaurung), puis déploie sur glaurung en tirant l'image
+# depuis le registre. Déploiement de test protégé (BasicAuth), vhost
+# migration.integralsport.com, port Traefik 8787. Version "master" du repo
+# (sans les PR de sécurité en cours de revue -- décision Cédric 2026-08-02,
+# validation petit à petit). Pattern identique à rat-setup.
+
+# --- Build + publication de l'image (en local, jamais sur glaurung) ---
+
+- name: Vérifier que le repo source est bien sur la branche master
+  ansible.builtin.command: git -C {{ phpbb_integralsport_repo_path }} rev-parse --abbrev-ref HEAD
+  register: phpbb_integralsport_current_branch
+  changed_when: false
+  delegate_to: localhost
+  become: false
+
+- name: Échouer si le repo n'est pas sur master (déploiement volontairement sans les PR de sécurité)
+  ansible.builtin.fail:
+    msg: >
+      Le repo {{ phpbb_integralsport_repo_path }} est sur la branche
+      "{{ phpbb_integralsport_current_branch.stdout }}", pas "master".
+      Ce rôle déploie explicitement master (sans les PR de sécurité en
+      cours de revue) -- git checkout master avant de rejouer.
+  when: phpbb_integralsport_current_branch.stdout != 'master'
+
+# --- Versionnage de l'image : jamais "latest" (ADR) ---
+
+- name: Initialiser le compteur de version à 0.0 s'il n'existe pas encore
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/phpbb-integralsport-web.version"
+    content: "0.0"
+    force: false
+  delegate_to: localhost
+  become: false
+
+- name: Lire la version actuelle
+  ansible.builtin.set_fact:
+    phpbb_integralsport_current_version: "{{ lookup('file', role_path + '/files/phpbb-integralsport-web.version') | trim }}"
+
+- name: Calculer la prochaine version (incrémente le dernier nombre)
+  ansible.builtin.set_fact:
+    phpbb_integralsport_next_version: "{{ (phpbb_integralsport_current_version.split('.')[:-1] + [(phpbb_integralsport_current_version.split('.')[-1] | int + 1) | string]) | join('.') }}"
+
+- name: Enregistrer la nouvelle version (avant le build, pour rester incrémental même en cas d'échec)
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/phpbb-integralsport-web.version"
+    content: "{{ phpbb_integralsport_next_version }}"
+  delegate_to: localhost
+  become: false
+
+- name: Fixer le tag d'image à construire/publier (jamais "latest")
+  ansible.builtin.set_fact:
+    phpbb_integralsport_image: "{{ phpbb_integralsport_image_repo }}:{{ phpbb_integralsport_next_version }}"
+
+- name: Rendre le Dockerfile dans le contexte de build local (= le repo lui-même)
+  ansible.builtin.template:
+    src: Dockerfile.j2
+    dest: "{{ phpbb_integralsport_repo_path }}/docker/Dockerfile.prod"
+  delegate_to: localhost
+  become: false
+
+- name: Récupérer le PAT ghcr.io (cmdp, jamais loggé)
+  ansible.builtin.command: cmdp show services/github.com/docker_registry
+  register: phpbb_integralsport_ghcr_pat
+  changed_when: false
+  no_log: true
+  delegate_to: localhost
+  become: false
+  check_mode: false
+
+- name: Se connecter à ghcr.io (en local, pour build+push)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ phpbb_integralsport_ghcr_pat.stdout_lines[0] }}"
+  delegate_to: localhost
+  become: false
+
+- name: Construire et publier l'image phpbb-integralsport-web sur ghcr.io
+  community.docker.docker_image:
+    name: "{{ phpbb_integralsport_image }}"
+    build:
+      path: "{{ phpbb_integralsport_repo_path }}"
+      dockerfile: "docker/Dockerfile.prod"
+      pull: true
+    source: build
+    force_source: true
+    push: true
+  delegate_to: localhost
+  become: false
+
+# --- Déploiement sur glaurung : uniquement pull + run, aucun code ni build ---
+
+- name: Créer l'arborescence de base
+  ansible.builtin.file:
+    path: "{{ phpbb_integralsport_deploy_dir }}/data"
+    state: directory
+    owner: cedric
+    group: cedric
+    mode: "0750"
+
+# Répertoires de données runtime (writable par www-data, uid 33 dans l'image
+# php:apache Debian) -- jamais le code, cuit dans l'image (cf. Dockerfile.j2).
+- name: Créer les répertoires de données runtime (writable www-data)
+  ansible.builtin.file:
+    path: "{{ phpbb_integralsport_deploy_dir }}/data/{{ item }}"
+    state: directory
+    owner: "33"
+    group: "33"
+    mode: "0775"
+  loop:
+    - cedric-cache
+    - cedric-journaux
+    - cedric-rss
+    - cache
+    - files
+    - images-avatars
+
+- name: Générer un config.php vide temporaire s'il n'existe pas déjà (nécessaire avant le premier bind-mount)
+  ansible.builtin.template:
+    src: config.php.j2
+    dest: "{{ phpbb_integralsport_deploy_dir }}/data/config.php"
+    owner: "33"
+    group: "33"
+    mode: "0640"
+    force: false
+
+# --- Vhost Apache + certificat TLS pour migration.integralsport.com ---
+# Prérequis externe (pas géré par ce rôle) : DNS migration.integralsport.com
+# doit déjà résoudre vers glaurung avant que certbot puisse valider le
+# challenge HTTP-01 (CNAME vers glaurung.daneel.net recommandé, hérite
+# A+AAAA -- cf. CLAUDE.md § DNS pour un nouveau domaine).
+
+- name: Déployer le vhost Apache pour {{ phpbb_integralsport_domain }}
+  ansible.builtin.template:
+    src: apache-phpbb-integralsport.conf.j2
+    dest: /etc/apache2/sites-available/{{ phpbb_integralsport_domain }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: phpbb_integralsport_apache_vhost
+
+- name: Activer le vhost Apache pour {{ phpbb_integralsport_domain }}
+  ansible.builtin.command: a2ensite {{ phpbb_integralsport_domain }}
+  register: phpbb_integralsport_a2ensite
+  changed_when: "'Enabling site' in phpbb_integralsport_a2ensite.stdout"
+  failed_when: phpbb_integralsport_a2ensite.rc != 0
+
+- name: Recharger Apache si vhost modifié
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  when: phpbb_integralsport_apache_vhost is changed or phpbb_integralsport_a2ensite is changed
+
+- name: Obtenir le certificat TLS pour {{ phpbb_integralsport_domain }}
+  ansible.builtin.command: >
+    certbot certonly --webroot
+    -w /var/www/html
+    --non-interactive
+    --agree-tos
+    --email {{ acme_email }}
+    -d {{ phpbb_integralsport_domain }}
+  args:
+    creates: /etc/letsencrypt/live/{{ phpbb_integralsport_domain }}/fullchain.pem
+
+- name: Copier le certificat dans mindwtr_deploy_dir/certs/phpbb-integralsport
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ mindwtr_deploy_dir }}/certs/phpbb-integralsport/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - src: /etc/letsencrypt/live/{{ phpbb_integralsport_domain }}/fullchain.pem
+      dest: fullchain.pem
+    - src: /etc/letsencrypt/live/{{ phpbb_integralsport_domain }}/privkey.pem
+      dest: privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: restart traefik
+
+- name: Déployer le config.php réel (écrase le placeholder vide du premier passage)
+  ansible.builtin.template:
+    src: config.php.j2
+    dest: "{{ phpbb_integralsport_deploy_dir }}/data/config.php"
+    owner: "33"
+    group: "33"
+    mode: "0640"
+
+- name: Déployer docker-compose phpbb-integralsport (image tirée du registre, BasicAuth)
+  ansible.builtin.template:
+    src: docker-compose.phpbb-integralsport.yml.j2
+    dest: "{{ phpbb_integralsport_deploy_dir }}/docker-compose.phpbb-integralsport.yml"
+
+# --- MySQL natif glaurung : base + compte, restreints au réseau mindwtr ---
+# bind-address 0.0.0.0 + firewall INPUT déjà en place (rôle rat-setup,
+# 2026-07-16/17) -- s'applique à tout le réseau mindwtr, pas besoin de le
+# refaire ici.
+
+- name: Créer la base MariaDB native
+  community.mysql.mysql_db:
+    name: "{{ phpbb_integralsport_db_name }}"
+    encoding: latin1
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Créer le compte MariaDB, restreint au subnet du réseau mindwtr
+  community.mysql.mysql_user:
+    name: "{{ phpbb_integralsport_db_user }}"
+    password: "{{ phpbb_integralsport_db_password }}"
+    host: "172.18.%.%"
+    priv: "{{ phpbb_integralsport_db_name }}.*:ALL"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Tirer la dernière image et démarrer/mettre à jour le conteneur phpbb-integralsport-web
+  ansible.builtin.command: "{{ item }}"
+  args:
+    chdir: "{{ phpbb_integralsport_deploy_dir }}"
+  loop:
+    - "docker-compose -f docker-compose.phpbb-integralsport.yml pull"
+    - "docker-compose -f docker-compose.phpbb-integralsport.yml up -d"
+  loop_control:
+    label: "{{ item }}"

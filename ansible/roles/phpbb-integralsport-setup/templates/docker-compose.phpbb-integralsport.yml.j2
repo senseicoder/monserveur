@@ -1,0 +1,36 @@
+# Genere par le role Ansible "phpbb-integralsport-setup" -- ne pas editer a la
+# main sur le serveur. Déploiement de test protégé (BasicAuth) sur
+# migration.integralsport.com, image tirée du registre (ghcr.io) -- jamais
+# construite sur glaurung, cf. ADR "code commun toujours dans l'image".
+version: "3"
+
+services:
+  phpbb-integralsport-web:
+    image: "{{ phpbb_integralsport_image }}"
+    restart: unless-stopped
+    networks:
+      - mindwtr
+    volumes:
+      # Uniquement les données runtime + la config (jamais le code, cuit dans
+      # l'image via COPY -- cf. Dockerfile.j2).
+      - "{{ phpbb_integralsport_deploy_dir }}/data/config.php:/var/www/html/config.php"
+      - "{{ phpbb_integralsport_deploy_dir }}/data/cedric-cache:/var/www/html/cedric/cache"
+      - "{{ phpbb_integralsport_deploy_dir }}/data/cedric-journaux:/var/www/html/cedric/journaux"
+      - "{{ phpbb_integralsport_deploy_dir }}/data/cedric-rss:/var/www/html/cedric/rss"
+      - "{{ phpbb_integralsport_deploy_dir }}/data/cache:/var/www/html/cache"
+      - "{{ phpbb_integralsport_deploy_dir }}/data/files:/var/www/html/files"
+      - "{{ phpbb_integralsport_deploy_dir }}/data/images-avatars:/var/www/html/images/avatars"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.phpbb-integralsport.rule=Host(`{{ phpbb_integralsport_domain }}`)"
+      - "traefik.http.routers.phpbb-integralsport.entrypoints=mindwtr"
+      - "traefik.http.routers.phpbb-integralsport.tls=true"
+      - "traefik.http.routers.phpbb-integralsport.middlewares=phpbb-integralsport-auth"
+      # $ doublés : docker-compose interprète sinon $apr1$... comme une
+      # interpolation de variable d'environnement (piège connu Traefik+Compose).
+      - "traefik.http.middlewares.phpbb-integralsport-auth.basicauth.users={{ phpbb_integralsport_basicauth_user }}:{{ phpbb_integralsport_basicauth_hash | replace('$', '$$') }}"
+      - "traefik.http.services.phpbb-integralsport.loadbalancer.server.port=80"
+
+networks:
+  mindwtr:
+    external: true

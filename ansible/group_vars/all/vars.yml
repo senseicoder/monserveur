@@ -34,3 +34,9 @@ rat_sites:
     urladmin: "http://www.placedusport2.com/admin/"
     serveur_nom: "PlaceDuSport2.com"
     contact_verscourrier: true
+
+# phpBB integralsport.com — déploiement de test protégé (BasicAuth), version
+# master (sans les PR de sécurité en cours de revue), décision Cédric 2026-08-02
+phpbb_integralsport_db_password: "{{ vault_phpbb_integralsport_db_password }}"
+phpbb_integralsport_basicauth_hash: "{{ vault_phpbb_integralsport_basicauth_hash }}"
+phpbb_integralsport_dump_file: "phpbb_2026-07-14_00h56m13s.sql.gz"

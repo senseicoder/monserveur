@@ -1,0 +1,37 @@
+{# Genere par le role Ansible "phpbb-integralsport-setup" -- ne pas editer a la
+   main. Construit et publié EN LOCAL (jamais sur glaurung), contexte de build
+   = le repo phpbb-integralsport lui-même (COPY phpBB/ lit directement le
+   checkout réel, aucune synchronisation de code n'est nécessaire). Version
+   "master" (sans les PR de sécurité en cours de revue) -- cf. docs/adr/ du
+   repo pour la stratégie sid explicite sur les liens de modération.
+
+   Base identique au test local docker/Dockerfile (php:5.5-apache, Debian
+   Jessie EOL) -- PHP 5.4 réel Gandi non tirable via Docker moderne (ancien
+   manifeste v1). À vérifier empiriquement sur le noyau glaurung (3.16, OVH) :
+   Jessie est plus ancienne que buster (déjà validé compatible pour rat), donc
+   a priori sans le problème getrandom() qui touche bullseye+, mais jamais
+   testé sur CE noyau précis avant ce déploiement. #}
+FROM php:{{ phpbb_integralsport_php_image_tag }}
+
+# Debian Jessie est EOL -- dépôts habituels ne répondent plus, bascule archive.
+RUN sed -i \
+        -e 's|httpredir.debian.org|archive.debian.org|g' \
+        -e 's|security.debian.org|archive.debian.org/debian-security|g' \
+        -e '/jessie-updates/d' \
+        /etc/apt/sources.list \
+    && apt-get -o Acquire::Check-Valid-Until=false update \
+    && apt-get install -y --no-install-recommends --allow-unauthenticated libpng-dev libjpeg-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && docker-php-ext-configure gd --with-jpeg-dir=/usr --with-png-dir=/usr \
+    && docker-php-ext-install mysql gd \
+    && echo "short_open_tag = On" > /usr/local/etc/php/conf.d/short-open-tag.ini \
+    && echo "error_reporting = E_ALL" > /usr/local/etc/php/conf.d/error-reporting.ini \
+    && echo "date.timezone = Europe/Paris" > /usr/local/etc/php/conf.d/date-timezone.ini \
+    && a2enmod headers expires
+
+# Code phpBB cuit dans l'image (jamais bind-monté). Les répertoires de
+# données runtime (config.php, cedric/cache, cedric/journaux, cedric/rss,
+# cache/, files/, images/avatars) sont bind-montés par-dessus dans
+# docker-compose (cf. docker-compose.phpbb-integralsport.yml.j2) -- Docker
+# autorise un bind-mount à un chemin précis même à l'intérieur d'un COPY.
+COPY phpBB /var/www/html

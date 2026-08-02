@@ -1,0 +1,26 @@
+---
+# PHP 5.4 (version Gandi réelle) non tirable via Docker moderne (ancien
+# manifeste v1). 5.5 = version la plus proche disponible, déjà validée en
+# test local (docker/ du repo phpbb-integralsport). Compatibilité avec le
+# noyau glaurung (3.16, OVH) pas encore vérifiée empiriquement -- Jessie est
+# plus ancienne que buster (déjà validé pour rat), donc a priori sans le
+# problème getrandom() de bullseye+, mais à confirmer au premier déploiement.
+phpbb_integralsport_php_image_tag: "5.5-apache"
+phpbb_integralsport_mindwtr_gateway: "172.18.0.1"
+# ADR : jamais de tag "latest" -- phpbb_integralsport_image (le tag complet
+# effectif) est calculé dynamiquement dans tasks/main.yml à partir de ce
+# préfixe + un numéro de version incrémenté à chaque build
+# (files/phpbb-integralsport-web.version).
+phpbb_integralsport_image_repo: "ghcr.io/senseicoder/phpbb-integralsport-web"
+
+# Repo source (déjà cloné en local, sur master -- sans les PR de sécurité en
+# cours de revue, cf. décision Cédric 2026-08-02).
+phpbb_integralsport_repo_path: "/home/cedric/www/c/phpbb-integralsport-import/repo"
+
+phpbb_integralsport_domain: "migration.integralsport.com"
+phpbb_integralsport_deploy_dir: "/opt/phpbb-integralsport"
+
+phpbb_integralsport_db_name: "phpbb_migration"
+phpbb_integralsport_db_user: "phpbb_migration"
+
+phpbb_integralsport_basicauth_user: "cedric"

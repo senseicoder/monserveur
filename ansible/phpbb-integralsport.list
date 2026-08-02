@@ -1,0 +1,12 @@
+# Déploiement de test protégé (BasicAuth) de phpBB integralsport.com,
+# version master (sans les PR de sécurité en cours de revue, décision Cédric
+# 2026-08-02, validation petit à petit). Port Traefik 8787, vhost
+# migration.integralsport.com.
+#
+# traefik-deploy après phpbb-integralsport-setup (pas avant) : le certificat
+# TLS n'existe qu'après le passage de phpbb-integralsport-setup (certbot),
+# traefik-deploy re-rend ensuite tls.yml pour l'y référencer et redémarre
+# Traefik.
+phpbb-integralsport-setup
+traefik-deploy
+phpbb-integralsport-importdata
