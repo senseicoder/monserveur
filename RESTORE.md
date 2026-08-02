@@ -81,17 +81,21 @@ reconfigurer manuellement en attendant que ces gaps soient comblés.
 
 ## 5. Cas particulier — RustDesk
 
-La clé privée `/opt/rustdesk/data/id_ed25519` **n'est pas sauvegardée** (décision
-2026-08-02, cf. TODO.md § Backup des données). Après une reconstruction, le rôle
-`rustdesk-setup` régénère une **nouvelle** identité serveur :
+La clé privée `/opt/rustdesk/data/id_ed25519` est **hors du backup automatisé**, mais
+sauvegardée une fois manuellement par Cédric dans le pass perso
+(`weyr/rustdesk_clef_privee` — la clé publique correspondante est dans
+`weyr/rustdesk_clef`, décision 2026-08-02). Restauration = réinjecter le fichier,
+**pas** régénérer une nouvelle identité (ce qui casserait tous les clients déjà
+configurés) :
 
-1. Redéployer `rustdesk-setup` (inclus dans `glaurung.list`) — génère un nouveau
-   `id_ed25519`/`id_ed25519.pub`
-2. Récupérer la nouvelle clé publique (`cat /opt/rustdesk/data/id_ed25519.pub` ou
-   équivalent, à vérifier au moment du test) et mettre à jour le pass perso
-   (`weyr/rustdesk_clef`)
-3. Redéployer le rôle `rustdesk-install` (repo `maconfiguration`) sur chaque poste
-   client pour qu'il reprenne la nouvelle clé
+1. Redéployer `rustdesk-setup` (inclus dans `glaurung.list`) — crée la structure
+   `/opt/rustdesk/data/` (une nouvelle clé y est générée au premier démarrage)
+2. **Avant** le premier démarrage du conteneur (ou en l'arrêtant s'il a déjà tourné) :
+   `pass show weyr/rustdesk_clef_privee > /opt/rustdesk/data/id_ed25519`, permissions
+   cohérentes avec le reste de `/opt/rustdesk/data/`, puis démarrer/redémarrer
+   hbbs/hbbr
+3. Vérifier que la clé publique effective correspond bien à `weyr/rustdesk_clef` (pas
+   de redéploiement client nécessaire si c'est le cas)
 
 ## 6. Backup ponctuel du code des vhosts
 
