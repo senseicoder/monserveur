@@ -100,7 +100,8 @@ ansible/
     ├── mindwtr-cloud-deploy/     ← data/cloud, docker-compose.mindwtr.yml, vhost+certbot mindwtr, start
     ├── vaultwarden-deploy/       ← data/vaultwarden, docker-compose.vaultwarden.yml, vhost+certbot vault, start
     ├── rustdesk-setup/           ← hbbs/hbbr RustDesk, hors Traefik (ports directs sur l'hôte), joué via ./run list rustdesk.list
-    └── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
+    ├── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
+    └── backup-setup/             ← cron root quotidien (dump différentiel + mysqldump + pg_dump + chiffrement GPG asymétrique), joué via ./run list backup.list — cf. § Sauvegardes critiques
 ```
 
 Plus de playbook global : chaque profil (`*.list`) se joue indépendamment via `./run list`, il n'y a plus de séquence unique équivalente à l'ancien `install.yml`.
@@ -207,10 +208,14 @@ Données persistées dans `/opt/mindwtr/data/vaultwarden/` (uid 1000).
 
 ## Sauvegardes critiques
 
+Backup effectif depuis le 2026-08-02 (rôle `backup-setup`, cf. [TODO.md](TODO.md) § Backup des données) : cron root quotidien sur glaurung (dump différentiel + mysqldump + pg_dump, chiffrement GPG asymétrique), pull+push pCloud depuis M6.
+
 - `/opt/mindwtr/data/cloud/` — données sync Mindwtr
 - `/opt/mindwtr/data/vaultwarden/` — données Vaultwarden (mots de passe)
 - `/etc/letsencrypt/` — certificats TLS (renouvellement auto via certbot snap)
 - `/opt/rat/data/` — données réelles migrées de Gandi (plcoder.net + placedusport2.com, cf. rôle `rat-setup`/`rat-migratefromgandi`)
 - `/opt/mindwtr/data/ntfy/` — comptes/tokens et cache des messages ntfy (cf. rôle `ntfy-deploy`)
+- MariaDB natif hôte (`VOOSO`, `ttrss`) et volume Postgres `ttrss-docker_db`
+- Dossiers home : `bot1/`, `chatbot/`, `chatbots/`, `inbox0/`, `oneclickpocket/`, `mbox`
 
-Aucun mécanisme de backup réel pour ces chemins à ce jour — seulement documentés (cf. [TODO.md](TODO.md)).
+**Hors périmètre actuel, à ajouter** : clé RustDesk `id_ed25519` (`/opt/rustdesk/data/` — critique, régénérée si perdue), `~/discord_bot.py` (fichier isolé, hors `bot1`/`chatbot(s)`). Code des vhosts : backup ponctuel prévu (tag `vhost-code-once`), pas encore déclenché.
