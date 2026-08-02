@@ -41,6 +41,24 @@
   args:
     executable: /bin/bash
 
+- name: Corriger board_config pour ce déploiement de test (server_name/port/cookie_secure)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    mysql --default-character-set=latin1 {{ phpbb_integralsport_db_name }} <<'SQL'
+    UPDATE phpbb_config SET config_value='{{ phpbb_integralsport_domain }}' WHERE config_name='server_name';
+    UPDATE phpbb_config SET config_value='8787' WHERE config_name='server_port';
+    UPDATE phpbb_config SET config_value='1' WHERE config_name='cookie_secure';
+    SQL
+  args:
+    executable: /bin/bash
+  # Le dump prod importé garde la config du VRAI site (server_name=www.integralsport.com,
+  # server_port=80, cookie_secure=0) -- phpBB construit ses URLs de redirection absolues
+  # (includes/functions.php::redirect()) depuis CETTE config en base, pas depuis le Host
+  # réel de la requête. Sans ce correctif : après login, redirection vers le vrai site de
+  # prod (constaté par Cédric) ; et cookie_secure=0 aurait construit des URLs http:// alors
+  # que le site n'est servi qu'en https (Traefik, TLS obligatoire sur le routeur). Rejoué à
+  # chaque import (idempotent, UPDATE simple) -- ne touche jamais la vraie base de prod.
+
 - name: Nettoyer le dump temporaire
   ansible.builtin.file:
     path: "/tmp/{{ phpbb_integralsport_dump_file }}"
