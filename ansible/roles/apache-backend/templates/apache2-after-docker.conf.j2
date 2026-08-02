@@ -1,0 +1,7 @@
+# Généré par le rôle Ansible apache-backend, ne pas modifier à la main sur le serveur.
+# Apache doit démarrer après Docker : il bind sur 172.18.0.1 (passerelle du
+# réseau Docker "mindwtr"), qui n'existe qu'une fois le bridge Docker créé.
+# Sans ça, le bind échoue au boot (cf. PHASE2.md, point de vigilance n°1).
+[Unit]
+After=docker.service
+Wants=docker.service

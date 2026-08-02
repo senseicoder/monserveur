@@ -1,0 +1,16 @@
+---
+# Vhosts Apache "legacy" — jamais gérés par Ansible avant ce rôle (configuration
+# manuelle historique). Rebasculés en backend interne :8081 derrière Traefik.
+apache_backend_legacy_vhosts:
+  - domain: bots.plcoder.net
+    template: apache-bots-plcoder.conf.j2
+  - domain: reader.daneel.net
+    template: apache-reader-daneel.conf.j2
+  - domain: lescoursdesophie.com
+    template: apache-lescoursdesophie.conf.j2
+  - domain: ssl.lescoursdesophie.com
+    template: apache-ssl-lescoursdesophie.conf.j2
+  - domain: sophie.daneel.net
+    template: apache-sophie-daneel.conf.j2
+  - domain: sslsophie.daneel.net
+    template: apache-sslsophie-daneel.conf.j2

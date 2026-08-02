@@ -1,0 +1,31 @@
+# Généré par le rôle Ansible apache-backend, ne pas modifier à la main sur le serveur.
+# TLS retiré : terminé par Traefik (frontal 80/443), Apache reste backend interne sur 8081.
+# Vhost historique dupliqué IPv4/IPv6 (deux VirtualHost identiques) — fusionné ici en un seul.
+
+<VirtualHost 172.18.0.1:8081>
+	ServerName reader.daneel.net
+	ServerAdmin infra@epiconcept.fr
+
+	DocumentRoot /var/www/reader.daneel.net
+
+	Header unset ETag
+	FileETag none
+
+	<Directory />
+		Options FollowSymLinks
+		AllowOverride None
+		Include auth/denied
+	</Directory>
+
+	<Directory /var/www/reader.daneel.net>
+		Options FollowSymLinks
+		AllowOverride None
+		Include auth/access
+	</Directory>
+
+	LogLevel warn
+	ErrorLog /space/log/reader.daneel.net/error.log
+	CustomLog /space/log/reader.daneel.net/access.log epiconcept
+
+	Include /etc/apache2/sites-available/reader.daneel.net.d/
+</VirtualHost>

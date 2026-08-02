@@ -1,0 +1,31 @@
+# Généré par le rôle Ansible apache-backend, ne pas modifier à la main sur le serveur.
+# TLS retiré : terminé par Traefik (frontal 80/443), Apache reste backend interne sur 8081.
+# Nom historique "ssl." trompeur : ce vhost n'a jamais eu de TLS propre (HTTP seul,
+# cf. CLAUDE.md — à corriger éventuellement à l'Étape 4, hors périmètre ici).
+
+<VirtualHost 172.18.0.1:8081>
+	ServerName ssl.lescoursdesophie.com
+	ServerAdmin infra@epiconcept.fr
+
+	DocumentRoot /var/www/ssl.lescoursdesophie.com
+
+	FileETag none
+
+	<Directory />
+		Options FollowSymLinks
+		AllowOverride None
+		Include auth/denied
+	</Directory>
+
+	<Directory /var/www/ssl.lescoursdesophie.com>
+		Options FollowSymLinks
+		AllowOverride None
+		Include auth/access
+	</Directory>
+
+	LogLevel warn
+	ErrorLog /space/log/ssl.lescoursdesophie.com/error.log
+	CustomLog /space/log/ssl.lescoursdesophie.com/access.log combined
+
+	Include /etc/apache2/sites-available/ssl.lescoursdesophie.com.d/
+</VirtualHost>

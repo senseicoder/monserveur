@@ -1,0 +1,81 @@
+---
+# Phase 2 (PHASE2.md) — Apache passe en backend interne sur 8081, Traefik prend
+# 80/443 en frontal. Ordre : libérer 80/443 côté Apache avant de démarrer le
+# nouveau compose Traefik (cf. traefik-deploy, étape 3 du plan).
+
+- name: Déployer ports.conf (8081 seulement, plus de 80/443)
+  template:
+    src: ports.conf.j2
+    dest: /etc/apache2/ports.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart apache2
+
+- name: Déployer les vhosts legacy réécrits en :8081
+  template:
+    src: "{{ item.template }}"
+    dest: "/etc/apache2/sites-available/{{ item.domain }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ apache_backend_legacy_vhosts }}"
+  loop_control:
+    label: "{{ item.domain }}"
+  register: apache_vhosts_legacy
+
+- name: Activer les vhosts legacy
+  command: a2ensite {{ item.domain }}
+  loop: "{{ apache_backend_legacy_vhosts }}"
+  loop_control:
+    label: "{{ item.domain }}"
+  register: apache_a2ensite_legacy
+  changed_when: "'Enabling site' in apache_a2ensite_legacy.stdout"
+  failed_when: apache_a2ensite_legacy.rc != 0
+
+- name: Activer mod_remoteip (restaure l'IP cliente derrière Traefik)
+  command: a2enmod remoteip
+  register: apache_a2enmod_remoteip
+  changed_when: "'Enabling module' in apache_a2enmod_remoteip.stdout"
+
+- name: Déployer la config RemoteIPInternalProxy
+  template:
+    src: remoteip.conf.j2
+    dest: /etc/apache2/conf-available/remoteip.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: apache_remoteip_conf
+
+- name: Activer la conf remoteip
+  command: a2enconf remoteip
+  register: apache_a2enconf_remoteip
+  changed_when: "'Enabling conf' in apache_a2enconf_remoteip.stdout"
+
+- name: Créer le répertoire de drop-in systemd apache2.service.d
+  file:
+    path: /etc/systemd/system/apache2.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Déployer le drop-in systemd After=docker.service
+  template:
+    src: apache2-after-docker.conf.j2
+    dest: /etc/systemd/system/apache2.service.d/after-docker.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - systemd daemon-reload
+    - restart apache2
+
+- name: Recharger Apache si vhosts, modules ou conf changés
+  service:
+    name: apache2
+    state: reloaded
+  when: >
+    apache_vhosts_legacy.changed or apache_a2ensite_legacy.changed or
+    apache_a2enmod_remoteip.changed or apache_remoteip_conf.changed or
+    apache_a2enconf_remoteip.changed

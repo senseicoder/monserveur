@@ -35,5 +35,16 @@
       command: netfilter-persistent save
       ignore_errors: "{{ ansible_check_mode }}"
 
+    - name: systemd daemon-reload
+      systemd:
+        daemon_reload: true
+      ignore_errors: "{{ ansible_check_mode }}"
+
+    - name: restart apache2
+      service:
+        name: apache2
+        state: restarted
+      ignore_errors: "{{ ansible_check_mode }}"
+
   roles:
     - role: "{{ role | basename }}"
