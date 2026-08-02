@@ -1,0 +1,85 @@
+---
+- name: Créer les répertoires de backup root-only (script, snapshots)
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop:
+    - "{{ backup_root }}"
+    - "{{ backup_snapshot_dir }}"
+
+- name: Créer le répertoire d'export (fichiers déjà chiffrés, lisibles par le groupe cedric pour le pull M6)
+  file:
+    path: "{{ backup_export_dir }}"
+    state: directory
+    owner: root
+    group: "{{ backup_export_group }}"
+    mode: "0750"
+
+- name: Installer la clé publique GPG sous {{ backup_root }}
+  copy:
+    src: "{{ backup_gpg_pubkey_src }}"
+    dest: "{{ backup_gpg_pubkey_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Déployer le script backup.sh
+  template:
+    src: backup.sh.j2
+    dest: "{{ backup_root }}/backup.sh"
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Supprimer l'ancienne entrée crontab root (posée par une version antérieure du rôle, avant adr-cron-toujours-etc-cron-d)
+  cron:
+    name: glaurung-backup
+    state: absent
+    user: root
+
+- name: Planifier le cron root du backup quotidien (/etc/cron.d/, cf. adr-cron-toujours-etc-cron-d)
+  cron:
+    name: glaurung-backup
+    cron_file: glaurung-backup
+    minute: "{{ backup_cron_minute }}"
+    hour: "{{ backup_cron_hour }}"
+    job: "{{ backup_root }}/backup.sh >> /var/log/glaurung-backup.log 2>&1"
+    user: root
+
+# --- Ponctuel : backup du code des vhosts (pas dans le cron, ne doit plus changer) ---
+# Jouer explicitement une fois : ./run role backup-setup run --tags vhost-code-once
+
+- name: "[ponctuel] Archiver le code des vhosts"
+  archive:
+    path: "{{ backup_vhost_code_paths_once }}"
+    dest: "{{ backup_export_dir }}/vhosts-code-{{ ansible_date_time.date }}.tar.gz"
+    format: gz
+  register: vhost_code_archive
+  tags: [vhost-code-once, never]
+
+- name: "[ponctuel] Chiffrer l'archive du code des vhosts"
+  command: >
+    gpg --batch --yes --recipient-file {{ backup_gpg_pubkey_path }}
+    --encrypt --output {{ vhost_code_archive.dest }}.gpg {{ vhost_code_archive.dest }}
+  when: vhost_code_archive is changed
+  tags: [vhost-code-once, never]
+
+- name: "[ponctuel] Rendre l'archive chiffrée lisible par le groupe cedric (pull M6)"
+  file:
+    path: "{{ vhost_code_archive.dest }}.gpg"
+    owner: root
+    group: "{{ backup_export_group }}"
+    mode: "0640"
+  when: vhost_code_archive is changed
+  tags: [vhost-code-once, never]
+
+- name: "[ponctuel] Supprimer l'archive en clair après chiffrement"
+  file:
+    path: "{{ vhost_code_archive.dest }}"
+    state: absent
+  when: vhost_code_archive is changed
+  tags: [vhost-code-once, never]

@@ -1,0 +1,93 @@
+#!/bin/bash
+set -uo pipefail
+
+EXPORT_DIR="{{ backup_export_dir }}"
+EXPORT_GROUP="{{ backup_export_group }}"
+SNAPSHOT_DIR="{{ backup_snapshot_dir }}"
+GPG_PUBKEY="{{ backup_gpg_pubkey_path }}"
+LOCAL_RETENTION_DAYS={{ backup_local_retention_days }}
+NTFY_URL="https://{{ ntfy_domain }}:8787/{{ backup_ntfy_topic }}"
+NTFY_TOKEN="{{ ntfy_healthcheck_token }}"
+TTRSS_ENV="{{ backup_ttrss_env_file }}"
+TTRSS_PG_CONTAINER="{{ backup_ttrss_pg_container }}"
+
+DATE=$(date +%F)
+DAY=$(date +%d)
+DEST="$EXPORT_DIR/$DATE"
+# 0700 tant que du contenu en clair (dumps non chiffrés) peut s'y trouver — élargi au
+# groupe cedric seulement une fois les .gpg produits et le clair supprimé, plus bas.
+mkdir -p "$DEST" "$SNAPSHOT_DIR"
+chmod 0700 "$DEST"
+
+# alert MESSAGE — notifie ntfy en cas d'échec (succès = silencieux, comme glaurung-healthcheck.sh)
+alert() {
+  curl -s -o /dev/null -H "Authorization: Bearer $NTFY_TOKEN" -H "Priority: urgent" \
+    -H "Title: Glaurung — echec backup ($DATE)" -d "$1" "$NTFY_URL"
+}
+
+# --- Niveau : full le 1er du mois (reset du snapshot), différentiel les autres jours
+# (toujours recalculé contre ce full, pas en chaine — cf. TODO.md) ---
+SNAR="$SNAPSHOT_DIR/glaurung.snar"
+if [ "$DAY" = "01" ]; then
+  rm -f "$SNAR"
+fi
+
+FS_PATHS=(
+{% for p in backup_fs_paths %}
+  "{{ p }}"
+{% endfor %}
+)
+
+tar --create --listed-incremental="$SNAR" --gzip --ignore-failed-read \
+  --file="$DEST/fs.tar.gz" "${FS_PATHS[@]}" 2> "$DEST/tar.err"
+rc=$?
+# tar renvoie 1 pour "fichier modifié pendant la lecture" (non fatal), 2+ = erreur réelle
+if [ "$rc" -ge 2 ]; then
+  alert "tar (rc=$rc): $(cat "$DEST/tar.err")"
+fi
+
+# --- MariaDB natif hôte (root@localhost via auth_socket, pas de mot de passe) ---
+if ! mysqldump --single-transaction --databases {{ backup_mysql_databases | join(' ') }} \
+    2> "$DEST/mysqldump.err" | gzip > "$DEST/mariadb.sql.gz"; then
+  alert "mysqldump: $(cat "$DEST/mysqldump.err")"
+fi
+
+# --- Postgres TT-RSS (conteneur Docker, credentials lus depuis le .env existant) ---
+if [ -f "$TTRSS_ENV" ]; then
+  TTRSS_DB_USER=$(grep -oP '(?<=^TTRSS_DB_USER=).*' "$TTRSS_ENV")
+  TTRSS_DB_NAME=$(grep -oP '(?<=^TTRSS_DB_NAME=).*' "$TTRSS_ENV")
+  TTRSS_DB_PASS=$(grep -oP '(?<=^TTRSS_DB_PASS=).*' "$TTRSS_ENV")
+  if ! docker exec -e PGPASSWORD="$TTRSS_DB_PASS" "$TTRSS_PG_CONTAINER" \
+      pg_dump -U "$TTRSS_DB_USER" "$TTRSS_DB_NAME" \
+      2> "$DEST/pgdump.err" | gzip > "$DEST/ttrss-postgres.sql.gz"; then
+    alert "pg_dump: $(cat "$DEST/pgdump.err")"
+  fi
+else
+  alert "ttrss .env introuvable ($TTRSS_ENV), pg_dump non execute"
+fi
+
+# --- Chiffrement asymetrique (clé publique seule, pas de trousseau necessaire) ---
+# Chaque fichier en clair est supprime des qu'il est chiffre avec succes : la fenetre
+# ou du contenu non chiffre existe sur disque est la plus courte possible.
+for f in "$DEST"/*.tar.gz "$DEST"/*.sql.gz; do
+  [ -f "$f" ] || continue
+  if gpg --batch --yes --recipient-file "$GPG_PUBKEY" --encrypt --output "$f.gpg" "$f"; then
+    rm -f "$f"
+    chgrp "$EXPORT_GROUP" "$f.gpg"
+    chmod 0640 "$f.gpg"
+  else
+    alert "gpg encrypt failed for $f"
+  fi
+done
+
+# Nettoyage des erreurs vides (pas d'intérêt à garder un fichier .err de 0 octet)
+find "$DEST" -maxdepth 1 -name "*.err" -empty -delete
+
+# Le dossier du jour devient traversable par le groupe cedric seulement maintenant
+# (plus aucun fichier en clair dedans a ce stade) — necessaire pour que le pull M6
+# (compte cedric) puisse atteindre les .gpg.
+chgrp "$EXPORT_GROUP" "$DEST"
+chmod 0750 "$DEST"
+
+# --- Retention locale (garde-fou si le pull M6 echoue un jour) ---
+find "$EXPORT_DIR" -maxdepth 1 -mindepth 1 -type d -mtime "+$LOCAL_RETENTION_DAYS" -exec rm -rf {} \;

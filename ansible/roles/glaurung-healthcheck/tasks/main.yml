@@ -23,9 +23,16 @@
     group: root
     mode: "0750"
 
-- name: Planifier le cron glaurung-healthcheck
+- name: Supprimer l'ancienne entrée crontab root (posée avant adr-cron-toujours-etc-cron-d)
   cron:
     name: "glaurung-healthcheck"
+    state: absent
+    user: root
+
+- name: Planifier le cron glaurung-healthcheck (/etc/cron.d/, cf. adr-cron-toujours-etc-cron-d)
+  cron:
+    name: "glaurung-healthcheck"
+    cron_file: glaurung-healthcheck
     minute: "{{ healthcheck_cron_minute }}"
     job: "{{ healthcheck_script_dir }}/glaurung-healthcheck.sh >> /var/log/glaurung-healthcheck.log 2>&1"
     user: root

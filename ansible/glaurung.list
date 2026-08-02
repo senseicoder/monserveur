@@ -10,3 +10,4 @@ vaultwarden-deploy
 rat-setup
 ntfy-deploy
 glaurung-healthcheck
+backup-setup

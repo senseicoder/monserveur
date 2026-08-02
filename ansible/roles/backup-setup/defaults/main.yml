@@ -1,0 +1,64 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml / vault.yml :
+#   ntfy_domain             — domaine ntfy (ex. ntfy.daneel.net)
+#   ntfy_healthcheck_token  — token ntfy (compte admin, réutilisé — accès à tous les topics)
+
+backup_root: /opt/backup
+backup_snapshot_dir: "{{ backup_root }}/snapshots"
+
+# Répertoire SÉPARÉ de backup_root : ne contient que des fichiers déjà chiffrés
+# (asymétrique, sans intérêt sans la clé privée). Groupe cedric + 0750 pour que le
+# compte SSH cedric (utilisé par M6 pour le pull) puisse les lire, SANS accès root ni
+# à backup_root (qui contient backup.sh, lequel embarque le token ntfy en clair) ni au
+# reste du système.
+backup_export_dir: /opt/backup-export
+backup_export_group: cedric
+
+# Clé publique GPG déployée manuellement le 2026-08-02 (scp) en attendant que ce rôle
+# existe — ce rôle la déplace sous backup_root avec les bonnes permissions.
+backup_gpg_pubkey_src: /home/cedric/glaurung-backup-pub.asc
+backup_gpg_pubkey_path: "{{ backup_root }}/glaurung-backup-pub.asc"
+
+# Garde-fou local : si le pull M6 échoue un jour, on garde quand même N jours ici.
+backup_local_retention_days: 3
+
+backup_ntfy_topic: glaurung-backup
+backup_cron_hour: 3
+backup_cron_minute: 30
+
+# Chemins sauvegardés chaque jour (tar --listed-incremental, full le 1er du mois).
+backup_fs_paths:
+  - /opt/mindwtr/data/cloud
+  - /opt/mindwtr/data/vaultwarden
+  - /opt/mindwtr/data/ntfy
+  - /etc/letsencrypt
+  - /opt/rat/data
+  - /home/cedric/bot1
+  - /home/cedric/chatbot
+  - /home/cedric/chatbots
+  - /home/cedric/inbox0
+  - /home/cedric/oneclickpocket
+  - /home/cedric/mbox
+
+# MariaDB natif hôte — bases identifiées dans wiki postes/glaurung.md § Bases de données.
+# ttrss = ancienne base MySQL, TT-RSS tourne maintenant sur Postgres (cf. ci-dessous) :
+# à vérifier si encore utilisée avant de la retirer d'ici.
+backup_mysql_databases:
+  - VOOSO
+  - ttrss
+
+# Postgres TT-RSS (volume Docker ttrss-docker_db) — credentials lus depuis le .env
+# du docker-compose existant, pas dupliqués dans le vault Ansible.
+backup_ttrss_env_file: /home/cedric/ttrss-docker/.env
+backup_ttrss_pg_container: ttrss-docker-db-1
+
+# Backup PONCTUEL (tag vhost-code-once, pas dans le cron quotidien) : code des vhosts,
+# censé ne plus changer. Les docroots de lescoursdesophie.com/VOOSO sous /var/www sont
+# des symlinks vers /space/www/apps/ (vérifié 2026-08-02) — c'est bien /space/www/apps
+# qu'il faut archiver, pas /var/www/*.
+backup_vhost_code_paths_once:
+  - /space/www/apps
+  - /var/www/bots.plcoder.net
+  - /var/www/relaibruno.daneel.net
+  - /etc/apache2/sites-available
+  - /etc/apache2/sites-archive
