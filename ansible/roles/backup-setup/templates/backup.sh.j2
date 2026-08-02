@@ -41,6 +41,9 @@ FS_PATHS=(
 tar --create --listed-incremental="$SNAR" --gzip --ignore-failed-read \
   --file="$DEST/fs.tar.gz" "${FS_PATHS[@]}" 2> "$DEST/tar.err"
 rc=$?
+# Message informatif systematique de tar (pas une erreur), sinon pollue l'export a chaque run
+grep -v "Removing leading .\/. from member names" "$DEST/tar.err" > "$DEST/tar.err.tmp" \
+  && mv "$DEST/tar.err.tmp" "$DEST/tar.err"
 # tar renvoie 1 pour "fichier modifié pendant la lecture" (non fatal), 2+ = erreur réelle
 if [ "$rc" -ge 2 ]; then
   alert "tar (rc=$rc): $(cat "$DEST/tar.err")"
