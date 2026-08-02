@@ -1,0 +1,4 @@
+---
+# Montage sshfs Gandi (non persistant -- à remonter manuellement si retombé) :
+# sshfs 121723@sftp.sd3.gpaas.net:/ /home/cedric/srvgandi -o reconnect
+phpbb_integralsport_gandi_htdocs: "/home/cedric/srvgandi/vhosts/www.integralsport.com/htdocs"

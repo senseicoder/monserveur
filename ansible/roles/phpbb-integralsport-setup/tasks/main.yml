@@ -102,7 +102,7 @@
 
 # Répertoires de données runtime (writable par www-data, uid 33 dans l'image
 # php:apache Debian) -- jamais le code, cuit dans l'image (cf. Dockerfile.j2).
-- name: Créer les répertoires de données runtime (writable www-data)
+- name: Créer les répertoires de données runtime écrits uniquement par le conteneur
   ansible.builtin.file:
     path: "{{ phpbb_integralsport_deploy_dir }}/data/{{ item }}"
     state: directory
@@ -112,8 +112,26 @@
   loop:
     - cedric-cache
     - cedric-journaux
-    - cedric-rss
     - cache
+
+# Owner cedric (pas www-data) : ces 3 dossiers sont aussi rsync par
+# phpbb-integralsport-importdata en tant que cedric, sans become (sudo non-
+# interactif indisponible sur la connexion synchronize -- même contrainte que
+# rat-migratefromgandi). rsync --archive tente de préserver les mtimes du
+# dossier lui-même, ce qui échoue ("Operation not permitted") si le process
+# n'est pas propriétaire du dossier, même avec des bits 0777 (constaté).
+# Mode 0777 : www-data (uid 33, "other" ici) garde un accès complet malgré
+# n'être pas le propriétaire. VPS perso mono-utilisateur, pas de risque
+# multi-tenant.
+- name: Créer les répertoires de données runtime aussi rsync depuis Gandi
+  ansible.builtin.file:
+    path: "{{ phpbb_integralsport_deploy_dir }}/data/{{ item }}"
+    state: directory
+    owner: cedric
+    group: cedric
+    mode: "0777"
+  loop:
+    - cedric-rss
     - files
     - images-avatars
 

@@ -1,16 +1,12 @@
 ---
 # phpbb-integralsport-importdata : importe le dump prod réel (déjà rapatrié
-# localement, pas de montage Gandi -- contrairement à rat, phpBB n'a pas de
-# contenu statique volumineux sur disque Gandi en dehors des uploads
-# utilisateurs, hors périmètre de cette première passe, cf. wiki). Rejouable
-# indépendamment de phpbb-integralsport-setup (rafraîchir les données sans
-# reconstruire l'image). Prérequis : phpbb-integralsport-setup déjà passé
-# (base + compte + config.php + conteneur existants).
-#
-# Hors périmètre de ce rôle (à faire dans une passe ultérieure si besoin) :
-# images/avatars, files/ (pièces jointes), cedric/rss (cache RSS) -- restent
-# vides pour cette première migration de test, le forum reste fonctionnel
-# sans (juste des avatars/pièces jointes manquants).
+# localement) + les uploads utilisateurs réels depuis le montage sshfs Gandi
+# (avatars, pièces jointes, cache RSS -- contrairement à rat, pas de code
+# à rapatrier, juste des données). Rejouable indépendamment de
+# phpbb-integralsport-setup (rafraîchir les données sans reconstruire
+# l'image). Prérequis : phpbb-integralsport-setup déjà passé (base + compte
+# + config.php + conteneur existants) ET montage sshfs Gandi actif (cf.
+# defaults/main.yml) pour la partie uploads.
 
 - name: Copier le dump prod (déjà rapatrié) vers glaurung pour import
   ansible.builtin.copy:
@@ -63,3 +59,33 @@
   ansible.builtin.file:
     path: "/tmp/{{ phpbb_integralsport_dump_file }}"
     state: absent
+
+# --- Uploads utilisateurs réels depuis Gandi (avatars, pièces jointes, cache RSS) ---
+# Source résolue sur le CONTROLLER (ce poste, via le montage sshfs), destination sur
+# glaurung -- ansible.posix.synchronize pousse par défaut depuis le controller vers la
+# cible (mode "push"), même pattern que rat-migratefromgandi. Le montage sshfs n'est
+# pas persistant : le remonter manuellement si retombé (cf. defaults/main.yml).
+
+- name: Synchroniser les avatars réels depuis Gandi
+  ansible.posix.synchronize:
+    src: "{{ phpbb_integralsport_gandi_htdocs }}/images/avatars/"
+    dest: "{{ phpbb_integralsport_deploy_dir }}/data/images-avatars/"
+    rsync_opts:
+      - "--chmod=Fugo+r,Dugo+rx"
+  become: false
+
+- name: Synchroniser les pièces jointes réelles depuis Gandi
+  ansible.posix.synchronize:
+    src: "{{ phpbb_integralsport_gandi_htdocs }}/files/"
+    dest: "{{ phpbb_integralsport_deploy_dir }}/data/files/"
+    rsync_opts:
+      - "--chmod=Fugo+rw,Dugo+rwx"
+  become: false
+
+- name: Synchroniser le cache RSS réel depuis Gandi
+  ansible.posix.synchronize:
+    src: "{{ phpbb_integralsport_gandi_htdocs }}/cedric/rss/"
+    dest: "{{ phpbb_integralsport_deploy_dir }}/data/cedric-rss/"
+    rsync_opts:
+      - "--chmod=Fugo+rw,Dugo+rwx"
+  become: false
