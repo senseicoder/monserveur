@@ -40,6 +40,27 @@
   loop_control:
     label: "{{ item.domain }}"
 
+# --- Conversion d'encodage des données spécifiques par site ---
+# rat_code/admin (générique) sont déjà en UTF-8 depuis les tickets 2B/2C
+# du repo rat-git. Les données rsync'ées ci-dessus (rat_sites/, modeles/)
+# viennent de Gandi et restent en ISO-8859-1 -- mojibake constaté sur
+# toutes les pages utilisant un template encore dans cet état (cf. wiki
+# migration-rat-docker.md, section "Mojibake confirmé sur les templates
+# spécifiques par site", 2026-08-03). Idempotent : un fichier déjà en
+# UTF-8 valide est laissé intact, rejouable sans risque à chaque rafraîchissement
+# de données.
+
+- name: Convertir l'encodage ISO-8859-1 -> UTF-8 des données spécifiques par site
+  ansible.builtin.script:
+    cmd: "files/convert-site-encoding.sh {{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs"
+  become: false
+  loop: "{{ rat_sites }}"
+  loop_control:
+    label: "{{ item.domain }}"
+  register: rat_encoding_conversion
+  changed_when: "'CONVERTI' in rat_encoding_conversion.stdout"
+  tags: [encoding-convert]
+
 # --- Import des dumps prod dans les bases (créées vides par rat-setup) ---
 
 - name: Copier les dumps prod (déjà rapatriés) vers glaurung pour import
