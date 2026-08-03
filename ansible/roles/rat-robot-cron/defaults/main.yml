@@ -1,0 +1,12 @@
+---
+# Nom du conteneur docker-compose rat-web (project "rat", service "rat-web",
+# nommage docker-compose v1 avec trait d'union) -- vérifié via `docker ps` sur
+# glaurung le 2026-08-04. Même convention que backup_ttrss_pg_container
+# (backup-setup) : hardcodé plutôt que résolu dynamiquement, pas de gain de
+# robustesse réel ici (un seul conteneur rat-web possible sur cet hôte).
+rat_robot_container: "rat-rat-web-1"
+
+# Horaire de l'ancien cron Gandi (anacrontab `pds_robot`/`plc_robot`) : "1@hourly"
+# -- reproduit à l'identique (toutes les heures, à la minute 0).
+rat_robot_cron_minute: "0"
+rat_robot_cron_hour: "*"

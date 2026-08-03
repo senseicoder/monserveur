@@ -1,0 +1,22 @@
+#!/bin/bash
+# Généré par le rôle Ansible "rat-robot-cron" -- ne pas éditer à la main sur le
+# serveur.
+#
+# Reprend l'ancien cron Gandi (anacrontab, entrées pds_robot/plc_robot) :
+# admin/robot.php vérifie la joignabilité des liens (bookmarks + petites
+# annonces, cf. rat_code/modules/{bookmarks,pa}/robot.fonc.php) pour TOUS les
+# sites de la base à laquelle il se connecte -- pas de filtre par site dans le
+# script lui-même, la DB effective dépend du config.php du vhost invoqué.
+# D'où un exec docker par domaine (un par base : rat_plc, pds), pas un seul
+# appel global.
+#
+# -w obligatoire : rat_code/rat.php cherche rat_donnees/config.php relatif au
+# CWD (entre autres pistes) -- sans working directory = htdocs du site, le
+# CLI échoue sur "config.php non trouvé" (vérifié en réel le 2026-08-04,
+# absent du bootstrap HTTP puisque Apache fixe DOCUMENT_ROOT lui-même).
+set -euo pipefail
+
+{% for site in rat_sites %}
+echo "=== {{ site.domain }} ($(date '+%F %T')) ==="
+docker exec -w {{ rat_container_docroot_root }}/{{ site.domain }}/htdocs {{ rat_robot_container }} php admin/robot.php
+{% endfor %}

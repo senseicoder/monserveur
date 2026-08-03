@@ -2,3 +2,7 @@
 # pas de bascule DNS/HTTPS).
 rat-setup
 rat-migratefromgandi
+
+# Pilotage par cron VM du robot de vérification de liens (reprend l'ancien cron
+# Gandi pds_robot/plc_robot, ce dernier réactivé le 2026-08-04).
+rat-robot-cron

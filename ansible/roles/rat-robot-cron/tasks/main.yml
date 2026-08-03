@@ -1,0 +1,28 @@
+---
+# rat-robot-cron : pilotage par cron de la VM (glaurung) du robot de
+# vérification de liens rat (bookmarks + petites annonces), exécuté via
+# `docker exec` dans le conteneur rat-web déjà déployé (rat-setup). Reprend
+# l'ancien cron Gandi (anacrontab pds_robot/plc_robot) -- plc_robot était
+# désactivé sur Gandi (oubli, pas un choix, confirmé avec Cédric le
+# 2026-08-04) : réactivé ici pour les 2 sites (www.plcoder.net et
+# www.placedusport2.com).
+
+- name: Déployer le script robot-cron.sh
+  ansible.builtin.template:
+    src: robot-cron.sh.j2
+    dest: "{{ rat_deploy_dir }}/robot-cron.sh"
+    owner: root
+    group: root
+    mode: "0750"
+
+# Cron toujours via /etc/cron.d/, jamais crontab utilisateur -- cf.
+# adr-cron-toujours-etc-cron-d (wiki), déjà appliqué à backup-setup et
+# glaurung-healthcheck.
+- name: Planifier le cron root du robot rat (liens bookmarks/petites annonces)
+  ansible.builtin.cron:
+    name: rat-robot
+    cron_file: rat-robot
+    minute: "{{ rat_robot_cron_minute }}"
+    hour: "{{ rat_robot_cron_hour }}"
+    job: "{{ rat_deploy_dir }}/robot-cron.sh >> /var/log/rat-robot.log 2>&1"
+    user: root
