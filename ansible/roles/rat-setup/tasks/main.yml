@@ -99,6 +99,14 @@
       path: "/home/cedric/www/c/rat-git"
       dockerfile: "docker/Dockerfile.prod"
       pull: true
+      # Sans nocache, les instructions dont le contexte n'a pas changé (ex.
+      # COPY admin, si le dossier n'a pas bougé depuis le dernier build)
+      # réutilisent leur couche mise en cache localement -- suspect n°1 dans
+      # le bug "admin/ fantôme avec HTMLArea" vu sur glaurung (aufs storage
+      # driver), 2026-08-03. nocache garantit une extraction de couche
+      # vraiment neuve à chaque build, pas juste un nouveau tag sur les
+      # mêmes couches.
+      nocache: true
     source: build
     # Sans force_source, le module ne reconstruit pas si un tag du même nom
     # existe déjà en local -- même si le Dockerfile source a changé (constaté :
@@ -176,9 +184,9 @@
   ansible.builtin.file:
     path: "{{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs/admin"
     state: directory
-    owner: cedric
-    group: cedric
-    mode: "0755"
+    owner: "33"    # www-data dans l'image php:apache -- get.php est écrit à
+    group: "33"    # la génération (fopen($fichier,'w') dans admincore/regenere.fonc.php),
+    mode: "0775"   # même besoin que rat_donnees/{journaux,sessions,...} ci-dessous.
   loop: "{{ rat_sites }}"
   loop_control:
     label: "{{ item.domain }}"
