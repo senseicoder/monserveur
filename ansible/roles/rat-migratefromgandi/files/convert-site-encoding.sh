@@ -15,7 +15,10 @@
 # Idempotent : un fichier déjà en UTF-8 valide est laissé intact (détecté
 # via `iconv -f UTF-8 -t UTF-8`, qui échoue sur du latin1 pur contenant des
 # octets hauts). Ne touche qu'aux extensions texte connues (php/html/htm/
-# txt/css/js/xml) -- jamais aux images/archives/binaires.
+# txt/css/js/xml) -- jamais aux images/archives/binaires. Exclut
+# explicitement rat_donnees/ (credentials config.php, permissions
+# www-data distinctes du reste -- exclu par le rsync amont pour la même
+# raison, cf. rat-migratefromgandi/tasks/main.yml).
 
 set -euo pipefail
 
@@ -36,7 +39,11 @@ while IFS= read -r -d '' f; do
     continue
   fi
 
-  tmp="$(mktemp "${f}.XXXXXX")"
+  if ! tmp="$(mktemp "${f}.XXXXXX" 2>/dev/null)"; then
+    failed=$((failed + 1))
+    echo "ECHEC (mktemp, permission ?) : $f" >&2
+    continue
+  fi
   if iconv -f ISO-8859-1 -t UTF-8 "$f" -o "$tmp" 2>/dev/null; then
     chmod --reference="$f" "$tmp"
     mv "$tmp" "$f"
@@ -51,7 +58,7 @@ while IFS= read -r -d '' f; do
     failed=$((failed + 1))
     echo "ECHEC (ni UTF-8 ni ISO-8859-1 valide, ignoré) : $f" >&2
   fi
-done < <(find "$TARGET_DIR" -type f \( \
+done < <(find "$TARGET_DIR" -type d -name rat_donnees -prune -o -type f \( \
     -iname "*.php" -o -iname "*.html" -o -iname "*.htm" -o \
     -iname "*.txt" -o -iname "*.css" -o -iname "*.js" -o -iname "*.xml" \
   \) -print0)
