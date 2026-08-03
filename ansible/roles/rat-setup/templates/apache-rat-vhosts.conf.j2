@@ -19,3 +19,22 @@
     CustomLog /proc/self/fd/1 combined
 </VirtualHost>
 {% endfor %}
+{# Sites logiques secondaires (rat_site_aliases, group_vars/all/vars.yml) --
+   même base/install qu'un site de rat_sites ci-dessus, DocumentRoot pointant
+   directement dans son sous-dossier rat_sites/<nom>/ (pas de nouveau
+   bind-mount : déjà couvert par celui du site_domain parent). #}
+{% for alias in rat_site_aliases | default([]) %}
+<VirtualHost *:80>
+    ServerName {{ alias.domain }}
+    DocumentRoot {{ rat_container_docroot_root }}/{{ alias.site_domain }}/htdocs/{{ alias.chemin }}
+
+    <Directory {{ rat_container_docroot_root }}/{{ alias.site_domain }}/htdocs/{{ alias.chemin }}>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog /proc/self/fd/2
+    CustomLog /proc/self/fd/1 combined
+</VirtualHost>
+{% endfor %}

@@ -47,6 +47,28 @@ rat_sites:
     serveur_nom: "PlaceDuSport2.com"
     contact_verscourrier: true
 
+# Sites logiques secondaires de rat_plc (même base, même install physique que
+# www.plcoder.net -- pas une nouvelle install, juste un domaine + un dossier
+# rat_sites/<nom>/ différent). Confirmés via la table ratsites (sit_actif=1)
+# le 2026-08-04 : donnees déjà présentes sous www.plcoder.net/htdocs/rat_sites/
+# (rsyncées avec le vhost principal, rien à rapatrier). Décision Cédric du
+# même jour : DocumentRoot Apache direct vers le sous-dossier (pas de symlink
+# filesystem supplémentaire), migration à blanc d'abord (pas de bascule DNS
+# réelle -- test via curl --resolve/-H Host comme rat_sites).
+rat_site_aliases:
+  - domain: donjon.daneel.net
+    site_domain: www.plcoder.net
+    chemin: rat_sites/donjon
+  - domain: www.daneel.net
+    site_domain: www.plcoder.net
+    chemin: rat_sites/daneel
+  - domain: mariage.daneel.net
+    site_domain: www.plcoder.net
+    chemin: rat_sites/mariage
+  - domain: cedric.daneel.net
+    site_domain: www.plcoder.net
+    chemin: rat_sites/cedric
+
 # phpBB integralsport.com — déploiement de test protégé (BasicAuth), version
 # master (sans les PR de sécurité en cours de revue), décision Cédric 2026-08-02
 # Ici (pas dans les defaults d'un rôle) car partagé entre phpbb-integralsport-setup
