@@ -26,6 +26,16 @@ services:
       - "traefik.http.routers.rat-{{ site.site_central | lower }}.entrypoints=mindwtr,websecure"
       - "traefik.http.routers.rat-{{ site.site_central | lower }}.tls=true"
 {% endfor %}
+{# Sites logiques secondaires (rat_site_aliases) : même service/port, mais
+   Traefik a besoin de son propre routeur par domaine -- sans ça, l'Apache
+   interne (vhost déjà configuré, cf. apache-rat-vhosts.conf.j2) n'est jamais
+   atteint (404 systématique, constaté le 2026-08-04). #}
+{% for alias in rat_site_aliases | default([]) %}
+      - "traefik.http.routers.rat-alias-{{ loop.index }}.rule=Host(`{{ alias.domain }}`)"
+      - "traefik.http.routers.rat-alias-{{ loop.index }}.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.rat-alias-{{ loop.index }}.tls=true"
+      - "traefik.http.routers.rat-alias-{{ loop.index }}.service=rat-web"
+{% endfor %}
       - "traefik.http.services.rat-web.loadbalancer.server.port=80"
 
 networks:
