@@ -46,7 +46,7 @@ COPY docker/apache-rat-vhosts.conf /etc/apache2/sites-available/rat-vhosts.conf
 RUN a2dissite 000-default && a2ensite rat-vhosts
 
 # Code générique cuit dans l'image (pas de bind-mount), à un chemin neutre
-# hors de l'arborescence bind-montée /srv/data/web/vhosts/<domaine>/htdocs/ --
+# hors de l'arborescence bind-montée (rat_container_docroot_root/<domaine>/htdocs) --
 # rat_code/admin sont accédés via un symlink créé côté hôte dans chaque
 # htdocs (voir rat-setup/tasks/main.yml), pointant vers ce chemin interne au
 # conteneur. Une seule copie sert les deux domaines (même code). Chemins

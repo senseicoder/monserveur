@@ -136,7 +136,7 @@
 # unable to read htaccess file, denying access to be safe").
 - name: Créer le dossier htdocs de chaque site (owner cedric, pour le rsync sans become)
   ansible.builtin.file:
-    path: "{{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs"
+    path: "{{ rat_site_data_root }}/{{ item.domain }}/htdocs"
     state: directory
     owner: cedric
     group: cedric
@@ -153,7 +153,7 @@
 # uniquement l'image le porte.
 - name: Créer le symlink rat_code vers le code cuit dans l'image
   ansible.builtin.file:
-    path: "{{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs/rat_code"
+    path: "{{ rat_site_data_root }}/{{ item.domain }}/htdocs/rat_code"
     src: "/opt/rat-code/rat_code"
     state: link
     force: true
@@ -182,7 +182,7 @@
 
 - name: Créer le dossier admin/ réel de chaque site
   ansible.builtin.file:
-    path: "{{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs/admin"
+    path: "{{ rat_site_data_root }}/{{ item.domain }}/htdocs/admin"
     state: directory
     owner: "33"    # www-data dans l'image php:apache -- get.php est écrit à
     group: "33"    # la génération (fopen($fichier,'w') dans admincore/regenere.fonc.php),
@@ -193,7 +193,7 @@
 
 - name: Créer les symlinks fichier-par-fichier pour le contenu statique de admin/
   ansible.builtin.file:
-    path: "{{ rat_deploy_dir }}/data/{{ item.0.domain }}/htdocs/admin/{{ item.1 | basename }}"
+    path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/admin/{{ item.1 | basename }}"
     src: "/opt/rat-code/admin/{{ item.1 | basename }}"
     state: link
     force: true
@@ -207,7 +207,7 @@
 
 - name: Créer l'arborescence rat_donnees writable de chaque site
   ansible.builtin.file:
-    path: "{{ rat_deploy_dir }}/data/{{ item.0.domain }}/htdocs/rat_donnees/{{ item.1 }}"
+    path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/rat_donnees/{{ item.1 }}"
     state: directory
     owner: "33"    # www-data dans l'image php:apache (Debian)
     group: "33"
@@ -222,7 +222,7 @@
 # directory" en boucle pendant la génération.
 - name: Créer le sous-dossier journaux/<site_central> de chaque site
   ansible.builtin.file:
-    path: "{{ rat_deploy_dir }}/data/{{ item.domain }}/htdocs/rat_donnees/journaux/{{ item.site_central }}"
+    path: "{{ rat_site_data_root }}/{{ item.domain }}/htdocs/rat_donnees/journaux/{{ item.site_central }}"
     state: directory
     owner: "33"
     group: "33"
@@ -234,7 +234,7 @@
 - name: Déployer le config.php adapté de chaque site
   ansible.builtin.template:
     src: config.php.j2
-    dest: "{{ rat_deploy_dir }}/data/{{ site.domain }}/htdocs/rat_donnees/config.php"
+    dest: "{{ rat_site_data_root }}/{{ site.domain }}/htdocs/rat_donnees/config.php"
     owner: "33"
     group: "33"
     mode: "0640"

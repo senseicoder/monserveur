@@ -9,6 +9,18 @@ ipv6_gateway: "2001:41d0:302:2100::1"
 
 # rat — étape 4 : déploiement de test (migration à blanc, pas de bascule DNS/HTTPS)
 rat_deploy_dir: "/opt/rat"
+# Racine du dossier de données par site, côté hôte. Ici (pas dans les defaults
+# d'un rôle) car partagé entre rat-setup et rat-migratefromgandi (rôles isolés,
+# pas d'accès aux defaults l'un de l'autre) -- même raison que
+# phpbb_integralsport_* ci-dessous.
+rat_site_data_root: "{{ rat_deploy_dir }}/data"
+# Racine du DocumentRoot vu depuis l'intérieur du conteneur rat-web -- reproduit
+# le chemin absolu Gandi (/srv/data/web/vhosts/<domaine>/htdocs) pour que le
+# code à chemins codés en dur (rss.php, rat_sites/*/index.php, .htaccess)
+# fonctionne sans modification. Partagé entre le vhost Apache interne
+# (apache-rat-vhosts.conf.j2) et le bind-mount du docker-compose
+# (docker-compose.rat.yml.j2).
+rat_container_docroot_root: "/srv/data/web/vhosts"
 rat_repo_url: "git@github.com:senseicoder/rat.git"
 rat_gandi_mount: "/home/cedric/srvgandi/lamp0/web/vhosts"
 rat_sites:
