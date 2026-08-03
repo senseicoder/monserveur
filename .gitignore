@@ -1,2 +1,4 @@
 ansible/.vault_passw.py
 compose/logs/
+graphify-out/cache/last_query_stamp
+graphify-out/cache/stat-index.json
