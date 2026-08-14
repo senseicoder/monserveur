@@ -1,0 +1,4 @@
+---
+fail2ban_ssh_maxretry: 5
+fail2ban_ssh_findtime: 10m
+fail2ban_ssh_bantime: 1h
