@@ -8,16 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Infrastructure as code pour le VPS personnel `glaurung` (Debian 9 stretch). Déploie des services auto-hébergés via Docker + Ansible.
 
-## État de production sur glaurung (au 2026-07-11, tableau réseau mis à jour Phase 2 le 2026-08-02)
-
-**Tableaux vhosts/conteneurs ci-dessous périmés au-delà de la ligne réseau** (ntfy, rat, phpbb-integralsport absents — cf. TODO.md, à refaire entièrement).
+## État de production sur glaurung (mis à jour 2026-08-29)
 
 ### Réseau hôte
 | Port | Bind | Usage |
 |------|------|-------|
 | 22 | 0.0.0.0 | SSH |
 | 80 / 443 | 0.0.0.0 | Traefik v3 (frontal unique depuis Phase 2, 2026-08-02) — voir `PHASE2.md` |
-| 3306 | 127.0.0.1 | MySQL (conteneur `php`) |
+| 3306 | 127.0.0.1 | MySQL natif hôte (bases VOOSO, ttrss) |
 | 8000–8002 | 0.0.0.0 | Chatbots (publics, hors scope) |
 | 8028 | 127.0.0.1 | TT-RSS nginx |
 | 8081 | 127.0.0.1 + 172.18.0.1 | Apache2 — backend interne depuis Phase 2 (plus de bind public), joignable uniquement depuis le réseau Docker `mindwtr` (règle firewall dédiée) |
@@ -27,36 +25,50 @@ Infrastructure as code pour le VPS personnel `glaurung` (Debian 9 stretch). Dép
 | 21115-21116 | 0.0.0.0 | RustDesk hbbs (tcp), 21116 aussi udp — hors Traefik ✅ |
 | 21117 | 0.0.0.0 | RustDesk hbbr (tcp) — hors Traefik ✅ |
 
-### Apache2 — vhosts actifs (`/etc/apache2/sites-enabled/`)
-| Vhost | Ports | Notes |
-|-------|-------|-------|
-| `mindwtr.daneel.net` | 80 | Vhost certbot webroot (géré par ce repo) |
-| `reader.daneel.net` | 80 + 443 | → proxy ttrss (127.0.0.1:8028) |
-| `bots.plcoder.net` | 80 + 443 | → chatbots |
-| `lescoursdesophie.com` | 80 | |
-| `ssl.lescoursdesophie.com` | 80 | |
-| `sophie.daneel.net` | 80 | |
-| `sslsophie.daneel.net` | 80 | |
+### Apache2 — vhosts backend actifs (`/etc/apache2/sites-enabled/`, port 8081)
 
-Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**. Certs : `bots.plcoder.net`, `reader.daneel.net`, `mindwtr.daneel.net`, `vault.daneel.net`.
+Phase 2 : Apache est uniquement backend interne (172.18.0.1:8081). Les vhosts ci-dessous sont des vhosts certbot webroot minimaux (challenge /.well-known/) ou des proxys legacy.
+
+| Vhost | Notes |
+|-------|-------|
+| `mindwtr.daneel.net` | certbot webroot (rôle `mindwtr-cloud-deploy`) |
+| `vault.daneel.net` | certbot webroot (rôle `vaultwarden-deploy`) |
+| `ntfy.daneel.net` | certbot webroot (rôle `ntfy-deploy`) |
+| `pub.daneel.net` | certbot webroot (rôle `pub-daneel-net-setup`) |
+| `migration.integralsport.com` | certbot webroot (rôle `phpbb-integralsport-setup`) |
+| `reader.daneel.net` | → proxy ttrss (127.0.0.1:8028) |
+| `bots.plcoder.net` | → chatbots (:8000–8002) |
+| `lescoursdesophie.com` | legacy hors scope |
+| `ssl.lescoursdesophie.com` | legacy hors scope |
+| `sophie.daneel.net` | legacy hors scope |
+| `sslsophie.daneel.net` | legacy hors scope |
+
+Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**. Certs actifs : `mindwtr.daneel.net`, `vault.daneel.net`, `ntfy.daneel.net`, `pub.daneel.net`, `migration.integralsport.com`, `bots.plcoder.net`, `reader.daneel.net`.
+
+Les domaines `rat_sites` (plcoder.net, placedusport2.com) et `rat_site_aliases` (donjon/daneel/mariage/cedric.daneel.net) ont leurs vhosts Apache **à l'intérieur du conteneur `rat-web`** (pas dans apache-backend), servi en Phase 2 par Traefik directement.
 
 ### Conteneurs Docker actifs
-| Conteneur | Image | Notes |
-|-----------|-------|-------|
-| `traefik` | `traefik:v3` | Port 8787/HTTPS, réseau mindwtr ✅ |
-| `mindwtr-cloud` | `ghcr.io/dongdongbh/mindwtr-cloud:latest` | Healthy, réseau mindwtr ✅ |
-| `vaultwarden` | `vaultwarden/server:1.37.0` | vault.daneel.net:8787, réseau mindwtr |
-| `php` | `debian:11` | Shell PHP ponctuel, lancé manuellement hors Compose |
-| `ttrss-docker-*` (×4) | `cthulhoo/ttrss-*` + `postgres:12-alpine` | Géré depuis `~/ttrss-docker/` |
-| `rustdesk-hbbs` | `rustdesk/rustdesk-server:latest` | Ports directs sur l'hôte, hors réseau Docker mindwtr ✅ |
-| `rustdesk-hbbr` | `rustdesk/rustdesk-server:latest` | Ports directs sur l'hôte, hors réseau Docker mindwtr ✅ |
+| Conteneur | Image | Domaine / accès | Réseau |
+|-----------|-------|-----------------|--------|
+| `traefik` | `traefik:v3` | 80 + 443 + 8787 | mindwtr |
+| `mindwtr-cloud` | `ghcr.io/dongdongbh/mindwtr-cloud:latest` | mindwtr.daneel.net | mindwtr |
+| `vaultwarden` | `vaultwarden/server:1.37.0` | vault.daneel.net | mindwtr |
+| `ntfy` | `binwiederhier/ntfy` | ntfy.daneel.net | mindwtr |
+| `rat-web` | `ghcr.io/senseicoder/rat-web:VERSION` | plcoder.net, placedusport2.com + 4 aliases | mindwtr |
+| `pub-daneel-net-web` | `nginx:1.27-alpine` | pub.daneel.net (http + https) | mindwtr |
+| `phpbb-integralsport-web` | `ghcr.io/senseicoder/phpbb-integralsport:VERSION` | migration.integralsport.com (BasicAuth) | mindwtr |
+| `ttrss-docker-*` (×4) | `cthulhoo/ttrss-*` + `postgres:12-alpine` | reader.daneel.net — géré depuis `~/ttrss-docker/` | ttrss-docker_default |
+| `rustdesk-hbbs` | `rustdesk/rustdesk-server:latest` | ports directs :21115-21116 | hôte |
+| `rustdesk-hbbr` | `rustdesk/rustdesk-server:latest` | port direct :21117 | hôte |
+
+VERSION = fichier `roles/rat-setup/files/rat-web.version` / `roles/phpbb-integralsport-setup/files/phpbb-integralsport.version` respectivement.
 
 ### Réseaux Docker existants
 | Réseau | Subnet | Conteneurs |
 |--------|--------|------------|
-| `bridge` | 172.17.0.0/16 | php |
+| `bridge` | 172.17.0.0/16 | (défaut Docker, plus de conteneur actif) |
 | `ttrss-docker_default` | 172.23.0.0/16 | stack ttrss |
-| `mindwtr` | (auto) | traefik, mindwtr-cloud |
+| `mindwtr` | auto IPv4 + fd00:0:0:1::/64 | traefik, mindwtr-cloud, vaultwarden, ntfy, rat-web, pub-daneel-net-web, phpbb-integralsport-web |
 
 ### Firewall
 **INPUT ACCEPT sans règle** — pas de pare-feu hôte. Docker injecte ses règles en PREROUTING/DNAT, ce qui contourne INPUT. Filtrage Docker à faire via chaîne `DOCKER-USER`.
