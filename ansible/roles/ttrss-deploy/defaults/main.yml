@@ -1,0 +1,17 @@
+---
+# ttrss_deploy_dir, ttrss_domain, ttrss_db_user, ttrss_db_name, ttrss_db_password,
+# ttrss_self_url définis dans group_vars/all/vars.yml (partagés avec le vhost
+# apache-backend reader.daneel.net).
+
+ttrss_app_image: "cthulhoo/ttrss-fpm-pgsql-static:latest"
+ttrss_nginx_image: "cthulhoo/ttrss-web-nginx:latest"
+ttrss_updater_image: "cthulhoo/ttrss-updater:latest"
+ttrss_db_image: "postgres:12-alpine"
+
+# Port exposé sur l'hôte pour la compatibilité avec le proxy Apache actuel (reader.daneel.net).
+# Lier sur 127.0.0.1 uniquement — Traefik routera directement via réseau mindwtr en Phase 2.
+ttrss_nginx_port: "127.0.0.1:8028:80"
+
+# Désactivé par défaut : Traefik route reader.daneel.net via Apache (Phase 2 actuelle).
+# Passer à true pour bypasser Apache et router Traefik directement vers web-nginx.
+ttrss_traefik_enabled: false

@@ -5,3 +5,5 @@ ntfy_healthcheck_token: "CHANGEME"
 # Dashboard Traefik BasicAuth — générer avec :
 #   htpasswd -nB admin | sed 's/\$/\$\$/g'
 traefik_dashboard_htpasswd: "admin:$$2y$$..."
+# TT-RSS — mot de passe Postgres (postgres:12-alpine, base ttrss)
+vault_ttrss_db_password: "CHANGEME"

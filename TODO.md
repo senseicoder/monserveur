@@ -21,7 +21,7 @@
 - [ ] **Test reboot glaurung** : valider le drop-in systemd `apache2.service.d/after-docker.conf` (After=docker.service) en conditions réelles — jamais testé, à planifier avec Cédric (coupure de service pendant le reboot).
 - [ ] **CLAUDE.md périmé** : tableau "État de production" (réseau/vhosts/conteneurs) daté du 2026-07-11, jamais mis à jour depuis (ntfy, rat, phpbb-integralsport absents) — à refaire entièrement, pas juste retoucher pour Phase 2.
 - [ ] **Prérequis pour la bascule réelle de rat** (voir `~/www/c/rat-git/TODO.md`, backlog) : la bascule DNS/HTTPS réelle de `plcoder.net`/`placedusport2.com` suppose un accès public propre sur le port 443 standard — tant que Traefik reste sur `:8787` (non standard), la bascule réelle de rat est bloquée ou nécessite un pont intermédiaire (proxy Apache existant ?) à définir. À trancher avant de lancer la bascule réelle PLC/PDS2.
-- [ ] **TT-RSS** : intégrer `~/ttrss-docker/` dans ce repo (templates `.j2` + vault), labels Traefik sur `web-nginx`
+- [x] **TT-RSS** : intégrer `~/ttrss-docker/` dans ce repo (templates `.j2` + vault), labels Traefik sur `web-nginx` — rôle `ttrss-deploy`, ttrss.list, handler centralisé dans run_role.yml (labels désactivés par défaut, `ttrss_traefik_enabled: false`)
 - [ ] **Dashboard Traefik** : activer derrière BasicAuth (`htpasswd -nB admin`, doubler les `$` dans le YAML)
 - [ ] **Conteneur php** : formaliser le lancement
 - [x] **Backup des données** — plan validé le 2026-08-02, **implémenté et testé de bout en bout le même jour** :

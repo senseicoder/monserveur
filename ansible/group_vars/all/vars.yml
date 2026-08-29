@@ -80,3 +80,13 @@ phpbb_integralsport_db_user: "phpbb_migration"
 phpbb_integralsport_db_password: "{{ vault_phpbb_integralsport_db_password }}"
 phpbb_integralsport_basicauth_hash: "{{ vault_phpbb_integralsport_basicauth_hash }}"
 phpbb_integralsport_dump_file: "phpbb_2026-07-14_00h56m13s.sql.gz"
+
+# TT-RSS — stack cthulhoo/ttrss-docker-compose
+# deploy_dir = /opt/ttrss-docker pour conserver le project_name "ttrss-docker"
+# et ne pas casser les volumes existants ttrss-docker_db / ttrss-docker_app.
+ttrss_deploy_dir: "/opt/ttrss-docker"
+ttrss_domain: "reader.daneel.net"
+ttrss_db_user: "ttrss"
+ttrss_db_name: "ttrss"
+ttrss_db_password: "{{ vault_ttrss_db_password }}"
+ttrss_self_url: "https://{{ ttrss_domain }}/"

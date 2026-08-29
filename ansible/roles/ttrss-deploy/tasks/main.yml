@@ -1,0 +1,33 @@
+---
+- name: Créer le répertoire de déploiement ttrss
+  file:
+    path: "{{ ttrss_deploy_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Déployer docker-compose.yml ttrss
+  template:
+    src: docker-compose.ttrss.yml.j2
+    dest: "{{ ttrss_deploy_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  diff: false
+  notify: restart ttrss
+
+- name: Pull les images ttrss
+  command: docker-compose -f {{ ttrss_deploy_dir }}/docker-compose.yml pull
+  args:
+    chdir: "{{ ttrss_deploy_dir }}"
+  register: ttrss_pull
+  changed_when: "'Downloaded newer image' in ttrss_pull.stdout or 'Pull complete' in ttrss_pull.stdout"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Démarrer la stack ttrss
+  command: docker-compose -f {{ ttrss_deploy_dir }}/docker-compose.yml up -d
+  args:
+    chdir: "{{ ttrss_deploy_dir }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"

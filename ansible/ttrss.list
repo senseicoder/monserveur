@@ -1,0 +1,3 @@
+# Stack TT-RSS : déploie le compose cthulhoo dans /opt/ttrss-docker/.
+# Prérequis : réseau Docker "mindwtr" existant (jouer mindwtr.list d'abord si premier déploiement).
+ttrss-deploy
