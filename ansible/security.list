@@ -2,3 +2,4 @@
 # cf. CLAUDE.md § Phase 2).
 firewall-setup
 ssh-securite
+fail2ban-setup
