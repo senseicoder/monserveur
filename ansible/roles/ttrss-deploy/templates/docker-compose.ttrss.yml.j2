@@ -1,0 +1,90 @@
+# {{ ansible_managed }}
+# Stack TT-RSS — cthulhoo/ttrss-docker-compose
+# 4 services : db (Postgres), app (PHP-FPM), web-nginx, updater.
+# Volume partagé "app" entre app/web-nginx/updater pour les assets PHP.
+#
+# Réseau : web-nginx est sur deux réseaux :
+#   - default (réseau interne de la stack, communication avec app)
+#   - mindwtr (réseau Traefik — routing direct quand ttrss_traefik_enabled=true)
+# En attendant la bascule Traefik, Apache proxifie depuis 127.0.0.1:8028.
+
+version: "2.1"
+
+services:
+  db:
+    image: "{{ ttrss_db_image }}"
+    container_name: ttrss-docker-db
+    environment:
+      POSTGRES_USER: "{{ ttrss_db_user }}"
+      POSTGRES_PASSWORD: "{{ ttrss_db_password }}"
+      POSTGRES_DB: "{{ ttrss_db_name }}"
+    volumes:
+      - db:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  app:
+    image: "{{ ttrss_app_image }}"
+    container_name: ttrss-docker-app
+    environment:
+      TTRSS_DB_HOST: db
+      TTRSS_DB_PORT: "5432"
+      TTRSS_DB_USER: "{{ ttrss_db_user }}"
+      TTRSS_DB_PASS: "{{ ttrss_db_password }}"
+      TTRSS_DB_NAME: "{{ ttrss_db_name }}"
+      TTRSS_SELF_URL_PATH: "{{ ttrss_self_url }}"
+    volumes:
+      - app:/var/www/html/tt-rss
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  web-nginx:
+    image: "{{ ttrss_nginx_image }}"
+    container_name: ttrss-docker-web-nginx
+    ports:
+      - "{{ ttrss_nginx_port }}"
+    volumes:
+      - app:/var/www/html/tt-rss:ro
+    depends_on:
+      - app
+    networks:
+      - default
+      - mindwtr
+    labels:
+      - "traefik.enable={{ 'true' if ttrss_traefik_enabled else 'false' }}"
+      - "traefik.http.routers.ttrss.rule=Host(`{{ ttrss_domain }}`)"
+      - "traefik.http.routers.ttrss.entrypoints=websecure"
+      - "traefik.http.routers.ttrss.tls=true"
+      - "traefik.http.services.ttrss.loadbalancer.server.port=80"
+      - "traefik.docker.network=mindwtr"
+    restart: unless-stopped
+
+  updater:
+    image: "{{ ttrss_updater_image }}"
+    container_name: ttrss-docker-updater
+    environment:
+      TTRSS_DB_HOST: db
+      TTRSS_DB_PORT: "5432"
+      TTRSS_DB_USER: "{{ ttrss_db_user }}"
+      TTRSS_DB_PASS: "{{ ttrss_db_password }}"
+      TTRSS_DB_NAME: "{{ ttrss_db_name }}"
+      TTRSS_SELF_URL_PATH: "{{ ttrss_self_url }}"
+    volumes:
+      - app:/var/www/html/tt-rss
+    depends_on:
+      - app
+    restart: unless-stopped
+
+networks:
+  default:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.23.0.0/16"
+  mindwtr:
+    external:
+      name: mindwtr
+
+volumes:
+  db:
+  app:

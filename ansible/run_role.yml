@@ -31,6 +31,12 @@
         chdir: "{{ mindwtr_deploy_dir }}"
       ignore_errors: "{{ ansible_check_mode }}"
 
+    - name: restart ttrss
+      command: docker-compose -f {{ ttrss_deploy_dir }}/docker-compose.yml restart
+      args:
+        chdir: "{{ ttrss_deploy_dir }}"
+      ignore_errors: "{{ ansible_check_mode }}"
+
     - name: save iptables
       command: netfilter-persistent save
       ignore_errors: "{{ ansible_check_mode }}"

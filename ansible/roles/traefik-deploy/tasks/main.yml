@@ -13,6 +13,7 @@
     - "{{ mindwtr_deploy_dir }}/certs/vault"
     - "{{ mindwtr_deploy_dir }}/certs/reader-daneel"
     - "{{ mindwtr_deploy_dir }}/certs/bots-plcoder"
+    - "{{ mindwtr_deploy_dir }}/certs/traefik-dashboard"
 
 - name: Déployer docker-compose.traefik.yml
   template:
@@ -54,6 +55,23 @@
     - { src: /etc/letsencrypt/live/reader.daneel.net/privkey.pem, dir: reader-daneel, dest: privkey.pem }
     - { src: /etc/letsencrypt/live/bots.plcoder.net/fullchain.pem, dir: bots-plcoder, dest: fullchain.pem }
     - { src: /etc/letsencrypt/live/bots.plcoder.net/privkey.pem, dir: bots-plcoder, dest: privkey.pem }
+  notify: restart traefik
+
+- name: Déployer la config dynamique Traefik dashboard (BasicAuth)
+  template:
+    src: traefik-dashboard.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/traefik-dynamic/dashboard.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  when: traefik_dashboard_enabled
+  notify: restart traefik
+
+- name: Supprimer la config dynamique dashboard si désactivé
+  file:
+    path: "{{ mindwtr_deploy_dir }}/traefik-dynamic/dashboard.yml"
+    state: absent
+  when: not traefik_dashboard_enabled
   notify: restart traefik
 
 - name: Installer le hook de renouvellement certbot
