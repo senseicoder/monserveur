@@ -63,6 +63,12 @@ else
 fi
 
 # --- Certificats Let's Encrypt (tous les domaines actifs, découverte automatique) ---
+# Deux niveaux de détection :
+# 1. Échec de renouvellement : cert vieux (> 60j sans régénération) + expire dans < 30j.
+#    Certbot renouvelle à 30j d'échéance — si à ce stade le cert a > 60j d'âge, le
+#    renouvellement automatique n'a pas fonctionné (il l'aurait régénéré il y a ~60j).
+# 2. Proximité normale : cert expire dans < CERT_WARN_DAYS (filet de sécurité final).
+cert_renewal_failures=""
 cert_issues=""
 for domain_dir in /etc/letsencrypt/live/*/; do
   [ -d "$domain_dir" ] || continue
@@ -72,10 +78,19 @@ for domain_dir in /etc/letsencrypt/live/*/; do
   expiry=$(openssl x509 -enddate -noout -in "$cert_file" | cut -d= -f2)
   expiry_epoch=$(date -d "$expiry" +%s)
   days_left=$(( (expiry_epoch - now) / 86400 ))
-  if [ "$days_left" -lt "$CERT_WARN_DAYS" ]; then
+  cert_mtime=$(stat -c %Y "$cert_file")
+  cert_age_days=$(( (now - cert_mtime) / 86400 ))
+  if [ "$days_left" -lt 30 ] && [ "$cert_age_days" -gt 60 ]; then
+    cert_renewal_failures="${cert_renewal_failures}${domain}: ${days_left}j restants, cert vieux de ${cert_age_days}j (renouvellement attendu non effectué)\n"
+  elif [ "$days_left" -lt "$CERT_WARN_DAYS" ]; then
     cert_issues="${cert_issues}${domain}: ${days_left}j restants\n"
   fi
 done
+if [ -n "$cert_renewal_failures" ]; then
+  send_alert "certbot_failures" "urgent" "Glaurung — renouvellement certbot en échec" "$(echo -e "$cert_renewal_failures")"
+else
+  clear_alert "certbot_failures"
+fi
 if [ -n "$cert_issues" ]; then
   send_alert "certs" "high" "Glaurung — certificat(s) proche expiration" "$(echo -e "$cert_issues")"
 else
