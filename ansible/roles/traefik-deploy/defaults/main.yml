@@ -2,3 +2,15 @@
 # Variables consommées, définies dans group_vars/all/vars.yml (pas de default
 # local, cf. docker-network-mindwtr-setup/defaults/main.yml) :
 #   mindwtr_deploy_dir  — répertoire de la stack, ex. /opt/mindwtr
+
+# Dashboard Traefik avec BasicAuth (désactivé par défaut).
+# Pour activer :
+#   1. traefik_dashboard_enabled: true (dans vars.yml ou host_vars/)
+#   2. traefik_dashboard_htpasswd dans vault.yml :
+#      htpasswd -nB admin | sed 's/\$/\$\$/g'
+#   3. Cert TLS : certbot certonly -d traefik.daneel.net, puis
+#      copier dans /opt/mindwtr/certs/traefik-dashboard/ et
+#      ajouter l'entrée dans traefik-tls.yml.j2
+traefik_dashboard_enabled: false
+traefik_dashboard_domain: "traefik.daneel.net"
+traefik_dashboard_htpasswd: ""
