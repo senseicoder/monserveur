@@ -50,13 +50,8 @@ backup_fs_paths:
 # côté client). Restauration = réinjecter le fichier depuis pass, pas régénérer
 # une identité. Documenté dans RESTORE.md.
 
-# MariaDB natif hôte — bases identifiées dans wiki postes/glaurung.md § Bases de données.
-# ttrss = ancienne base MySQL, TT-RSS tourne maintenant sur Postgres (cf. ci-dessous) :
-# à vérifier si encore utilisée avant de la retirer d'ici.
-backup_mysql_databases:
-  - VOOSO
-  - ttrss
-  - phpbb_migration
+# MariaDB natif hôte — toutes les bases présentes sont sauvegardées automatiquement
+# (SHOW DATABASES hors bases système), plus besoin de liste manuelle.
 
 # Postgres TT-RSS (volume Docker ttrss-docker_db) — credentials lus depuis le .env
 # du docker-compose existant, pas dupliqués dans le vault Ansible.

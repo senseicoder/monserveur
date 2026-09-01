@@ -56,9 +56,14 @@ if [ "$rc" -ge 2 ]; then
 fi
 
 # --- MariaDB natif hôte (root@localhost via auth_socket, pas de mot de passe) ---
-if ! mysqldump --single-transaction --databases {{ backup_mysql_databases | join(' ') }} \
-    2> "$DEST/mysqldump.err" | gzip > "$DEST/mariadb.sql.gz"; then
-  alert "mysqldump: $(cat "$DEST/mysqldump.err")"
+# Itère sur toutes les bases présentes, hors bases système — ainsi toute nouvelle
+# base ajoutée est automatiquement couverte sans modifier ce script.
+MYSQL_DBS=$(mysql -N -e 'SHOW DATABASES;' | grep -Ev '^(information_schema|performance_schema|mysql|sys)$' | tr '\n' ' ')
+if [ -n "$MYSQL_DBS" ]; then
+  if ! mysqldump --single-transaction --databases $MYSQL_DBS \
+      2> "$DEST/mysqldump.err" | gzip > "$DEST/mariadb.sql.gz"; then
+    alert "mysqldump: $(cat "$DEST/mysqldump.err")"
+  fi
 fi
 
 # --- Postgres TT-RSS (conteneur Docker, credentials lus depuis le .env existant) ---
