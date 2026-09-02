@@ -6,6 +6,8 @@ services:
     image: "{{ puttini_image }}"
     container_name: puttini
     restart: unless-stopped
+    security_opt:
+      - "seccomp:unconfined"  # Docker 19.03 ne whitelist pas clone3 (Linux 5.3+), cf. CLAUDE.md § Pièges Docker
     environment:
       DATABASE_URL: "sqlite:////data/puttini.db"
       ICLOUD_ENABLED: "false"
