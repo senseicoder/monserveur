@@ -19,6 +19,11 @@ case "$RENEWED_LINEAGE" in
     cp /etc/letsencrypt/live/{{ ntfy_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/ntfy/privkey.pem
     chmod 640 ${DEPLOY_DIR}/certs/ntfy/fullchain.pem ${DEPLOY_DIR}/certs/ntfy/privkey.pem
     ;;
+  */{{ puttini_domain }})
+    cp /etc/letsencrypt/live/{{ puttini_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/puttini/fullchain.pem
+    cp /etc/letsencrypt/live/{{ puttini_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/puttini/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/puttini/fullchain.pem ${DEPLOY_DIR}/certs/puttini/privkey.pem
+    ;;
   */{{ phpbb_integralsport_domain }})
     cp /etc/letsencrypt/live/{{ phpbb_integralsport_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/phpbb-integralsport/fullchain.pem
     cp /etc/letsencrypt/live/{{ phpbb_integralsport_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/phpbb-integralsport/privkey.pem

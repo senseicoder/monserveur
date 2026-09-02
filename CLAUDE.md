@@ -103,6 +103,8 @@ ansible/
     │       └── certbot-renewal-hook.sh.j2         ← copie certs + restart traefik
     ├── mindwtr-cloud-deploy/     ← data/cloud, docker-compose.mindwtr.yml, vhost+certbot mindwtr, start
     ├── vaultwarden-deploy/       ← data/vaultwarden, docker-compose.vaultwarden.yml, vhost+certbot vault, start
+    ├── ntfy-deploy/              ← data/ntfy, docker-compose.ntfy.yml, vhost+certbot ntfy, création admin
+    ├── puttini-deploy/           ← build+push local (ghcr.io, jamais sur glaurung, cf. rat-setup) + data/puttini, docker-compose.puttini.yml, vhost+certbot puttini, joué via ./run list puttini.list — source : ~/www/c/puttini/server
     ├── rustdesk-setup/           ← hbbs/hbbr RustDesk, hors Traefik (ports directs sur l'hôte), joué via ./run list rustdesk.list
     ├── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
     └── backup-setup/             ← cron root quotidien (dump différentiel + mysqldump + pg_dump + chiffrement GPG asymétrique), joué via ./run list backup.list — cf. § Sauvegardes critiques

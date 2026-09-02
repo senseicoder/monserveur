@@ -31,6 +31,12 @@
         chdir: "{{ mindwtr_deploy_dir }}"
       ignore_errors: "{{ ansible_check_mode }}"
 
+    - name: restart puttini
+      command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.puttini.yml restart
+      args:
+        chdir: "{{ mindwtr_deploy_dir }}"
+      ignore_errors: "{{ ansible_check_mode }}"
+
     - name: save iptables
       command: netfilter-persistent save
       ignore_errors: "{{ ansible_check_mode }}"

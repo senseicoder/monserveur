@@ -1,0 +1,6 @@
+<VirtualHost 172.18.0.1:8081>
+    ServerName {{ puttini_domain }}
+    DocumentRoot /var/www/html
+    # Vhost minimal pour le challenge certbot webroot, servi en backend (Phase 2 :
+    # Traefik route /.well-known/acme-challenge/ vers Apache 172.18.0.1:8081).
+</VirtualHost>

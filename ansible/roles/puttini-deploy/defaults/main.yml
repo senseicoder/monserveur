@@ -1,0 +1,11 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml (pas de default
+# local, cf. docker-network-mindwtr-setup/defaults/main.yml) :
+#   mindwtr_deploy_dir   — répertoire de la stack, ex. /opt/mindwtr
+#   puttini_domain       — domaine du vhost/certbot, ex. puttini.daneel.net
+#   puttini_image_repo   — préfixe d'image ghcr.io (jamais "latest", cf. tasks/main.yml)
+#   acme_email           — email de contact Let's Encrypt
+
+# Repo source du serveur puttini (build local, jamais sur glaurung — cf. ADR
+# rat-setup "code commun toujours dans l'image").
+puttini_repo_path: "/home/cedric/www/c/puttini/server"

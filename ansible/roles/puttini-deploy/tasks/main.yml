@@ -1,0 +1,169 @@
+---
+# puttini-deploy : construit + publie l'image puttini-server (en local, sur ce
+# poste — jamais de code déposé/construit sur glaurung), puis déploie sur
+# glaurung en tirant l'image depuis le registre (ghcr.io). Même principe que
+# rat-setup et cohérent avec mindwtr-cloud/vaultwarden/ntfy (images tirées
+# d'un registre, jamais construites sur place).
+
+# --- Build + publication de l'image (en local, jamais sur glaurung) ---
+
+# ADR : jamais de tag "latest" — compteur persisté dans ce rôle
+# (files/puttini-server.version, versionné dans git), incrémenté à chaque
+# build. Démarre à 0.0 si le fichier n'existe pas encore.
+
+- name: Initialiser le compteur de version à 0.0 s'il n'existe pas encore
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/puttini-server.version"
+    content: "0.0"
+    force: false
+  delegate_to: localhost
+  become: false
+
+- name: Lire la version actuelle
+  ansible.builtin.set_fact:
+    puttini_current_version: "{{ lookup('file', role_path + '/files/puttini-server.version') | trim }}"
+
+- name: Calculer la prochaine version (incrémente le dernier nombre)
+  ansible.builtin.set_fact:
+    puttini_next_version: "{{ (puttini_current_version.split('.')[:-1] + [(puttini_current_version.split('.')[-1] | int + 1) | string]) | join('.') }}"
+
+- name: Enregistrer la nouvelle version (avant le build, pour rester incrémental même en cas d'échec du build)
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/puttini-server.version"
+    content: "{{ puttini_next_version }}"
+  delegate_to: localhost
+  become: false
+
+- name: Fixer le tag d'image à construire/publier (jamais "latest")
+  ansible.builtin.set_fact:
+    puttini_image: "{{ puttini_image_repo }}:{{ puttini_next_version }}"
+
+- name: Récupérer le PAT ghcr.io (cmdp, jamais loggé)
+  ansible.builtin.command: cmdp show services/github.com/docker_registry
+  register: puttini_ghcr_pat
+  changed_when: false
+  no_log: true
+  delegate_to: localhost
+  become: false
+  check_mode: false
+
+- name: Se connecter à ghcr.io (en local, pour build+push)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ puttini_ghcr_pat.stdout_lines[0] }}"
+  # Pas de no_log ici : le paramètre "password" est déjà protégé par son
+  # propre argspec (no_log=True intégré au module) — on garde le vrai
+  # message d'erreur visible en cas d'échec.
+  delegate_to: localhost
+  become: false
+
+- name: Construire et publier l'image puttini-server sur ghcr.io
+  community.docker.docker_image:
+    name: "{{ puttini_image }}"
+    build:
+      path: "{{ puttini_repo_path }}"
+      dockerfile: "Dockerfile"
+      pull: true
+      nocache: true
+    source: build
+    # Sans force_source, le module ne reconstruit pas si un tag du même nom
+    # existe déjà en local.
+    force_source: true
+    push: true
+  delegate_to: localhost
+  become: false
+
+# --- Déploiement sur glaurung : uniquement pull + run, aucun code ni build ---
+
+- name: Se connecter à ghcr.io sur glaurung (pour pull, l'image puttini-server est privée)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ puttini_ghcr_pat.stdout_lines[0] }}"
+
+- name: Créer le répertoire data/puttini
+  ansible.builtin.file:
+    path: "{{ mindwtr_deploy_dir }}/data/puttini"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Déployer le vhost Apache pour {{ puttini_domain }}
+  ansible.builtin.template:
+    src: apache-puttini.conf.j2
+    dest: /etc/apache2/sites-available/{{ puttini_domain }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: apache_vhost_puttini
+
+- name: Activer le vhost Apache pour {{ puttini_domain }}
+  ansible.builtin.command: a2ensite {{ puttini_domain }}
+  register: apache_a2ensite_puttini
+  changed_when: "'Enabling site' in apache_a2ensite_puttini.stdout"
+  failed_when: apache_a2ensite_puttini.rc != 0
+
+- name: Recharger Apache si vhost puttini modifié
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  when: apache_vhost_puttini is changed or apache_a2ensite_puttini is changed
+
+- name: Créer le répertoire certs/puttini (copy ne crée pas les parents manquants)
+  ansible.builtin.file:
+    path: "{{ mindwtr_deploy_dir }}/certs/puttini"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Obtenir le certificat TLS pour {{ puttini_domain }}
+  ansible.builtin.command: >
+    certbot certonly --webroot
+    -w /var/www/html
+    --non-interactive
+    --agree-tos
+    --email {{ acme_email }}
+    -d {{ puttini_domain }}
+  args:
+    creates: /etc/letsencrypt/live/{{ puttini_domain }}/fullchain.pem
+
+- name: Copier les certs puttini dans mindwtr_deploy_dir/certs/puttini
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ mindwtr_deploy_dir }}/certs/puttini/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - src: /etc/letsencrypt/live/{{ puttini_domain }}/fullchain.pem
+      dest: fullchain.pem
+    - src: /etc/letsencrypt/live/{{ puttini_domain }}/privkey.pem
+      dest: privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: restart traefik
+
+- name: Déployer docker-compose.puttini.yml
+  ansible.builtin.template:
+    src: docker-compose.puttini.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/docker-compose.puttini.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  diff: false
+  notify: restart puttini
+
+- name: Tirer la dernière image et démarrer/mettre à jour le conteneur puttini
+  ansible.builtin.command: "{{ item }}"
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  loop:
+    - "docker-compose -f docker-compose.puttini.yml pull"
+    - "docker-compose -f docker-compose.puttini.yml up -d"
+  loop_control:
+    label: "{{ item }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"

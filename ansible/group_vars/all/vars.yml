@@ -4,6 +4,11 @@ vaultwarden_domain: "vault.daneel.net"
 ntfy_domain: "ntfy.daneel.net"
 ntfy_health_topic: "glaurung-health"
 rustdesk_domain: "rustdesk.daneel.net"
+puttini_domain: "puttini.daneel.net"
+# ADR (puttini-deploy) : jamais de tag "latest" — le tag complet (puttini_image)
+# est calculé dynamiquement dans tasks/main.yml à partir de ce préfixe + un
+# numéro de version incrémenté à chaque build (files/puttini-server.version).
+puttini_image_repo: "ghcr.io/senseicoder/puttini-server"
 acme_email: "cedric@daneel.net"
 ipv6_gateway: "2001:41d0:302:2100::1"
 

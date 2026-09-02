@@ -1,0 +1,31 @@
+# Image tirée du registre (ghcr.io) — jamais construite sur glaurung, cf.
+# rat-setup pour le même principe. Build + push faits en local (tasks/main.yml
+# de ce rôle), avant ce template.
+services:
+  puttini:
+    image: "{{ puttini_image }}"
+    container_name: puttini
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "sqlite:////data/puttini.db"
+      ICLOUD_ENABLED: "false"
+      ICLOUD_CONFIG_PATH: "/data/icloud-credentials.json"
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/puttini:/data"
+    networks:
+      - mindwtr
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.puttini.rule=Host(`{{ puttini_domain }}`)"
+      - "traefik.http.routers.puttini.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.puttini.tls=true"
+      - "traefik.http.services.puttini.loadbalancer.server.port=8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  mindwtr:
+    external: true
