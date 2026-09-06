@@ -63,7 +63,16 @@ else
 fi
 
 # --- Certificats Let's Encrypt (tous les domaines actifs, découverte automatique) ---
+# Deux alertes distinctes :
+# - "certs" : échéance finale proche (CERT_WARN_DAYS) — filet de sécurité existant.
+# - "cert_renewal_overdue" : le renouvellement automatique aurait déjà dû se
+#   produire (days_left < renew_before_expiry déclaré par certbot pour ce
+#   domaine) mais le cert affiché est toujours le même — signale un échec
+#   silencieux AVANT l'échéance finale (incident 2026-08-19 : bots.plcoder.net
+#   et reader.daneel.net ont dépassé leur fenêtre de renouvellement de 30j sans
+#   alerte jusqu'au seuil de 15j, soit 2 semaines d'angle mort).
 cert_issues=""
+cert_renewal_issues=""
 for domain_dir in /etc/letsencrypt/live/*/; do
   [ -d "$domain_dir" ] || continue
   domain=$(basename "$domain_dir")
@@ -75,9 +84,26 @@ for domain_dir in /etc/letsencrypt/live/*/; do
   if [ "$days_left" -lt "$CERT_WARN_DAYS" ]; then
     cert_issues="${cert_issues}${domain}: ${days_left}j restants\n"
   fi
+
+  renewal_conf="/etc/letsencrypt/renewal/${domain}.conf"
+  renew_before_days=30  # défaut certbot si le fichier est absent ou imparsable
+  if [ -f "$renewal_conf" ]; then
+    renew_before_raw=$(grep -oP '^renew_before_expiry\s*=\s*\K.*' "$renewal_conf" 2>/dev/null)
+    case "$renew_before_raw" in
+      *day*) renew_before_days=$(echo "$renew_before_raw" | grep -oP '^\d+') ;;
+    esac
+  fi
+  if [ -n "$renew_before_days" ] && [ "$days_left" -lt "$renew_before_days" ]; then
+    cert_renewal_issues="${cert_renewal_issues}${domain}: ${days_left}j restants, renouvellement attendu sous ${renew_before_days}j (pas encore effectué)\n"
+  fi
 done
 if [ -n "$cert_issues" ]; then
   send_alert "certs" "high" "Glaurung — certificat(s) proche expiration" "$(echo -e "$cert_issues")"
 else
   clear_alert "certs"
+fi
+if [ -n "$cert_renewal_issues" ]; then
+  send_alert "cert_renewal_overdue" "urgent" "Glaurung — renouvellement certificat en retard" "$(echo -e "$cert_renewal_issues")"
+else
+  clear_alert "cert_renewal_overdue"
 fi

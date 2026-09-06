@@ -8,58 +8,78 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Infrastructure as code pour le VPS personnel `glaurung` (Debian 9 stretch). Déploie des services auto-hébergés via Docker + Ansible.
 
-## État de production sur glaurung (au 2026-07-11, tableau réseau mis à jour Phase 2 le 2026-08-02)
-
-**Tableaux vhosts/conteneurs ci-dessous périmés au-delà de la ligne réseau** (ntfy, rat, phpbb-integralsport absents — cf. TODO.md, à refaire entièrement).
+## État de production sur glaurung (relevé complet au 2026-09-05, `ss`/`docker`/labels Traefik en direct sur l'hôte)
 
 ### Réseau hôte
 | Port | Bind | Usage |
 |------|------|-------|
-| 22 | 0.0.0.0 | SSH |
-| 80 / 443 | 0.0.0.0 | Traefik v3 (frontal unique depuis Phase 2, 2026-08-02) — voir `PHASE2.md` |
-| 3306 | 127.0.0.1 | MySQL (conteneur `php`) |
+| 22 | 0.0.0.0 / ::: | SSH |
+| 80 / 443 | ::: | Traefik v3 (frontal unique depuis Phase 2, 2026-08-02) — voir `PHASE2.md` |
+| 2222 | 127.0.0.1 + ::1 | Non identifié (lecture sans sudo insuffisante pour retrouver le process propriétaire) |
+| 3306 | **0.0.0.0** | MariaDB hôte (`VOOSO`, `ttrss` legacy) — **divergence avec la doc précédente** qui indiquait `127.0.0.1` ; bind constaté public, protection dépend de la chaîne `INPUT` non vérifiable sans sudo (cf. Firewall ci-dessous) |
 | 8000–8002 | 0.0.0.0 | Chatbots (publics, hors scope) |
 | 8028 | 127.0.0.1 | TT-RSS nginx |
 | 8081 | 127.0.0.1 + 172.18.0.1 | Apache2 — backend interne depuis Phase 2 (plus de bind public), joignable uniquement depuis le réseau Docker `mindwtr` (règle firewall dédiée) |
 | 8384 | 127.0.0.1 | Syncthing UI |
-| 8787 | 0.0.0.0 | Traefik → mindwtr-cloud (double écoute transitoire avec 80/443, cf. PHASE2.md étape 5.1) |
+| 8787 | ::: | Traefik → mindwtr-cloud (double écoute transitoire avec 80/443, retrait prévu Phase 2 étape 5, cf. TODO.md) |
 | 22000 | ::: | Syncthing sync |
-| 21115-21116 | 0.0.0.0 | RustDesk hbbs (tcp), 21116 aussi udp — hors Traefik ✅ |
-| 21117 | 0.0.0.0 | RustDesk hbbr (tcp) — hors Traefik ✅ |
+| 21115-21116 | 0.0.0.0 / ::: | RustDesk hbbs (tcp), 21116 aussi udp — hors Traefik ✅ |
+| 21117 | 0.0.0.0 / ::: | RustDesk hbbr (tcp) — hors Traefik ✅ |
 
 ### Apache2 — vhosts actifs (`/etc/apache2/sites-enabled/`)
-| Vhost | Ports | Notes |
-|-------|-------|-------|
-| `mindwtr.daneel.net` | 80 | Vhost certbot webroot (géré par ce repo) |
-| `reader.daneel.net` | 80 + 443 | → proxy ttrss (127.0.0.1:8028) |
-| `bots.plcoder.net` | 80 + 443 | → chatbots |
-| `lescoursdesophie.com` | 80 | |
-| `ssl.lescoursdesophie.com` | 80 | |
-| `sophie.daneel.net` | 80 | |
-| `sslsophie.daneel.net` | 80 | |
+Deux catégories bien distinctes depuis Phase 2 : les domaines legacy encore servis en direct par Apache (proxy applicatif), et les domaines migrés vers Traefik/Docker qui ne gardent qu'un vhost minimal pour le challenge ACME webroot (`172.18.0.1:8081`, `DocumentRoot /var/www/html`, aucun contenu applicatif).
 
-Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**. Certs : `bots.plcoder.net`, `reader.daneel.net`, `mindwtr.daneel.net`, `vault.daneel.net`.
+| Vhost | Rôle | Notes |
+|-------|------|-------|
+| `reader.daneel.net` | Legacy — proxy applicatif | → ttrss (127.0.0.1:8028), authenticator certbot `apache` (pas encore migré webroot) |
+| `bots.plcoder.net` | Legacy — proxy applicatif | → chatbots, authenticator certbot `apache` |
+| `lescoursdesophie.com` / `ssl.lescoursdesophie.com` | Legacy — statique | |
+| `sophie.daneel.net` / `sslsophie.daneel.net` | Legacy — statique | |
+| `mindwtr.daneel.net` | Webroot ACME uniquement | Routage réel via Traefik → `mindwtr-cloud` |
+| `ntfy.daneel.net` | Webroot ACME uniquement | Routage réel via Traefik → `ntfy` |
+| `migration.integralsport.com` | Webroot ACME uniquement | Routage réel via Traefik → `phpbb-integralsport` |
+| `pub.daneel.net` | Webroot ACME uniquement | Routage réel via Traefik → `pub-daneel-net` |
+| `puttini.daneel.net` | Webroot ACME uniquement | Routage réel via Traefik → `puttini` |
+
+Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**.
+
+### Routing Traefik (labels Docker, réseau `mindwtr`, source de vérité du routage public)
+| Domaine(s) | Conteneur cible | Port service | Entrypoints | Notes |
+|------------|------------------|--------------|-------------|-------|
+| `mindwtr.daneel.net` | `mindwtr-cloud` | 8787 | mindwtr, websecure | |
+| `vault.daneel.net` | `vaultwarden` | 80 | mindwtr, websecure | |
+| `puttini.daneel.net` | `puttini` | 8000 | mindwtr, websecure | |
+| `ntfy.daneel.net` | `ntfy` | 80 | mindwtr, websecure | |
+| `migration.integralsport.com` | `phpbb-integralsport-phpbb-integralsport-web-1` | 80 | websecure | BasicAuth (`cedric`) |
+| `pub.daneel.net` | `pub-daneel-net-pub-daneel-net-web-1` | 80 | web, websecure | |
+| `donjon.daneel.net`, `www.daneel.net`, `mariage.daneel.net`, `cedric.daneel.net`, `www.placedusport2.com`, `www.plcoder.net` | `rat-rat-web-1` | 80 | mindwtr, websecure | Alias multiples sur le même service `rat-web` — bascule réelle PLC/PDS2 encore bloquée, cf. TODO.md |
 
 ### Conteneurs Docker actifs
-| Conteneur | Image | Notes |
-|-----------|-------|-------|
-| `traefik` | `traefik:v3` | Port 8787/HTTPS, réseau mindwtr ✅ |
-| `mindwtr-cloud` | `ghcr.io/dongdongbh/mindwtr-cloud:latest` | Healthy, réseau mindwtr ✅ |
-| `vaultwarden` | `vaultwarden/server:1.37.0` | vault.daneel.net:8787, réseau mindwtr |
-| `php` | `debian:11` | Shell PHP ponctuel, lancé manuellement hors Compose |
-| `ttrss-docker-*` (×4) | `cthulhoo/ttrss-*` + `postgres:12-alpine` | Géré depuis `~/ttrss-docker/` |
-| `rustdesk-hbbs` | `rustdesk/rustdesk-server:latest` | Ports directs sur l'hôte, hors réseau Docker mindwtr ✅ |
-| `rustdesk-hbbr` | `rustdesk/rustdesk-server:latest` | Ports directs sur l'hôte, hors réseau Docker mindwtr ✅ |
+| Conteneur | Image | Réseau | Notes |
+|-----------|-------|--------|-------|
+| `traefik` | `traefik:v3` | mindwtr | Ports hôte 80/443/8787 |
+| `mindwtr-cloud` | `ghcr.io/dongdongbh/mindwtr-cloud:latest` | mindwtr | Healthy |
+| `vaultwarden` | `vaultwarden/server:latest` | mindwtr | Healthy |
+| `puttini` | `ghcr.io/senseicoder/puttini-server:0.7` | mindwtr | Healthy — swap ajouté 2026-09-03 suite crash en boucle, cf. TODO.md |
+| `ntfy` | `binwiederhier/ntfy` | mindwtr | Healthy |
+| `rat-rat-web-1` | `ghcr.io/senseicoder/rat-web:0.28` | mindwtr | |
+| `phpbb-integralsport-phpbb-integralsport-web-1` | `ghcr.io/senseicoder/phpbb-integralsport-web:0.6` | mindwtr | Test migration integralsport.com |
+| `pub-daneel-net-pub-daneel-net-web-1` | `nginx:1.27-alpine` | mindwtr | Contenu statique perso (migration Gandi) |
+| `php` | `debian:11` | bridge | Shell PHP ponctuel — formalisé dans le rôle `php-shell-setup` (2026-09-05), pas encore redéployé via ce rôle |
+| `ttrss-docker-*` (×4 : web-nginx, app, updater, backups, db) | `cthulhoo/ttrss-*` + `postgres:12-alpine` | ttrss-docker_default | Géré depuis `~/ttrss-docker/` |
+| `rustdesk-hbbs` | `rustdesk/rustdesk-server:latest` | rustdesk_default | Ports directs sur l'hôte, hors réseau `mindwtr` ✅ |
+| `rustdesk-hbbr` | `rustdesk/rustdesk-server:latest` | rustdesk_default | Ports directs sur l'hôte, hors réseau `mindwtr` ✅ |
 
 ### Réseaux Docker existants
 | Réseau | Subnet | Conteneurs |
 |--------|--------|------------|
 | `bridge` | 172.17.0.0/16 | php |
+| `mindwtr` | 172.18.0.0/16 (+ fd00:0:0:1::/64) | traefik, mindwtr-cloud, vaultwarden, puttini, ntfy, rat-rat-web-1, phpbb-integralsport-phpbb-integralsport-web-1, pub-daneel-net-pub-daneel-net-web-1 — nom historique trompeur, partagé par toute la stack (cf. TODO.md § Dette technique) |
+| `rustdesk_default` | 172.19.0.0/16 | rustdesk-hbbs, rustdesk-hbbr |
 | `ttrss-docker_default` | 172.23.0.0/16 | stack ttrss |
-| `mindwtr` | (auto) | traefik, mindwtr-cloud |
 
 ### Firewall
-**INPUT ACCEPT sans règle** — pas de pare-feu hôte. Docker injecte ses règles en PREROUTING/DNAT, ce qui contourne INPUT. Filtrage Docker à faire via chaîne `DOCKER-USER`.
+**INPUT ACCEPT sans règle** — pas de pare-feu hôte. Docker injecte ses règles en PREROUTING/DNAT, ce qui contourne INPUT. Filtrage Docker à faire via chaîne `DOCKER-USER` (Phase 1 restante, cf. TODO.md). Non vérifiable en détail sans sudo (`iptables` hors PATH utilisateur).
 
 ## Architecture Phase 1 (déployée le 2026-06-20)
 
