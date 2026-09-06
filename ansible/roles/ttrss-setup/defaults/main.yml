@@ -1,0 +1,15 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml (pas de default
+# local, cf. docker-network-mindwtr-setup/defaults/main.yml) :
+#   mindwtr_deploy_dir       — répertoire de la stack, ex. /opt/mindwtr
+#   ttrss_domain             — domaine du service, reader.daneel.net (déjà en
+#                              prod, migré depuis apache-backend legacy — voir
+#                              tasks/main.yml et TODO.md pour la bascule)
+#   ttrss_db_name            — nom de la base Postgres (pas un secret)
+#   ttrss_db_user            — utilisateur Postgres (pas un secret)
+#   ttrss_auto_create_user   — 2e compte créé automatiquement au démarrage
+#
+# Secrets (group_vars/all/vault.yml, voir vault.yml.example) :
+#   vault_ttrss_db_password
+#   vault_ttrss_admin_password
+#   vault_ttrss_user_password  — mot de passe de ttrss_auto_create_user

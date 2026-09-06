@@ -1,0 +1,31 @@
+---
+# Formalise le conteneur "php" (shell PHP ponctuel), jusqu'ici lancé à la main :
+#   docker run -d --name php -v /home/cedric:/root \
+#     -v /space/www/libs/LIB_PARTAGEE/:/space/www/libs/LIB_PARTAGEE/ \
+#     debian:11 bash -c 'tail -f /dev/null'
+# Le conteneur existant n'étant pas géré par docker-compose (pas de labels
+# com.docker.compose.*), le premier déploiement le recrée (down implicite +
+# up) — sans perte de données : uniquement des bind mounts, aucun volume nommé.
+
+- name: Créer le répertoire {{ php_shell_deploy_dir }}
+  file:
+    path: "{{ php_shell_deploy_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Déployer docker-compose.php.yml
+  template:
+    src: docker-compose.php.yml.j2
+    dest: "{{ php_shell_deploy_dir }}/docker-compose.php.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Démarrer le conteneur php
+  command: docker-compose -f {{ php_shell_deploy_dir }}/docker-compose.php.yml up -d
+  args:
+    chdir: "{{ php_shell_deploy_dir }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"

@@ -1,0 +1,80 @@
+# Généré par le rôle Ansible ttrss-setup, ne pas modifier à la main sur le serveur.
+# Repris depuis ~/ttrss-docker/docker-compose.yml (config manuelle historique,
+# jamais versionnée) — mêmes 5 services (image cthulhoo/ttrss-*, projet
+# officiel ttrss-docker-compose), mis sur le réseau mindwtr partagé et
+# routés par Traefik via labels sur web-nginx (au lieu du port exposé + vhost
+# Apache backend legacy, cf. TODO.md et tasks/main.yml pour la bascule).
+
+services:
+  db:
+    image: postgres:12-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER={{ ttrss_db_user }}
+      - POSTGRES_PASSWORD={{ vault_ttrss_db_password }}
+      - POSTGRES_DB={{ ttrss_db_name }}
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/ttrss/db:/var/lib/postgresql/data"
+    networks:
+      - "{{ docker_network_name }}"
+
+  app:
+    image: cthulhoo/ttrss-fpm-pgsql-static:latest
+    restart: unless-stopped
+    env_file:
+      - "{{ mindwtr_deploy_dir }}/env.ttrss"
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/ttrss/app:/var/www/html"
+      - "{{ mindwtr_deploy_dir }}/data/ttrss/config.d:/opt/tt-rss/config.d:ro"
+    networks:
+      - "{{ docker_network_name }}"
+    depends_on:
+      - db
+
+  backups:
+    image: cthulhoo/ttrss-fpm-pgsql-static:latest
+    restart: unless-stopped
+    env_file:
+      - "{{ mindwtr_deploy_dir }}/env.ttrss"
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/ttrss/backups:/backups"
+      - "{{ mindwtr_deploy_dir }}/data/ttrss/app:/var/www/html"
+    networks:
+      - "{{ docker_network_name }}"
+    depends_on:
+      - db
+    command: /opt/tt-rss/dcron.sh -f
+
+  updater:
+    image: cthulhoo/ttrss-fpm-pgsql-static:latest
+    restart: unless-stopped
+    env_file:
+      - "{{ mindwtr_deploy_dir }}/env.ttrss"
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/ttrss/app:/var/www/html"
+      - "{{ mindwtr_deploy_dir }}/data/ttrss/config.d:/opt/tt-rss/config.d:ro"
+    networks:
+      - "{{ docker_network_name }}"
+    depends_on:
+      - app
+    command: /opt/tt-rss/updater.sh
+
+  web-nginx:
+    image: cthulhoo/ttrss-web-nginx:latest
+    restart: unless-stopped
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/ttrss/app:/var/www/html:ro"
+    networks:
+      - "{{ docker_network_name }}"
+    depends_on:
+      - app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ttrss.rule=Host(`{{ ttrss_domain }}`)"
+      - "traefik.http.routers.ttrss.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.ttrss.tls=true"
+      - "traefik.http.services.ttrss.loadbalancer.server.port=80"
+
+networks:
+  "{{ docker_network_name }}":
+    external: true

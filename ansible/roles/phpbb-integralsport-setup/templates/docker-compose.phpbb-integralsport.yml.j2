@@ -9,7 +9,7 @@ services:
     image: "{{ phpbb_integralsport_image }}"
     restart: unless-stopped
     networks:
-      - mindwtr
+      - "{{ docker_network_name }}"
     volumes:
       # Uniquement les données runtime + la config (jamais le code, cuit dans
       # l'image via COPY -- cf. Dockerfile.j2).
@@ -32,5 +32,5 @@ services:
       - "traefik.http.services.phpbb-integralsport.loadbalancer.server.port=80"
 
 networks:
-  mindwtr:
+  "{{ docker_network_name }}":
     external: true

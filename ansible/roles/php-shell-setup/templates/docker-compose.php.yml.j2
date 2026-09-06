@@ -1,0 +1,12 @@
+services:
+  php:
+    image: debian:11
+    container_name: php
+    restart: unless-stopped
+    # Shell PHP ponctuel (debug/tests), pas un service applicatif — reproduit à
+    # l'identique le "docker run" manuel historique (cf. TODO.md § formaliser).
+    command: bash -c "tail -f /dev/null"
+    network_mode: bridge
+    volumes:
+      - "/home/cedric:/root"
+      - "/space/www/libs/LIB_PARTAGEE/:/space/www/libs/LIB_PARTAGEE/"

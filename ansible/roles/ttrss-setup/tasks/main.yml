@@ -1,0 +1,55 @@
+---
+# ⚠️ Le docker-compose.yml original (~/ttrss-docker/ sur glaurung) utilise des
+# volumes Docker nommés (db/app/backups), pas des bind-mounts. Ce rôle bascule
+# vers des bind-mounts explicites dans mindwtr_deploy_dir/data/ttrss/ (cohérent
+# avec tous les autres rôles de ce repo — mindwtr/vaultwarden/ntfy — et avec
+# backup-setup). Ça veut dire qu'un premier déploiement de ce rôle démarre des
+# volumes VIDES : les données réelles (posts lus, flux abonnés, comptes...)
+# doivent être migrées manuellement depuis les volumes Docker nommés existants
+# (nommage docker-compose v1 par défaut : ttrss-docker_db, ttrss-docker_app,
+# ttrss-docker_backups — préfixe = nom du dossier ~/ttrss-docker/, confirmé
+# par CLAUDE.md § Sauvegardes critiques) AVANT de lancer ce rôle en prod :
+#   docker run --rm -v ttrss-docker_db:/from \
+#     -v {{ mindwtr_deploy_dir }}/data/ttrss/db:/to alpine cp -a /from/. /to/
+# (idem pour app/backups) — sinon perte de l'historique TT-RSS actuel (flux,
+# articles lus, comptes). Non fait dans cette passe (pas d'exécution contre
+# glaurung, écriture du rôle seulement).
+
+- name: Créer les répertoires data/ttrss
+  file:
+    path: "{{ mindwtr_deploy_dir }}/data/ttrss/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - db
+    - app
+    - backups
+    - config.d
+
+- name: Déployer env.ttrss (secrets vault — pas de no_log, fichier chiffré au repos par ansible-vault côté source)
+  template:
+    src: env.ttrss.j2
+    dest: "{{ mindwtr_deploy_dir }}/env.ttrss"
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart ttrss
+
+- name: Déployer docker-compose.ttrss.yml
+  template:
+    src: docker-compose.ttrss.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/docker-compose.ttrss.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  diff: false
+  notify: restart ttrss
+
+- name: Démarrer ttrss
+  command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.ttrss.yml up -d
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"

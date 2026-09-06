@@ -16,7 +16,7 @@ services:
       - "{{ mindwtr_deploy_dir }}/data/ntfy/cache:/var/cache/ntfy"
       - "{{ mindwtr_deploy_dir }}/data/ntfy/lib:/var/lib/ntfy"
     networks:
-      - mindwtr
+      - "{{ docker_network_name }}"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.ntfy.rule=Host(`{{ ntfy_domain }}`)"
@@ -32,5 +32,5 @@ services:
       retries: 3
 
 networks:
-  mindwtr:
+  "{{ docker_network_name }}":
     external: true

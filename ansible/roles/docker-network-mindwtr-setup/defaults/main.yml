@@ -2,4 +2,13 @@
 # Variables consommées, définies dans group_vars/all/vars.yml (pas de default
 # local : un default de rôle du même nom serait de toute façon masqué par le
 # group_var, cf. RAPPROCHEMENT_INFRA_DEPLOY.md § piège de nommage) :
-#   mindwtr_deploy_dir  — répertoire de la stack, ex. /opt/mindwtr
+#   mindwtr_deploy_dir              — répertoire de la stack, ex. /opt/mindwtr
+#   docker_network_name             — nom du réseau Docker partagé (ex. mindwtr)
+#   rat_deploy_dir                  — répertoire docker-compose.rat.yml
+#   phpbb_integralsport_deploy_dir  — répertoire docker-compose.phpbb-integralsport.yml
+#   pub_daneel_net_deploy_dir       — répertoire docker-compose.pub-daneel-net.yml
+# Les trois derniers sont nécessaires pour arrêter tous les services du réseau
+# avant reconfiguration (cf. tasks/main.yml) — ce rôle doit donc être exécuté
+# dans le même run que rat-setup/phpbb-integralsport-setup/pub-daneel-net-setup
+# pour que ces variables globales soient bien résolues (elles le sont déjà,
+# étant définies dans group_vars/all/vars.yml et non dans un default de rôle).

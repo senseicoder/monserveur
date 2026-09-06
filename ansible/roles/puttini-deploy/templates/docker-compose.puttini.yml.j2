@@ -15,7 +15,7 @@ services:
     volumes:
       - "{{ mindwtr_deploy_dir }}/data/puttini:/data"
     networks:
-      - mindwtr
+      - "{{ docker_network_name }}"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.puttini.rule=Host(`{{ puttini_domain }}`)"
@@ -29,5 +29,5 @@ services:
       retries: 3
 
 networks:
-  mindwtr:
+  "{{ docker_network_name }}":
     external: true

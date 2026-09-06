@@ -8,14 +8,14 @@
     mode: "0644"
   register: docker_daemon
 
-- name: Inspecter le réseau Docker mindwtr
-  command: docker network inspect mindwtr
+- name: "Inspecter le réseau Docker {{ docker_network_name }}"
+  command: "docker network inspect {{ docker_network_name }}"
   register: mindwtr_net_inspect
   failed_when: false
   changed_when: false
   check_mode: false  # lecture seule, sans effet de bord — à exécuter aussi en --check
 
-- name: Détecter si le réseau mindwtr a IPv6 activé
+- name: Détecter si le réseau a IPv6 activé
   set_fact:
     mindwtr_net_ipv6: >-
       {{ ((mindwtr_net_inspect.stdout | default('') | from_json)[0].EnableIPv6)
@@ -23,17 +23,30 @@
          else false }}
 
 # Reconfiguration Docker si daemon.json ou réseau a changé.
-# Ordre : arrêt stack → redémarrage Docker → suppression réseau → recréation.
-# Note : ce loop n'arrête que traefik/mindwtr, pas vaultwarden — comportement
-# préexistant à la découpe en rôles, repris tel quel (à vérifier si volontaire).
+# Ordre : arrêt de TOUS les services du réseau {{ docker_network_name }} → redémarrage
+# Docker → suppression réseau → recréation. Avant le 2026-09-05, ce loop n'arrêtait que
+# traefik/mindwtr-cloud — vaultwarden, ntfy, puttini, rat-web, phpbb-integralsport et
+# pub-daneel-net restaient connectés à l'ancien réseau jusqu'à leur propre redémarrage
+# en cas de recréation du réseau (cf. TODO.md § loop d'arrêt). Corrigé en couvrant
+# explicitement le docker-compose de chaque service, avec son répertoire propre (ils
+# ne sont pas tous dans mindwtr_deploy_dir).
 
-- name: Arrêter la stack mindwtr (avant reconfiguration)
-  command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.{{ item }}.yml down
+- name: "Arrêter tous les services du réseau {{ docker_network_name }} (avant reconfiguration)"
+  command: "docker-compose -f {{ item.dir }}/docker-compose.{{ item.file }}.yml down"
   args:
-    chdir: "{{ mindwtr_deploy_dir }}"
+    chdir: "{{ item.dir }}"
   loop:
-    - traefik
-    - mindwtr
+    - { dir: "{{ mindwtr_deploy_dir }}", file: "traefik" }
+    - { dir: "{{ mindwtr_deploy_dir }}", file: "mindwtr" }
+    - { dir: "{{ mindwtr_deploy_dir }}", file: "vaultwarden" }
+    - { dir: "{{ mindwtr_deploy_dir }}", file: "ntfy" }
+    - { dir: "{{ mindwtr_deploy_dir }}", file: "puttini" }
+    - { dir: "{{ mindwtr_deploy_dir }}", file: "ttrss" }
+    - { dir: "{{ rat_deploy_dir }}", file: "rat" }
+    - { dir: "{{ phpbb_integralsport_deploy_dir }}", file: "phpbb-integralsport" }
+    - { dir: "{{ pub_daneel_net_deploy_dir }}", file: "pub-daneel-net" }
+  loop_control:
+    label: "{{ item.file }}"
   when: docker_daemon is changed or not mindwtr_net_ipv6
   ignore_errors: true
 
@@ -43,8 +56,8 @@
     state: restarted
   when: docker_daemon is changed
 
-- name: Supprimer le réseau mindwtr si IPv6 absent (sera recréé avec IPv6)
-  command: docker network rm mindwtr
+- name: "Supprimer le réseau {{ docker_network_name }} si IPv6 absent (sera recréé avec IPv6)"
+  command: "docker network rm {{ docker_network_name }}"
   when: not mindwtr_net_ipv6
   register: net_rm
   failed_when: net_rm.rc != 0 and 'No such network' not in net_rm.stderr
@@ -56,8 +69,8 @@
     state: started
     enabled: true
 
-- name: Créer le réseau Docker mindwtr (IPv6)
-  command: docker network create --ipv6 --subnet fd00:0:0:1::/64 mindwtr
+- name: "Créer le réseau Docker {{ docker_network_name }} (IPv6) — partagé par toute la stack, pas propre à mindwtr-cloud"
+  command: "docker network create --ipv6 --subnet fd00:0:0:1::/64 {{ docker_network_name }}"
   register: network_result
   failed_when: network_result.rc != 0 and 'already exists' not in network_result.stderr
   changed_when: network_result.rc == 0

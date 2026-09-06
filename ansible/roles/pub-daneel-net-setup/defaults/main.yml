@@ -1,5 +1,9 @@
 ---
-pub_daneel_net_deploy_dir: "/opt/pub-daneel-net"
+# pub_daneel_net_deploy_dir : déplacé dans group_vars/all/vars.yml — partagé
+# avec docker-network-mindwtr-setup (loop d'arrêt de la stack avant
+# reconfiguration réseau, cf. TODO.md § loop d'arrêt), même raison que
+# rat_deploy_dir/phpbb_integralsport_deploy_dir (rôles isolés, pas d'accès aux
+# defaults l'un de l'autre).
 pub_daneel_net_domain: "pub.daneel.net"
 pub_daneel_net_image: "nginx:1.27-alpine"
 

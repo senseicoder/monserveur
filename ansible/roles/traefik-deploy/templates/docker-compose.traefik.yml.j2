@@ -7,7 +7,7 @@ services:
       - "--api.dashboard=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=mindwtr"
+      - "--providers.docker.network={{ docker_network_name }}"
       - "--entrypoints.mindwtr.address=:8787"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
@@ -24,8 +24,8 @@ services:
       - "{{ mindwtr_deploy_dir }}/certs:/certs:ro"
       - "{{ mindwtr_deploy_dir }}/traefik-dynamic:/etc/traefik/dynamic:ro"
     networks:
-      - mindwtr
+      - "{{ docker_network_name }}"
 
 networks:
-  mindwtr:
+  "{{ docker_network_name }}":
     external: true

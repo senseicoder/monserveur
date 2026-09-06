@@ -1,3 +1,9 @@
+# Réseau Docker bridge commun à toute la stack (traefik, mindwtr-cloud,
+# vaultwarden, puttini, ntfy, rat-web, phpbb-integralsport, pub-daneel-net...).
+# Nom hérité de mindwtr-cloud (premier service déployé) mais pas propre à ce
+# service — centralisé ici pour ne plus le coder en dur dans chaque rôle
+# (cf. TODO.md § Dette technique, nommage historiquement trompeur).
+docker_network_name: "mindwtr"
 mindwtr_deploy_dir: "/opt/mindwtr"
 mindwtr_domain: "mindwtr.daneel.net"
 vaultwarden_domain: "vault.daneel.net"
@@ -11,6 +17,8 @@ puttini_domain: "puttini.daneel.net"
 puttini_image_repo: "ghcr.io/senseicoder/puttini-server"
 acme_email: "cedric@daneel.net"
 ipv6_gateway: "2001:41d0:302:2100::1"
+php_shell_deploy_dir: "/opt/php-shell"
+pub_daneel_net_deploy_dir: "/opt/pub-daneel-net"
 
 # rat — étape 4 : déploiement de test (migration à blanc, pas de bascule DNS/HTTPS)
 rat_deploy_dir: "/opt/rat"
