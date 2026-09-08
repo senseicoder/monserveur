@@ -1,0 +1,8 @@
+---
+# Swap fichier, créé via dd (fallacate pas toujours supporté — ext3 sur glaurung
+# notamment) + ajustement de vm.overcommit_ratio pour desserrer le CommitLimit
+# sans dépendre uniquement de la RAM physique. Valeurs par défaut prudentes,
+# à surcharger par host_vars selon la RAM et la charge réelle de chaque hôte.
+swap_file_path: /swapfile
+swap_size_mb: 2048
+vm_overcommit_ratio: 50

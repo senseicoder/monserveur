@@ -1,0 +1,8 @@
+---
+# Swap — incident puttini RuntimeError du 2026-09-03 : CommitLimit (50 % de 7,6 Go
+# de RAM, sans swap) dépassé par Committed_AS avec 13+ conteneurs actifs. Valeurs
+# effectivement appliquées ce jour-là (manuellement), formalisées ici.
+# Détail : wiki postes/glaurung.md § Ressources, mémoire project_glaurung_swap_manquant,
+# analyse Informatique/20260903_puttini-glaurung-runtimerror-thread.md
+swap_size_mb: 4096
+vm_overcommit_ratio: 80

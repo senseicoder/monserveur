@@ -1,0 +1,55 @@
+---
+- name: Vérifier si le fichier swap existe déjà
+  ansible.builtin.stat:
+    path: "{{ swap_file_path }}"
+  register: swap_file_stat
+  become: true
+
+- name: "Créer le fichier swap ({{ swap_size_mb }} Mo) — dd, fallocate pas toujours supporté (ext3)"
+  ansible.builtin.command:
+    cmd: "dd if=/dev/zero of={{ swap_file_path }} bs=1M count={{ swap_size_mb }}"
+  when: not swap_file_stat.stat.exists
+  become: true
+
+- name: Restreindre les permissions du fichier swap
+  ansible.builtin.file:
+    path: "{{ swap_file_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+
+- name: Formater le fichier swap (mkswap)
+  ansible.builtin.command:
+    cmd: "mkswap {{ swap_file_path }}"
+  when: not swap_file_stat.stat.exists
+  become: true
+
+- name: Vérifier les swaps actifs
+  ansible.builtin.command:
+    cmd: "swapon --show=NAME --noheadings"
+  register: swapon_status
+  changed_when: false
+  become: true
+
+- name: Activer le swap
+  ansible.builtin.command:
+    cmd: "swapon {{ swap_file_path }}"
+  when: swap_file_path not in swapon_status.stdout
+  become: true
+
+- name: Rendre le swap persistant au reboot (/etc/fstab)
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "{{ swap_file_path }} none swap sw 0 0"
+    state: present
+  become: true
+
+- name: Ajuster vm.overcommit_ratio
+  ansible.posix.sysctl:
+    name: vm.overcommit_ratio
+    value: "{{ vm_overcommit_ratio }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-overcommit.conf
+    reload: true
+  become: true
