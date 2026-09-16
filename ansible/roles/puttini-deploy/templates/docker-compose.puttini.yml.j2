@@ -10,7 +10,7 @@ services:
       - "seccomp:unconfined"  # Docker 19.03 ne whitelist pas clone3 (Linux 5.3+), cf. CLAUDE.md § Pièges Docker
     environment:
       DATABASE_URL: "sqlite:////data/puttini.db"
-      ICLOUD_ENABLED: "false"
+      ICLOUD_ENABLED: "true"
       ICLOUD_CONFIG_PATH: "/data/icloud-credentials.json"
     volumes:
       - "{{ mindwtr_deploy_dir }}/data/puttini:/data"
