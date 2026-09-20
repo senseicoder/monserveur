@@ -37,6 +37,12 @@
         chdir: "{{ mindwtr_deploy_dir }}"
       ignore_errors: "{{ ansible_check_mode }}"
 
+    - name: restart m3gan
+      command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.m3gan.yml restart
+      args:
+        chdir: "{{ mindwtr_deploy_dir }}"
+      ignore_errors: "{{ ansible_check_mode }}"
+
     - name: restart ttrss
       command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.ttrss.yml restart
       args:

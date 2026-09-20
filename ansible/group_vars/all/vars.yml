@@ -15,6 +15,11 @@ puttini_domain: "puttini.daneel.net"
 # est calculé dynamiquement dans tasks/main.yml à partir de ce préfixe + un
 # numéro de version incrémenté à chaque build (files/puttini-server.version).
 puttini_image_repo: "ghcr.io/senseicoder/puttini-server"
+m3gan_domain: "m3gan.daneel.net"
+# ADR (m3gan-deploy, même principe que puttini-deploy) : jamais de tag "latest"
+# — tag calculé dynamiquement dans tasks/main.yml à partir de ce préfixe + un
+# numéro de version incrémenté à chaque build (files/m3gan-server.version).
+m3gan_image_repo: "ghcr.io/senseicoder/m3gan-server"
 acme_email: "cedric@daneel.net"
 ipv6_gateway: "2001:41d0:302:2100::1"
 php_shell_deploy_dir: "/opt/php-shell"

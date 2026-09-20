@@ -1,0 +1,32 @@
+# Image tirée du registre (ghcr.io) — jamais construite sur glaurung, cf.
+# puttini-deploy/rat-setup pour le même principe. Build + push faits en local
+# (tasks/main.yml de ce rôle), avant ce template.
+services:
+  m3gan:
+    image: "{{ m3gan_image }}"
+    container_name: m3gan
+    restart: unless-stopped
+    security_opt:
+      - "seccomp:unconfined"  # Docker 19.03 ne whitelist pas clone3 (Linux 5.3+), cf. CLAUDE.md § Pièges Docker
+    environment:
+      DATABASE_URL: "sqlite:////data/m3gan.db"
+      M3GAN_MASTER_KEY: "{{ m3gan_master_key }}"
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/m3gan:/data"
+    networks:
+      - "{{ docker_network_name }}"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.m3gan.rule=Host(`{{ m3gan_domain }}`)"
+      - "traefik.http.routers.m3gan.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.m3gan.tls=true"
+      - "traefik.http.services.m3gan.loadbalancer.server.port=8000"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  "{{ docker_network_name }}":
+    external: true

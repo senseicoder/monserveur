@@ -2,3 +2,7 @@
 mindwtr_token: "CHANGEME"
 ntfy_admin_password: "CHANGEME"
 ntfy_healthcheck_token: "CHANGEME"
+# Clé maîtresse de l'API M3gan — protège l'endpoint d'enregistrement des clés
+# d'appareil (/appareils/enregistrer, cf. ARCHITECTURE.md du repo M3gan).
+# Générer une vraie valeur avec, par exemple : openssl rand -hex 32
+m3gan_master_key: "CHANGEME"
