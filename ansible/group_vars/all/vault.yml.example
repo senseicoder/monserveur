@@ -6,3 +6,6 @@ ntfy_healthcheck_token: "CHANGEME"
 # d'appareil (/appareils/enregistrer, cf. ARCHITECTURE.md du repo M3gan).
 # Générer une vraie valeur avec, par exemple : openssl rand -hex 32
 m3gan_master_key: "CHANGEME"
+# Mot de passe de l'interface d'admin M3gan (un seul, pour Cédric — HTTP Basic,
+# username ignoré). Générer avec, par exemple : openssl rand -base64 24
+m3gan_admin_password: "CHANGEME"

@@ -11,6 +11,7 @@ services:
     environment:
       DATABASE_URL: "sqlite:////data/m3gan.db"
       M3GAN_MASTER_KEY: "{{ m3gan_master_key }}"
+      M3GAN_ADMIN_PASSWORD: "{{ m3gan_admin_password }}"
     volumes:
       - "{{ mindwtr_deploy_dir }}/data/m3gan:/data"
     networks:
