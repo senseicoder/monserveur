@@ -1,0 +1,12 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml (pas de default
+# local, cf. docker-network-mindwtr-setup/defaults/main.yml) :
+#   mindwtr_deploy_dir   — répertoire de la stack, ex. /opt/mindwtr
+#   m3gan_domain         — domaine du vhost/certbot, ex. m3gan.daneel.net
+#   m3gan_image_repo     — préfixe d'image ghcr.io (jamais "latest", cf. tasks/main.yml)
+#   acme_email           — email de contact Let's Encrypt
+#   m3gan_master_key     — clé maîtresse API (group_vars/all/vault.yml, chiffré)
+
+# Repo source du backend M3gan (build local, jamais sur glaurung — cf. ADR
+# rat-setup "code commun toujours dans l'image").
+m3gan_repo_path: "/home/cedric/www/c/M3gan/backend"
