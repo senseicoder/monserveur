@@ -15,6 +15,11 @@ puttini_domain: "puttini.daneel.net"
 # est calculé dynamiquement dans tasks/main.yml à partir de ce préfixe + un
 # numéro de version incrémenté à chaque build (files/puttini-server.version).
 puttini_image_repo: "ghcr.io/senseicoder/puttini-server"
+# Topic ntfy dédié aux alertes puttini (2FA iCloud expirée, batterie faible,
+# geofencing — PR #33/#66/#67), séparé de glaurung-health. Réutilise le compte
+# admin ntfy existant (ntfy_healthcheck_token, vault.yml) plutôt qu'un token
+# dédié, même pattern que backup-setup/glaurung-healthcheck.
+puttini_ntfy_topic: "puttini-alerts"
 acme_email: "cedric@daneel.net"
 ipv6_gateway: "2001:41d0:302:2100::1"
 php_shell_deploy_dir: "/opt/php-shell"

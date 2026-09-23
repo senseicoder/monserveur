@@ -156,6 +156,36 @@
   diff: false
   notify: restart puttini
 
+# --- Migrations DB (ADR-013 + geofencing #54, PR #66/#67) ---
+# Base.metadata.create_all() ne crée que les tables manquantes, jamais les
+# colonnes manquantes sur une table existante (server/app/database.py) — ces
+# deux colonnes doivent être ajoutées manuellement avant que la nouvelle image
+# (qui les lit/écrit) ne démarre. Idempotent (vérifie PRAGMA table_info avant
+# d'altérer) : ne fait rien si déjà appliqué.
+- name: Copier le script de migration DB puttini
+  ansible.builtin.copy:
+    src: migrate_db.py
+    dest: /tmp/puttini_migrate_db.py
+    mode: "0644"
+
+- name: Appliquer les migrations DB puttini (battery_alert_threshold_pct, inside) via le conteneur en cours
+  ansible.builtin.command: docker cp /tmp/puttini_migrate_db.py puttini:/tmp/migrate_db.py
+  changed_when: false
+
+- name: Exécuter la migration dans le conteneur puttini
+  ansible.builtin.command: docker exec puttini python3 /tmp/migrate_db.py
+  register: puttini_migrate_result
+  changed_when: "'OK —' in puttini_migrate_result.stdout"
+
+- name: Afficher le résultat de la migration
+  ansible.builtin.debug:
+    var: puttini_migrate_result.stdout_lines
+
+- name: Nettoyer le script de migration temporaire (hôte)
+  ansible.builtin.file:
+    path: /tmp/puttini_migrate_db.py
+    state: absent
+
 - name: Tirer la dernière image et démarrer/mettre à jour le conteneur puttini
   ansible.builtin.command: "{{ item }}"
   args:

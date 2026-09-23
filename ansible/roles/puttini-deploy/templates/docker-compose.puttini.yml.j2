@@ -12,6 +12,9 @@ services:
       DATABASE_URL: "sqlite:////data/puttini.db"
       ICLOUD_ENABLED: "true"
       ICLOUD_CONFIG_PATH: "/data/icloud-credentials.json"
+      NTFY_URL: "https://{{ ntfy_domain }}:8787"
+      NTFY_TOPIC: "{{ puttini_ntfy_topic }}"
+      NTFY_TOKEN: "{{ ntfy_healthcheck_token }}"
     volumes:
       - "{{ mindwtr_deploy_dir }}/data/puttini:/data"
     networks:
