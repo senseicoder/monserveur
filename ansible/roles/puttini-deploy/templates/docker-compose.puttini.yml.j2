@@ -30,6 +30,23 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    # journald plutôt que le json-file par défaut : le json-file vit dans
+    # /var/lib/docker/containers/<id>/, donc les logs disparaissent avec le
+    # conteneur à chaque bump de version (constaté au déploiement 0.16 du
+    # 2026-09-24 — impossible de revenir sur la connexion iCloud du 20/09).
+    # Avec journald les logs vont dans le journal de l'hôte et survivent à la
+    # recréation ; "docker logs puttini" continue de fonctionner, et on peut
+    # aussi faire "journalctl CONTAINER_NAME=puttini" ou CONTAINER_TAG=puttini.
+    # Le driver "local" ne conviendrait pas : il stocke au même endroit que
+    # json-file, lié à l'ID du conteneur.
+    # Suppose journald en stockage persistant — c'est le rôle
+    # journald-persistent-setup, joué avant celui-ci dans glaurung.list. Sans
+    # lui, les logs survivraient à la recréation du conteneur mais pas au
+    # reboot de l'hôte.
+    logging:
+      driver: journald
+      options:
+        tag: "{{ puttini_log_tag }}"
 
 networks:
   "{{ docker_network_name }}":

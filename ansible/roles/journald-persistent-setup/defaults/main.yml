@@ -1,0 +1,25 @@
+---
+# Rend le journal systemd persistant sur disque.
+#
+# Sans ce rôle, glaurung a Storage=auto (valeur par défaut, ligne commentée
+# dans /etc/systemd/journald.conf) ET pas de /var/log/journal : "auto" signifie
+# alors stockage volatil dans /run/log/journal, effacé à chaque reboot de
+# l'hôte. Créer /var/log/journal suffit à basculer "auto" en persistant, sans
+# toucher au fichier de conf principal.
+#
+# Motivation directe : le driver de log journald du conteneur puttini
+# (puttini-deploy) ne sert à rien si le journal lui-même ne survit pas au
+# reboot. Rôle séparé et pas intégré à puttini-deploy parce qu'il change le
+# comportement de journalisation de TOUT l'hôte, pas d'un service — même
+# principe de découpage que docker-engine-setup vs les rôles applicatifs
+# (cf. RAPPROCHEMENT_INFRA_DEPLOY.md).
+
+# Plafond disque du journal. Sans borne, journald prend 10 % de la taille du
+# système de fichiers (74 Go ici, soit ~7,4 Go) plafonnés à 4 Go — beaucoup
+# trop pour l'usage visé.
+journald_system_max_use: 500M
+
+# Durée de rétention. Le besoin qui a motivé le rôle est de pouvoir relire
+# quelques semaines en arrière (une connexion iCloud du 20/09 cherchée le
+# 24/09, perdue avec la recréation du conteneur).
+journald_max_retention: 3month

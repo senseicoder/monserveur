@@ -9,3 +9,8 @@
 # Repo source du serveur puttini (build local, jamais sur glaurung — cf. ADR
 # rat-setup "code commun toujours dans l'image").
 puttini_repo_path: "/home/cedric/www/c/puttini/server"
+
+# Étiquette journald du conteneur (champ CONTAINER_TAG / SYSLOG_IDENTIFIER) :
+# reste stable même si le nom du conteneur change, contrairement à
+# CONTAINER_NAME. Cf. le bloc "logging:" du template Compose.
+puttini_log_tag: puttini
