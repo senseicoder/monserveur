@@ -1,0 +1,59 @@
+---
+- name: Créer /var/log/journal (bascule Storage=auto en persistant)
+  ansible.builtin.file:
+    path: /var/log/journal
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: "2755"
+  register: journald_dir
+
+- name: Créer le répertoire de drop-in de journald
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# Drop-in plutôt qu'une modification de /etc/systemd/journald.conf : le fichier
+# principal reste celui de la distribution, et le réglage se lit d'un coup
+# d'oeil. Supporté depuis systemd 218 ; glaurung est en 232.
+- name: Borner la taille et la rétention du journal
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/10-persistent.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Géré par Ansible (rôle journald-persistent-setup) — ne pas éditer à la main.
+      [Journal]
+      SystemMaxUse={{ journald_system_max_use }}
+      MaxRetentionSec={{ journald_max_retention }}
+  register: journald_conf
+
+# Applique les droits et ACL attendus sur le répertoire fraîchement créé, comme
+# le ferait l'installation du paquet — à faire avant le restart de journald.
+- name: Appliquer les droits systemd-tmpfiles sur /var/log/journal
+  ansible.builtin.command: systemd-tmpfiles --create --prefix /var/log/journal
+  when: journald_dir is changed
+
+- name: Redémarrer systemd-journald pour basculer sur le stockage persistant
+  ansible.builtin.systemd:
+    name: systemd-journald
+    state: restarted
+  when: journald_dir is changed or journald_conf is changed
+
+- name: Vérifier que le journal est bien persistant
+  ansible.builtin.command: journalctl --header
+  register: journald_header
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Afficher l'emplacement du journal actif
+  ansible.builtin.debug:
+    msg: >-
+      Journal persistant actif (/var/log/journal), plafond
+      {{ journald_system_max_use }}, rétention {{ journald_max_retention }}.
+      Logs d'un conteneur : journalctl CONTAINER_NAME=<nom>
+  when: not ansible_check_mode

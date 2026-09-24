@@ -112,6 +112,7 @@ ansible/
 ├── run_role.yml                  ← playbook générique "role", handlers Compose centralisés (cf. note ci-dessous)
 ├── mindwtr.list / rat.list / rustdesk.list / security.list
 └── roles/
+    ├── journald-persistent-setup/ ← /var/log/journal + plafond/rétention : sans lui le journal est volatil (Storage=auto sans /var/log/journal) et les logs conteneurs partent au reboot
     ├── docker-engine-setup/      ← install Docker CE + plugin Compose
     ├── network-ipv6-setup/       ← forwarding IPv6 kernel + service systemd ipv6-default-route
     ├── docker-network-mindwtr-setup/  ← daemon.json IPv6 + réseau Docker mindwtr (down/up des 3 stacks si reconfig)
