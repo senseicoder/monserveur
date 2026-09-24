@@ -3,6 +3,7 @@
 docker-engine-setup
 network-ipv6-setup
 docker-network-mindwtr-setup
+certbot-setup
 traefik-deploy
 mindwtr-cloud-deploy
 vaultwarden-deploy
