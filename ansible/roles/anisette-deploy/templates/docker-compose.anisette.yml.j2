@@ -1,0 +1,17 @@
+# Serveur Anisette (attestation logicielle Apple), consommé par l'adaptateur
+# FindMy.py de puttini (AirTags, issue #29) — jamais exposé publiquement,
+# joignable uniquement depuis les autres conteneurs du réseau {{ docker_network_name }}
+# (ex. puttini via http://anisette:6969). Pas de Traefik, pas de vhost.
+services:
+  anisette:
+    image: dadoum/anisette-v3-server
+    container_name: anisette
+    restart: unless-stopped
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/anisette:/home/Alcoholic/.config/anisette-v3/lib/"
+    networks:
+      - "{{ docker_network_name }}"
+
+networks:
+  "{{ docker_network_name }}":
+    external: true

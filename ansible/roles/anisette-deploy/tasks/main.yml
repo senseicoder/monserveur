@@ -1,0 +1,33 @@
+---
+# Serveur Anisette self-hosté — dépendance de l'adaptateur FindMy.py (AirTags,
+# puttini issue #29). Décision Cédric (24/09) : pas de service tiers pour ces
+# données sensibles (attestation liée au compte Apple), self-host sur glaurung.
+
+- name: Créer le répertoire data/anisette
+  ansible.builtin.file:
+    path: "{{ mindwtr_deploy_dir }}/data/anisette"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Déployer docker-compose.anisette.yml
+  ansible.builtin.template:
+    src: docker-compose.anisette.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/docker-compose.anisette.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  register: anisette_compose
+
+- name: Démarrer/mettre à jour le conteneur anisette
+  ansible.builtin.command: "{{ item }}"
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  loop:
+    - "docker-compose -f docker-compose.anisette.yml pull"
+    - "docker-compose -f docker-compose.anisette.yml up -d"
+  loop_control:
+    label: "{{ item }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"

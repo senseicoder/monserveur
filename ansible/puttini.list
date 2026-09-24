@@ -1,1 +1,7 @@
+# anisette-deploy avant puttini-deploy : le conteneur anisette doit exister
+# sur le réseau docker avant que puttini ne le référence (adaptateur FindMy.py
+# AirTags, issue #29 -- pas encore consommé par puttini-deploy tant que
+# l'adaptateur n'est pas écrit, mais démarré dès maintenant pour préparer
+# l'extraction des clés AirTag depuis la VM macOS).
+anisette-deploy
 puttini-deploy
