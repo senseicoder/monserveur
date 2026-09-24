@@ -13,6 +13,15 @@ DB_PATH = "/data/puttini.db"
 MIGRATIONS = [
     ("devices", "battery_alert_threshold_pct", "INTEGER"),
     ("device_zones", "inside", "BOOLEAN"),
+    # Santé des services Android déclarée dans le heartbeat (issue #64).
+    # Toutes nullables : NULL veut dire "l'appareil n'a rien déclaré", ce qui
+    # est le cas de toutes les lignes déjà en base et de toutes les sources
+    # autres que l'app Android — à ne pas confondre avec "service arrêté".
+    ("positions", "foreground_service_active", "BOOLEAN"),
+    ("positions", "work_manager_scheduled", "BOOLEAN"),
+    ("positions", "missing_permissions", "TEXT"),
+    ("positions", "run_attempt_count", "INTEGER"),
+    ("positions", "last_heartbeat_success", "DATETIME"),
 ]
 
 
