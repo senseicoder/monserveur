@@ -1,0 +1,49 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml / vault.yml :
+#   ntfy_domain             — domaine ntfy (ex. ntfy.daneel.net)
+#   ntfy_security_topic     — topic ntfy pour les alertes sécurité glaurung
+#   ntfy_healthcheck_token  — token ntfy (compte admin, réutilisé — accès à tous les topics)
+
+security_scan_script_dir: /opt/glaurung-security-scan
+security_scan_state_dir: /var/lib/glaurung-security-scan
+security_scan_reminder_seconds: 86400  # 24h — délai avant de rappeler une alerte toujours active
+
+# Score de durcissement lynis (hardening_index, 0-100) en dessous duquel on alerte.
+security_scan_lynis_score_threshold: 70
+
+# Planification (cf. adr-cron-toujours-etc-cron-d) :
+#   lynis     : mensuel (le 1er du mois) — audit lourd
+#   rkhunter  : hebdomadaire (dimanche) — détection rootkit
+#   ports     : fréquent — comparaison ss -tlnp/-ulnp vs liste attendue ci-dessous
+security_scan_lynis_cron_hour: 3
+security_scan_lynis_cron_day: "1"
+security_scan_rkhunter_cron_hour: 3
+security_scan_rkhunter_cron_weekday: "0"
+security_scan_ports_cron_minute: "*/15"
+
+# Ports attendus, dupliqués depuis FIREWALL.md (état vérifié le 2026-07-16) et
+# ansible/roles/firewall-setup/defaults/main.yml (firewall_host_tcp_ports & co).
+# Pas de source commune entre les deux rôles (rôles isolés, pas d'accès aux
+# defaults l'un de l'autre — même raison que rat_site_data_root dans
+# group_vars/all/vars.yml) : à tenir à jour manuellement en même temps que
+# FIREWALL.md et firewall-setup si la liste change.
+# ⚠️ FIREWALL.md lui-même est signalé périmé au-delà de la ligne réseau dans le
+# CLAUDE.md du repo (ntfy 8081, rat, phpbb-integralsport absents du tableau) —
+# à vérifier avec Cédric avant de considérer un écart détecté comme une vraie
+# anomalie plutôt qu'un trou de doc.
+security_scan_expected_tcp_ports:
+  - 22
+  - 80
+  - 443
+  - 8000
+  - 8001
+  - 8002
+  - 22000
+  - 3306
+  - 8787
+  - 21115
+  - 21116
+  - 21117
+security_scan_expected_udp_ports:
+  - 22000
+  - 21116

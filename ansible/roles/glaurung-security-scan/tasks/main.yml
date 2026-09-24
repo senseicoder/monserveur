@@ -1,0 +1,72 @@
+---
+- name: Installer lynis et rkhunter
+  apt:
+    name:
+      - lynis
+      - rkhunter
+    state: present
+  become: true
+
+- name: Créer le répertoire du script
+  file:
+    path: "{{ security_scan_script_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  become: true
+
+- name: Créer le répertoire d'état (anti-spam des alertes + logs rkhunter)
+  file:
+    path: "{{ security_scan_state_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  become: true
+
+- name: Déployer le script glaurung-security-scan.sh
+  template:
+    src: glaurung-security-scan.sh.j2
+    dest: "{{ security_scan_script_dir }}/glaurung-security-scan.sh"
+    owner: root
+    group: root
+    mode: "0750"
+  become: true
+
+- name: Initialiser la baseline de propriétés rkhunter (idempotent, premier déploiement seulement)
+  command: rkhunter --propupd
+  become: true
+  args:
+    creates: /var/lib/rkhunter/db/rkhunter.dat
+
+- name: Planifier le cron lynis (mensuel, /etc/cron.d/, cf. adr-cron-toujours-etc-cron-d)
+  cron:
+    name: "glaurung-security-scan-lynis"
+    cron_file: glaurung-security-scan
+    minute: "0"
+    hour: "{{ security_scan_lynis_cron_hour }}"
+    day: "{{ security_scan_lynis_cron_day }}"
+    job: "{{ security_scan_script_dir }}/glaurung-security-scan.sh lynis >> /var/log/glaurung-security-scan.log 2>&1"
+    user: root
+  become: true
+
+- name: Planifier le cron rkhunter (hebdomadaire)
+  cron:
+    name: "glaurung-security-scan-rkhunter"
+    cron_file: glaurung-security-scan
+    minute: "0"
+    hour: "{{ security_scan_rkhunter_cron_hour }}"
+    weekday: "{{ security_scan_rkhunter_cron_weekday }}"
+    job: "{{ security_scan_script_dir }}/glaurung-security-scan.sh rkhunter >> /var/log/glaurung-security-scan.log 2>&1"
+    user: root
+  become: true
+
+- name: Planifier le cron de comparaison des ports ouverts (fréquent, alerte quasi immédiate)
+  cron:
+    name: "glaurung-security-scan-ports"
+    cron_file: glaurung-security-scan
+    minute: "{{ security_scan_ports_cron_minute }}"
+    job: "{{ security_scan_script_dir }}/glaurung-security-scan.sh ports >> /var/log/glaurung-security-scan.log 2>&1"
+    user: root
+  become: true
