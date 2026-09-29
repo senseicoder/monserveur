@@ -9,3 +9,5 @@
 # Repo source du serveur puttini (build local, jamais sur glaurung — cf. ADR
 # rat-setup "code commun toujours dans l'image").
 puttini_repo_path: "/home/cedric/www/c/puttini/server"
+# Branche que le dépôt source doit suivre exactement avant tout build (garde-fou du 29/09/2026)
+puttini_branche: "master"

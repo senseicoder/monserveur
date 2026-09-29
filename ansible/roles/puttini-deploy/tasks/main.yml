@@ -5,6 +5,46 @@
 # rat-setup et cohérent avec mindwtr-cloud/vaultwarden/ntfy (images tirées
 # d'un registre, jamais construites sur place).
 
+# --- Garde-fou : le dépôt source doit être exactement origin/master, sans modification ---
+# Le build prend puttini_repo_path tel quel. Le 29/09/2026, ce clone était resté en HEAD
+# détachée sur une version du 24/09 (git pull n'y fait rien) : image 0.17 construite sans
+# la PR #92, et la clé API « lecture seule » créée ensuite était une clé admin. Placé avant
+# le compteur de version : un refus ne consomme pas de numéro.
+
+- name: Mettre à jour les références du dépôt source puttini (git fetch)
+  ansible.builtin.command: git -C "{{ puttini_repo_path }}" fetch origin
+  changed_when: false
+  check_mode: false
+  delegate_to: localhost
+  become: false
+
+- name: Lire le commit du dépôt source, celui d'origin/{{ puttini_branche }} et les modifications locales
+  ansible.builtin.command: "{{ item }}"
+  loop:
+    - git -C "{{ puttini_repo_path }}" rev-parse HEAD
+    - git -C "{{ puttini_repo_path }}" rev-parse "origin/{{ puttini_branche }}"
+    - git -C "{{ puttini_repo_path }}" status --porcelain
+  register: puttini_source
+  changed_when: false
+  check_mode: false
+  delegate_to: localhost
+  become: false
+
+- name: Refuser de construire depuis un dépôt source périmé ou modifié
+  ansible.builtin.assert:
+    that:
+      - puttini_source.results[0].stdout == puttini_source.results[1].stdout
+      - puttini_source.results[2].stdout | length == 0
+    fail_msg: >-
+      {{ puttini_repo_path }} est sur {{ puttini_source.results[0].stdout[:7] }},
+      origin/{{ puttini_branche }} sur {{ puttini_source.results[1].stdout[:7] }}{{
+      ' et contient des modifications locales' if puttini_source.results[2].stdout | length > 0 else '' }}.
+      Mettre le dépôt à jour (git -C {{ puttini_repo_path }} checkout --detach origin/{{ puttini_branche }})
+      puis relancer.
+    success_msg: "Source = origin/{{ puttini_branche }} ({{ puttini_source.results[0].stdout[:7] }})"
+  delegate_to: localhost
+  become: false
+
 # --- Build + publication de l'image (en local, jamais sur glaurung) ---
 
 # ADR : jamais de tag "latest" — compteur persisté dans ce rôle
