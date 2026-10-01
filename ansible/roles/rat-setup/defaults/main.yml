@@ -8,6 +8,11 @@
 # migration vers nginx nécessaire pour les .htaccess).
 rat_php_image_tag: "8.2-apache-buster"
 rat_mindwtr_gateway: "172.18.0.1"
+# Sous-réseau du réseau Docker partagé (docker_network_name), seul autorisé à
+# joindre le MySQL natif (règles INPUT), et son équivalent en motif d'hôte
+# MySQL pour les comptes -- même réseau que rat_mindwtr_gateway ci-dessus.
+rat_mindwtr_subnet: "172.18.0.0/16"
+rat_mysql_client_host: "172.18.%.%"
 # Registre + compte de publication de l'image (une seule source pour le
 # domaine du registre, aussi utilisé par les deux docker_login).
 rat_registry: "ghcr.io"

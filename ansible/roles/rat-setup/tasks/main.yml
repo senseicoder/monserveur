@@ -291,13 +291,13 @@
   community.mysql.mysql_user:
     name: "{{ item.db_user }}"
     password: "{{ item.db_password }}"
-    host: "172.18.%.%"
+    host: "{{ rat_mysql_client_host }}"
     priv: "{{ item.db_name }}.*:ALL"
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
   loop: "{{ rat_sites }}"
   loop_control:
-    label: "{{ item.db_user }}@172.18.%.%"
+    label: "{{ item.db_user }}@{{ rat_mysql_client_host }}"
 
 # --- Accès réseau conteneur → MySQL natif (point ouvert résolu ici) ---
 # MySQL n'écoutait jusqu'ici que sur 127.0.0.1 (accès depuis le conteneur ad-hoc
@@ -331,7 +331,7 @@
     state: absent
   loop:
     - { source: "127.0.0.1/32", jump: "ACCEPT" }
-    - { source: "172.18.0.0/16", jump: "ACCEPT" }
+    - { source: "{{ rat_mindwtr_subnet }}", jump: "ACCEPT" }
     - { source: "0.0.0.0/0", jump: "DROP" }
   loop_control:
     label: "{{ item.source }} -> {{ item.jump }}"
@@ -348,7 +348,7 @@
     rule_num: "{{ item.num }}"
   loop:
     - { iface: "lo", jump: "ACCEPT", num: 1 }
-    - { source: "172.18.0.0/16", jump: "ACCEPT", num: 2 }
+    - { source: "{{ rat_mindwtr_subnet }}", jump: "ACCEPT", num: 2 }
     - { jump: "DROP", num: 3 }
   loop_control:
     label: "{{ item.iface | default(item.source | default('0.0.0.0/0')) }} -> {{ item.jump }}"
