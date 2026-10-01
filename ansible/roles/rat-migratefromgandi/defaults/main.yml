@@ -1,1 +1,8 @@
 ---
+# Dumps prod Gandi (déjà rapatriés sur le poste local) à importer dans les
+# bases créées par rat-setup -- une seule source pour le dossier et la liste
+# base/dump, auparavant répétés dans les 3 tâches d'import.
+rat_gandi_dumps_dir: "/space/Work/ArchivesGandi/mysql"
+rat_gandi_dumps:
+  - { db_name: rat_plc, dump: "rat_plc_2026-07-14_00h56m44s.sql.gz" }
+  - { db_name: pds, dump: "pds_2026-07-14_00h55m55s.sql.gz" }
