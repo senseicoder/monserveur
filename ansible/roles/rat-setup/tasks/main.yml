@@ -12,7 +12,7 @@
 
 - name: Créer le dossier de build local (gitignoré, dans le repo rat-git)
   ansible.builtin.file:
-    path: "/home/cedric/www/c/rat-git/docker"
+    path: "{{ rat_build_dir }}"
     state: directory
     mode: "0750"
   delegate_to: localhost
@@ -21,14 +21,14 @@
 - name: Rendre les vhosts Apache internes (multi-domaine) dans le contexte de build local
   ansible.builtin.template:
     src: apache-rat-vhosts.conf.j2
-    dest: "/home/cedric/www/c/rat-git/docker/apache-rat-vhosts.conf"
+    dest: "{{ rat_build_dir }}/apache-rat-vhosts.conf"
   delegate_to: localhost
   become: false
 
 - name: Rendre le Dockerfile dans le contexte de build local (= le repo rat-git lui-même)
   ansible.builtin.template:
     src: Dockerfile.j2
-    dest: "/home/cedric/www/c/rat-git/docker/Dockerfile.prod"
+    dest: "{{ rat_build_dir }}/Dockerfile.prod"
   delegate_to: localhost
   become: false
 
@@ -96,8 +96,8 @@
   community.docker.docker_image:
     name: "{{ rat_image }}"
     build:
-      path: "/home/cedric/www/c/rat-git"
-      dockerfile: "docker/Dockerfile.prod"
+      path: "{{ rat_build_context_dir }}"
+      dockerfile: "{{ rat_build_subdir }}/Dockerfile.prod"
       pull: true
       # Sans nocache, les instructions dont le contexte n'a pas changé (ex.
       # COPY admin, si le dossier n'a pas bougé depuis le dernier build)
@@ -154,7 +154,7 @@
 - name: Créer le symlink rat_code vers le code cuit dans l'image
   ansible.builtin.file:
     path: "{{ rat_site_data_root }}/{{ item.domain }}/htdocs/rat_code"
-    src: "/opt/rat-code/rat_code"
+    src: "{{ rat_container_code_dir }}/rat_code"
     state: link
     force: true
   loop: "{{ rat_sites }}"
@@ -173,7 +173,7 @@
 
 - name: Lister le contenu statique de admin/ (repo local, hors get.php)
   ansible.builtin.find:
-    paths: "/home/cedric/www/c/rat-git/admin"
+    paths: "{{ rat_build_context_dir }}/admin"
     file_type: any
     hidden: false
   register: rat_admin_static_files
@@ -194,7 +194,7 @@
 - name: Créer les symlinks fichier-par-fichier pour le contenu statique de admin/
   ansible.builtin.file:
     path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/admin/{{ item.1 | basename }}"
-    src: "/opt/rat-code/admin/{{ item.1 | basename }}"
+    src: "{{ rat_container_code_dir }}/admin/{{ item.1 | basename }}"
     state: link
     force: true
   loop: "{{ rat_sites | product(rat_admin_static_files.files | map(attribute='path') | map('basename') | reject('equalto', 'get.php') | list) | list }}"

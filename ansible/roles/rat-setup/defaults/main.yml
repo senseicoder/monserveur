@@ -18,3 +18,20 @@ rat_image_repo: "ghcr.io/senseicoder/rat-web"
 # -- testé). Python 2.7 reste donc l'interpréteur viable ici ; le fix pour
 # community.docker n'est pas de changer d'interpréteur mais d'installer le
 # paquet manquant pour Python 2 (voir tasks/main.yml).
+
+# --- Chemins de build (poste local) et chemin du code dans l'image ---
+# Une seule source pour ces chemins, auparavant répétés en dur dans
+# tasks/main.yml et Dockerfile.j2.
+# Checkout local du dépôt rat = contexte de build de l'image (jamais sur
+# glaurung). Valeur historique conservée à l'identique : le dépôt a depuis
+# été renommé $HOME/www/c/rat, mais changer ce chemin change le comportement du
+# rôle -- à faire dans un changement séparé.
+rat_build_context_dir: "/home/cedric/www/c/rat-git"
+# Sous-dossier (gitignoré) du contexte de build où sont rendus le Dockerfile
+# et les vhosts Apache -- relatif au contexte, car référencé tel quel par le
+# Dockerfile (COPY) et par docker_image (dockerfile:).
+rat_build_subdir: "docker"
+rat_build_dir: "{{ rat_build_context_dir }}/{{ rat_build_subdir }}"
+# Chemin neutre où le code générique (rat_code, admin) est cuit dans l'image,
+# hors de l'arborescence bind-montée -- cible des symlinks créés côté hôte.
+rat_container_code_dir: "/opt/rat-code"

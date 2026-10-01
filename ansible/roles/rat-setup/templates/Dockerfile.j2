@@ -42,7 +42,7 @@ RUN echo "short_open_tag = On" > /usr/local/etc/php/conf.d/rat-legacy.ini
 # Vhosts internes (un par domaine rat), DocumentRoot = chemin absolu Gandi.
 # Fichier rendu par Ansible dans docker/apache-rat-vhosts.conf (contexte de
 # build = racine du repo rat-git).
-COPY docker/apache-rat-vhosts.conf /etc/apache2/sites-available/rat-vhosts.conf
+COPY {{ rat_build_subdir }}/apache-rat-vhosts.conf /etc/apache2/sites-available/rat-vhosts.conf
 RUN a2dissite 000-default && a2ensite rat-vhosts
 
 # Code générique cuit dans l'image (pas de bind-mount), à un chemin neutre
@@ -52,5 +52,5 @@ RUN a2dissite 000-default && a2ensite rat-vhosts
 # conteneur. Une seule copie sert les deux domaines (même code). Chemins
 # relatifs à la racine du repo (le contexte de build), pas de dossier
 # "code/" assemblé à part.
-COPY rat_code /opt/rat-code/rat_code
-COPY admin /opt/rat-code/admin
+COPY rat_code {{ rat_container_code_dir }}/rat_code
+COPY admin {{ rat_container_code_dir }}/admin
