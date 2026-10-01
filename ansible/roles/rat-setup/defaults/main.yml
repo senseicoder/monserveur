@@ -44,3 +44,13 @@ rat_build_dir: "{{ rat_build_context_dir }}/{{ rat_build_subdir }}"
 # Chemin neutre où le code générique (rat_code, admin) est cuit dans l'image,
 # hors de l'arborescence bind-montée -- cible des symlinks créés côté hôte.
 rat_container_code_dir: "/opt/rat-code"
+
+# Vrais dossiers (pas des symlinks) créés dans chaque htdocs, owner www-data,
+# relatifs à htdocs : admin/ (get.php y est régénéré, cf. tasks/main.yml) et
+# l'arborescence writable de rat_donnees/.
+rat_www_data_dirs:
+  - admin
+  - rat_donnees/journaux
+  - rat_donnees/sessions
+  - rat_donnees/modeles
+  - rat_donnees/sessionsvitrine

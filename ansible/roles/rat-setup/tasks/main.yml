@@ -145,22 +145,16 @@
   loop_control:
     label: "{{ item.domain }}"
 
-# Symlinks côté hôte, dans le dossier de DATA (donc visibles une fois le
-# bind-mount monté), pointant vers le code cuit dans l'image à un chemin
-# neutre (/opt/rat-code, hors de l'arborescence bind-montée -- pas de
-# collision, ni de code dupliqué sur le disque de l'hôte). ADR : le code
-# commun ne doit jamais être synchronisé/collé dans le volume de données,
-# uniquement l'image le porte.
-- name: Créer le symlink rat_code vers le code cuit dans l'image
-  ansible.builtin.file:
-    path: "{{ rat_site_data_root }}/{{ item.domain }}/htdocs/rat_code"
-    src: "{{ rat_container_code_dir }}/rat_code"
-    state: link
-    force: true
-  loop: "{{ rat_sites }}"
-  loop_control:
-    label: "{{ item.domain }}"
-
+# --- Arborescence de chaque htdocs : vrais dossiers + symlinks vers le code image ---
+#
+# Le code générique (rat_code/, admin/) n'est jamais copié dans le volume de
+# données : il est cuit dans l'image à un chemin neutre (rat_container_code_dir,
+# hors de l'arborescence bind-montée -- pas de collision, ni de code dupliqué
+# sur le disque de l'hôte). ADR : le code commun ne doit jamais être
+# synchronisé/collé dans le volume de données, uniquement l'image le porte.
+# Côté hôte, dans le dossier de DATA (donc visibles une fois le bind-mount
+# monté), des symlinks pointent vers ce chemin interne au conteneur.
+#
 # admin/ ne peut PAS être un symlink de dossier entier comme rat_code/ :
 # admin/get.php est régénéré à l'exécution par admincore/regenere.fonc.php
 # (SauveSous(CHEMIN_ADMIN.'get.php', ...), par site -- pas du code statique
@@ -170,49 +164,49 @@
 # un symlink fichier-par-fichier vers le code image pour tout sauf get.php,
 # qui reste un vrai fichier écrit à la génération (créé si absent, pas
 # besoin de pré-création -- SauveSous fait fopen($fichier, 'w')).
+#
+# Construction en 3 tâches : lister admin/ (une fois, en local), créer les
+# vrais dossiers (admin/ + rat_donnees/*, même propriétaire www-data), puis
+# créer tous les symlinks (rat_code/ + chaque entrée de admin/) d'une seule
+# boucle.
 
 - name: Lister le contenu statique de admin/ (repo local, hors get.php)
   ansible.builtin.find:
     paths: "{{ rat_build_context_dir }}/admin"
     file_type: any
     hidden: false
+    excludes: ["get.php"]
   register: rat_admin_static_files
   delegate_to: localhost
   become: false
 
-- name: Créer le dossier admin/ réel de chaque site
+# admin/ et rat_donnees/* : owner www-data (uid 33 dans l'image php:apache,
+# Debian). admin/ parce que get.php y est écrit à la génération
+# (fopen($fichier,'w') dans admincore/regenere.fonc.php) ; rat_donnees/*
+# (journaux, sessions...) parce que l'appli y écrit. config.php +
+# rat_donnees writable sont des artefacts de config/infra (générés par ce
+# rôle depuis les vars + le vault), pas des données Gandi -- restent dans
+# rat-setup, pas rat-migratefromgandi (qui ne traite que les vraies données).
+- name: Créer les dossiers réels writable par www-data de chaque site (admin/, rat_donnees/*)
   ansible.builtin.file:
-    path: "{{ rat_site_data_root }}/{{ item.domain }}/htdocs/admin"
+    path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/{{ item.1 }}"
     state: directory
-    owner: "33"    # www-data dans l'image php:apache -- get.php est écrit à
-    group: "33"    # la génération (fopen($fichier,'w') dans admincore/regenere.fonc.php),
-    mode: "0775"   # même besoin que rat_donnees/{journaux,sessions,...} ci-dessous.
-  loop: "{{ rat_sites }}"
-  loop_control:
-    label: "{{ item.domain }}"
-
-- name: Créer les symlinks fichier-par-fichier pour le contenu statique de admin/
-  ansible.builtin.file:
-    path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/admin/{{ item.1 | basename }}"
-    src: "{{ rat_container_code_dir }}/admin/{{ item.1 | basename }}"
-    state: link
-    force: true
-  loop: "{{ rat_sites | product(rat_admin_static_files.files | map(attribute='path') | map('basename') | reject('equalto', 'get.php') | list) | list }}"
+    owner: "33"
+    group: "33"
+    mode: "0775"
+  loop: "{{ rat_sites | product(rat_www_data_dirs) | list }}"
   loop_control:
     label: "{{ item.0.domain }}/{{ item.1 }}"
 
-# config.php + rat_donnees writable : artefacts de config/infra (générés par
-# ce rôle depuis les vars + le vault), pas des données Gandi -- restent dans
-# rat-setup, pas rat-migratefromgandi (qui ne traite que les vraies données).
-
-- name: Créer l'arborescence rat_donnees writable de chaque site
+- name: Créer les symlinks vers le code cuit dans l'image (rat_code/ entier, admin/ fichier par fichier)
   ansible.builtin.file:
-    path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/rat_donnees/{{ item.1 }}"
-    state: directory
-    owner: "33"    # www-data dans l'image php:apache (Debian)
-    group: "33"
-    mode: "0775"
-  loop: "{{ rat_sites | product(['journaux', 'sessions', 'modeles', 'sessionsvitrine']) | list }}"
+    path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/{{ item.1 }}"
+    src: "{{ rat_container_code_dir }}/{{ item.1 }}"
+    state: link
+    force: true
+  loop: "{{ rat_sites | product(['rat_code'] + (rat_admin_static_files.files | map(attribute='path') | map('basename') | map('regex_replace', '^', 'admin/') | list)) | list }}"
+  loop_control:
+    label: "{{ item.0.domain }}/{{ item.1 }}"
 
 # journaux/<site_central>/ : EcrireLog()/EcrireFichier() (fs.lib.php) ne
 # créent jamais le dossier -- normalement fait par l'installation d'un
