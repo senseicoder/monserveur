@@ -79,8 +79,8 @@
 
 - name: Se connecter à ghcr.io (en local, pour build+push)
   community.docker.docker_login:
-    registry_url: ghcr.io
-    username: senseicoder
+    registry_url: "{{ rat_registry }}"
+    username: "{{ rat_registry_user }}"
     password: "{{ rat_ghcr_pat.stdout_lines[0] }}"
   # Pas de no_log ici : le paramètre "password" du module est déjà protégé
   # au niveau de son argspec (no_log=True intégré), donc son contenu
@@ -261,8 +261,8 @@
 
 - name: Se connecter à ghcr.io sur glaurung (pour pull, l'image rat-web est privée)
   community.docker.docker_login:
-    registry_url: ghcr.io
-    username: senseicoder
+    registry_url: "{{ rat_registry }}"
+    username: "{{ rat_registry_user }}"
     password: "{{ rat_ghcr_pat.stdout_lines[0] }}"
   # Pas de no_log ici : le paramètre "password" est déjà protégé par son
   # propre argspec (no_log=True intégré au module) -- on garde le vrai
