@@ -9,6 +9,7 @@ mindwtr_domain: "mindwtr.daneel.net"
 vaultwarden_domain: "vault.daneel.net"
 ntfy_domain: "ntfy.daneel.net"
 ntfy_health_topic: "glaurung-health"
+ntfy_security_topic: "glaurung-security"
 rustdesk_domain: "rustdesk.daneel.net"
 puttini_domain: "puttini.daneel.net"
 # ADR (puttini-deploy) : jamais de tag "latest" — le tag complet (puttini_image)

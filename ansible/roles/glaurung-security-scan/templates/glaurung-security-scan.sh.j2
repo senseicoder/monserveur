@@ -1,0 +1,111 @@
+#!/bin/bash
+set -uo pipefail
+
+NTFY_URL="https://{{ ntfy_domain }}:8787/{{ ntfy_security_topic }}"
+NTFY_TOKEN="{{ ntfy_healthcheck_token }}"
+STATE_DIR="{{ security_scan_state_dir }}"
+LYNIS_SCORE_THRESHOLD={{ security_scan_lynis_score_threshold }}
+EXPECTED_TCP_PORTS="{{ security_scan_expected_tcp_ports | join(' ') }}"
+EXPECTED_UDP_PORTS="{{ security_scan_expected_udp_ports | join(' ') }}"
+
+mkdir -p "$STATE_DIR"
+now=$(date +%s)
+
+# send_alert KEY PRIORITY TITLE MESSAGE
+# Même mécanisme anti-spam que glaurung-healthcheck.sh : envoie si le contenu
+# diffère de la dernière alerte "KEY", sinon respecte un délai avant de rappeler.
+send_alert() {
+  local key="$1" priority="$2" title="$3" message="$4"
+  local state_file="$STATE_DIR/${key}.last"
+  local msg_hash last_sent=0 last_hash=""
+  local reminder_seconds={{ security_scan_reminder_seconds }}
+  msg_hash=$(printf '%s' "$message" | md5sum | cut -d' ' -f1)
+  if [ -f "$state_file" ]; then
+    last_sent=$(sed -n '1p' "$state_file")
+    last_hash=$(sed -n '2p' "$state_file")
+  fi
+  if [ "$msg_hash" != "$last_hash" ] || [ $((now - last_sent)) -ge "$reminder_seconds" ]; then
+    curl -s -o /dev/null -H "Authorization: Bearer $NTFY_TOKEN" -H "Priority: $priority" -H "Title: $title" -d "$message" "$NTFY_URL"
+    printf '%s\n%s\n' "$now" "$msg_hash" > "$state_file"
+  fi
+}
+
+# clear_alert KEY — efface l'état pour que la prochaine occurrence réalerte immédiatement
+clear_alert() {
+  rm -f "$STATE_DIR/$1.last"
+}
+
+check_lynis() {
+  local report=/var/log/lynis-report.dat
+  lynis audit system --quick --no-colors >/dev/null 2>&1 || true
+  if [ ! -f "$report" ]; then
+    send_alert "lynis" "high" "Glaurung — lynis en échec" "lynis n'a produit aucun rapport ($report absent)."
+    return
+  fi
+  local score warnings new_warnings warnings_state
+  score=$(grep '^hardening_index=' "$report" | cut -d= -f2)
+  warnings=$(grep '^warning\[\]=' "$report" | sort)
+  warnings_state="$STATE_DIR/lynis_warnings.last"
+  if [ -f "$warnings_state" ]; then
+    new_warnings=$(comm -13 "$warnings_state" <(printf '%s\n' "$warnings") 2>/dev/null || true)
+  else
+    new_warnings="$warnings"
+  fi
+  printf '%s\n' "$warnings" > "$warnings_state"
+
+  if [ -n "$score" ] && { [ "$score" -lt "$LYNIS_SCORE_THRESHOLD" ] || [ -n "$new_warnings" ]; }; then
+    local msg="Score de durcissement : ${score}/100 (seuil ${LYNIS_SCORE_THRESHOLD})"
+    [ -n "$new_warnings" ] && msg="${msg}\nNouvelles findings :\n${new_warnings}"
+    send_alert "lynis" "high" "Glaurung — audit lynis" "$(echo -e "$msg")"
+  else
+    clear_alert "lynis"
+  fi
+}
+
+check_rkhunter() {
+  local log="$STATE_DIR/rkhunter-last.log"
+  rkhunter --check --sk --nocolors --report-warnings-only >"$log" 2>&1 || true
+  local anomalies
+  anomalies=$(grep -E '^Warning: ' "$log" || true)
+  if [ -n "$anomalies" ]; then
+    send_alert "rkhunter" "urgent" "Glaurung — rkhunter anomalie" "$anomalies"
+  else
+    clear_alert "rkhunter"
+  fi
+}
+
+check_ports() {
+  local real_tcp real_udp unexpected_tcp="" unexpected_udp="" p
+  real_tcp=$(ss -tlnpH 2>/dev/null | awk '{print $4}' | sed -E 's/.*://' | sort -un)
+  real_udp=$(ss -ulnpH 2>/dev/null | awk '{print $4}' | sed -E 's/.*://' | sort -un)
+
+  for p in $real_tcp; do
+    if ! grep -qw "$p" <<<"$EXPECTED_TCP_PORTS"; then
+      unexpected_tcp="${unexpected_tcp}${p} "
+    fi
+  done
+  for p in $real_udp; do
+    if ! grep -qw "$p" <<<"$EXPECTED_UDP_PORTS"; then
+      unexpected_udp="${unexpected_udp}${p} "
+    fi
+  done
+
+  if [ -n "$unexpected_tcp" ] || [ -n "$unexpected_udp" ]; then
+    local msg="Ports ouverts absents de FIREWALL.md :"
+    [ -n "$unexpected_tcp" ] && msg="${msg}\nTCP : ${unexpected_tcp}"
+    [ -n "$unexpected_udp" ] && msg="${msg}\nUDP : ${unexpected_udp}"
+    send_alert "ports" "urgent" "Glaurung — port(s) inattendu(s)" "$(echo -e "$msg")"
+  else
+    clear_alert "ports"
+  fi
+}
+
+case "${1:-}" in
+  lynis) check_lynis ;;
+  rkhunter) check_rkhunter ;;
+  ports) check_ports ;;
+  *)
+    echo "Usage: $0 {lynis|rkhunter|ports}" >&2
+    exit 1
+    ;;
+esac
