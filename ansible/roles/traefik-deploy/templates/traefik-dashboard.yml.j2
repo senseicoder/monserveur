@@ -1,0 +1,23 @@
+# {{ ansible_managed }}
+# Dashboard Traefik — exposé via le file provider avec BasicAuth.
+# Déployé uniquement si traefik_dashboard_enabled: true.
+# TLS : utilise le file provider existant (traefik_dashboard_domain doit avoir
+# un cert dans /opt/mindwtr/certs/traefik-dashboard/ — voir tasks/main.yml).
+http:
+  routers:
+    traefik-dashboard:
+      rule: "Host(`{{ traefik_dashboard_domain }}`)"
+      entrypoints:
+        - websecure
+      tls: true
+      service: api@internal
+      middlewares:
+        - traefik-dashboard-auth
+
+  middlewares:
+    traefik-dashboard-auth:
+      basicAuth:
+        # Générer avec : htpasswd -nB admin | sed 's/\$/\$\$/g'
+        # (les $ doivent être doublés dans le YAML pour Traefik+docker-compose)
+        users:
+          - "{{ traefik_dashboard_htpasswd }}"
