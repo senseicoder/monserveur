@@ -8,6 +8,14 @@ services:
     restart: unless-stopped
     security_opt:
       - "seccomp:unconfined"  # Docker 19.03 ne whitelist pas clone3 (Linux 5.3+), cf. CLAUDE.md § Pièges Docker
+    # journald plutôt que json-file : les logs json-file disparaissent avec le
+    # conteneur à chaque redéploiement (up -d le recrée). Lecture inchangée via
+    # `docker logs puttini`, historique complet via `journalctl CONTAINER_NAME=puttini`.
+    # Persistance au reboot : rôle journald-persistent-setup (glaurung.list).
+    logging:
+      driver: journald
+      options:
+        tag: puttini
     environment:
       DATABASE_URL: "sqlite:////data/puttini.db"
       ICLOUD_ENABLED: "true"
