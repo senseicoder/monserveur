@@ -114,6 +114,7 @@ ansible/
 └── roles/
     ├── docker-engine-setup/      ← install Docker CE + plugin Compose
     ├── network-ipv6-setup/       ← forwarding IPv6 kernel + service systemd ipv6-default-route
+    ├── journald-persistent-setup/ ← journal systemd persistant (/var/log/journal + journald.conf.d, plafond SystemMaxUse) — prérequis des conteneurs en driver de logs journald (puttini), joué via ./run list glaurung.list
     ├── docker-network-mindwtr-setup/  ← daemon.json IPv6 + réseau Docker mindwtr (down/up des 3 stacks si reconfig)
     ├── apache-backend/           ← Phase 2 : Apache en backend interne :8081 (ports.conf, 6 vhosts legacy, mod_remoteip, drop-in systemd After=docker.service)
     ├── traefik-deploy/           ← répertoires, docker-compose.traefik.yml, TLS dynamique, hook certbot, start
