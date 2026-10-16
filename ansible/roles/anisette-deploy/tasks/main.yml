@@ -31,3 +31,16 @@
     label: "{{ item }}"
   changed_when: false
   ignore_errors: "{{ ansible_check_mode }}"
+  when: anisette_enabled
+
+# Supprime le conteneur (pas un simple stop) : sinon glaurung-healthcheck
+# alerte sur un conteneur restart=unless-stopped qui ne tourne pas.
+# data/anisette est conservé pour une reprise.
+- name: Supprimer le conteneur anisette (désactivé)
+  ansible.builtin.command: "docker-compose -f docker-compose.anisette.yml down"
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  register: anisette_down
+  changed_when: "'Removing' in anisette_down.stderr"
+  ignore_errors: "{{ ansible_check_mode }}"
+  when: not anisette_enabled

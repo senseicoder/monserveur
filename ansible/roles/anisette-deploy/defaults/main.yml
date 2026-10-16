@@ -1,0 +1,10 @@
+---
+# Interrupteur du serveur Anisette (puttini #29, AirTags).
+# false (défaut depuis le 16/10/2026) : chantier bloqué côté Apple depuis le
+# 12/10 (anisette-v3-server#61, erreur -80045) et conteneur en boucle
+# « Could not resolve hostname » → le rôle supprime le conteneur
+# (docker-compose down). Un conteneur seulement arrêté reste visible avec
+# restart=unless-stopped et déclenche l'alerte « conteneur(s) en défaut »
+# de glaurung-healthcheck.
+# true : déploie et démarre le conteneur (reprise du chantier #29).
+anisette_enabled: false
