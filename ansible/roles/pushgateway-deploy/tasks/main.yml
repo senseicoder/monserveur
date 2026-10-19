@@ -1,0 +1,94 @@
+---
+- name: Vérifier les comptes d'écriture et de lecture (vault.yml)
+  assert:
+    that:
+      - pushgateway_emetteurs | length > 0
+      - pushgateway_lecteur_user | length > 0
+      - pushgateway_lecteur_hash | length > 0
+      - "'CHANGEME' not in (pushgateway_emetteurs | map(attribute='hash') | join(' ')) ~ pushgateway_lecteur_hash"
+    fail_msg: >-
+      Renseigner vault_pushgateway_emetteurs et vault_pushgateway_lecteur_hash dans vault.yml
+      (hash bcrypt : htpasswd -nbB <compte> <jeton>, voir CLAUDE.md § Pushgateway).
+    quiet: true
+  no_log: true
+
+- name: Créer le répertoire data/pushgateway (fichier de persistance)
+  file:
+    path: "{{ mindwtr_deploy_dir }}/data/pushgateway"
+    state: directory
+    owner: "65534"
+    group: "65534"
+    mode: "0750"
+
+- name: Déployer le vhost Apache pour {{ pushgateway_domain }}
+  template:
+    src: apache-pushgateway.conf.j2
+    dest: /etc/apache2/sites-available/{{ pushgateway_domain }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: apache_vhost_pushgateway
+
+- name: Activer le vhost Apache pour {{ pushgateway_domain }}
+  command: a2ensite {{ pushgateway_domain }}
+  register: apache_a2ensite_pushgateway
+  changed_when: "'Enabling site' in apache_a2ensite_pushgateway.stdout"
+  failed_when: apache_a2ensite_pushgateway.rc != 0
+
+- name: Recharger Apache si vhost pushgateway modifié
+  service:
+    name: apache2
+    state: reloaded
+  when: apache_vhost_pushgateway is changed or apache_a2ensite_pushgateway is changed
+
+- name: Créer le répertoire certs/pushgateway (copy ne crée pas les parents manquants)
+  file:
+    path: "{{ mindwtr_deploy_dir }}/certs/pushgateway"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Obtenir le certificat TLS pour {{ pushgateway_domain }}
+  command: >
+    certbot certonly --webroot
+    -w /var/www/html
+    --non-interactive
+    --agree-tos
+    --email {{ acme_email }}
+    -d {{ pushgateway_domain }}
+  args:
+    creates: /etc/letsencrypt/live/{{ pushgateway_domain }}/fullchain.pem
+
+- name: Copier les certs pushgateway dans mindwtr_deploy_dir/certs/pushgateway
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ mindwtr_deploy_dir }}/certs/pushgateway/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - src: /etc/letsencrypt/live/{{ pushgateway_domain }}/fullchain.pem
+      dest: fullchain.pem
+    - src: /etc/letsencrypt/live/{{ pushgateway_domain }}/privkey.pem
+      dest: privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: restart traefik
+
+- name: Déployer docker-compose.pushgateway.yml
+  template:
+    src: docker-compose.pushgateway.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/docker-compose.pushgateway.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  diff: false
+
+# up -d recrée les conteneurs dont la définition a changé (labels Traefik = comptes compris)
+- name: Démarrer pushgateway et node-exporter
+  command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.pushgateway.yml up -d
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"

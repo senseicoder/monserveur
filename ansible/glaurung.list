@@ -11,5 +11,6 @@ mindwtr-cloud-deploy
 vaultwarden-deploy
 rat-setup
 ntfy-deploy
+pushgateway-deploy
 glaurung-healthcheck
 backup-setup

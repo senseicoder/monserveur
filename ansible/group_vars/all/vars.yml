@@ -21,6 +21,12 @@ puttini_image_repo: "ghcr.io/senseicoder/puttini-server"
 # dédié, même pattern que backup-setup/glaurung-healthcheck.
 puttini_ntfy_topic: "puttini-alerts"
 acme_email: "cedric@daneel.net"
+# Relais de supervision perso (issue #18, rôle pushgateway-deploy) : domaine à confirmer par
+# Cédric, CNAME vers glaurung.daneel.net à créer chez Gandi avant le premier déploiement.
+pushgateway_domain: "metrics.daneel.net"
+pushgateway_emetteurs: "{{ vault_pushgateway_emetteurs }}"
+pushgateway_lecteur_user: "grange"
+pushgateway_lecteur_hash: "{{ vault_pushgateway_lecteur_hash }}"
 ipv6_gateway: "2001:41d0:302:2100::1"
 php_shell_deploy_dir: "/opt/php-shell"
 pub_daneel_net_deploy_dir: "/opt/pub-daneel-net"

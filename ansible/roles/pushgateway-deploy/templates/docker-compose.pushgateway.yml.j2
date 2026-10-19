@@ -1,0 +1,67 @@
+# Relais de supervision perso (issue #18). Seuls trois chemins sont publiés, tout le reste
+# (interface web, /api, /-/…) reste interne au réseau Docker :
+#   PUT/POST/DELETE /metrics/job/…  → pushgateway, comptes d'écriture (un par émetteur)
+#   GET /metrics                    → pushgateway, compte de lecture (Prometheus de la Grange)
+#   GET /node/metrics               → node-exporter de glaurung, même compte de lecture
+services:
+  pushgateway:
+    image: {{ pushgateway_image }}
+    container_name: pushgateway
+    restart: unless-stopped
+    command:
+      - "--persistence.file=/data/metrics"
+      - "--persistence.interval=5m"
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/pushgateway:/data"
+    networks:
+      - "{{ docker_network_name }}"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.pushgateway.loadbalancer.server.port=9091"
+      - "traefik.http.middlewares.pushgateway-ecriture.basicauth.users={% for e in pushgateway_emetteurs %}{{ e.user }}:{{ e.hash | replace('$', '$$') }}{{ ',' if not loop.last }}{% endfor %}"
+      - "traefik.http.middlewares.pushgateway-lecture.basicauth.users={{ pushgateway_lecteur_user }}:{{ pushgateway_lecteur_hash | replace('$', '$$') }}"
+      - "traefik.http.routers.pushgateway-ecriture.rule=Host(`{{ pushgateway_domain }}`) && PathPrefix(`/metrics/job/`) && (Method(`PUT`) || Method(`POST`) || Method(`DELETE`))"
+      - "traefik.http.routers.pushgateway-ecriture.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.pushgateway-ecriture.tls=true"
+      - "traefik.http.routers.pushgateway-ecriture.middlewares=pushgateway-ecriture"
+      - "traefik.http.routers.pushgateway-ecriture.service=pushgateway"
+      - "traefik.http.routers.pushgateway-lecture.rule=Host(`{{ pushgateway_domain }}`) && Path(`/metrics`) && Method(`GET`)"
+      - "traefik.http.routers.pushgateway-lecture.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.pushgateway-lecture.tls=true"
+      - "traefik.http.routers.pushgateway-lecture.middlewares=pushgateway-lecture"
+      - "traefik.http.routers.pushgateway-lecture.service=pushgateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 -O /dev/null http://127.0.0.1:9091/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  node-exporter:
+    image: {{ node_exporter_image }}
+    container_name: node-exporter
+    restart: unless-stopped
+    pid: host
+    command:
+      - "--path.rootfs=/host"
+    volumes:
+      - "/:/host:ro,rslave"
+    networks:
+      - "{{ docker_network_name }}"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.node-glaurung.loadbalancer.server.port=9100"
+      - "traefik.http.middlewares.node-glaurung-chemin.replacepath.path=/metrics"
+      - "traefik.http.routers.node-glaurung.rule=Host(`{{ pushgateway_domain }}`) && Path(`/node/metrics`) && Method(`GET`)"
+      - "traefik.http.routers.node-glaurung.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.node-glaurung.tls=true"
+      - "traefik.http.routers.node-glaurung.middlewares=pushgateway-lecture,node-glaurung-chemin"
+      - "traefik.http.routers.node-glaurung.service=node-glaurung"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 -O /dev/null http://127.0.0.1:9100/metrics || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  "{{ docker_network_name }}":
+    external: true
