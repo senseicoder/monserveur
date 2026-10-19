@@ -2,3 +2,9 @@
 mindwtr_token: "CHANGEME"
 ntfy_admin_password: "CHANGEME"
 ntfy_healthcheck_token: "CHANGEME"
+# Relais Pushgateway (issue #18) — hash bcrypt : htpasswd -nbB <compte> '<jeton>' | cut -d: -f2
+# Un compte d'écriture par émetteur (révoquer = retirer son entrée puis rejouer le rôle).
+vault_pushgateway_emetteurs:
+  - user: "c3po"
+    hash: "CHANGEME"
+vault_pushgateway_lecteur_hash: "CHANGEME"

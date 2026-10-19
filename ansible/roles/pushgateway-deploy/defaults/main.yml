@@ -1,0 +1,16 @@
+---
+# Relais de supervision perso (issue #18) : Pushgateway + node_exporter de glaurung, lus par le
+# Prometheus de la Grange (connexion sortante depuis la Grange, aucun port entrant à la maison).
+#
+# Variables consommées, définies dans group_vars/all/vars.yml / vault.yml
+# (pas de default local, cf. docker-network-mindwtr-setup/defaults/main.yml) :
+#   mindwtr_deploy_dir        — répertoire de la stack, ex. /opt/mindwtr
+#   docker_network_name       — réseau Docker partagé avec Traefik (mindwtr)
+#   pushgateway_domain        — domaine du relais (vhost/certbot + routeurs Traefik)
+#   acme_email                — email de contact Let's Encrypt
+#   pushgateway_emetteurs     — écriture : liste de {user, hash} (un par émetteur : c3po…), vault.yml
+#   pushgateway_lecteur_user  — lecture : compte du Prometheus de la Grange
+#   pushgateway_lecteur_hash  — hash bcrypt de ce compte, vault.yml
+
+pushgateway_image: "prom/pushgateway:v1.11.4"            # variante busybox (wget pour le healthcheck), pas -distroless
+node_exporter_image: "prom/node-exporter:v1.12.1-busybox"  # idem

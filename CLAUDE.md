@@ -124,6 +124,7 @@ ansible/
     ├── mindwtr-cloud-deploy/     ← data/cloud, docker-compose.mindwtr.yml, vhost+certbot mindwtr, start
     ├── vaultwarden-deploy/       ← data/vaultwarden, docker-compose.vaultwarden.yml, vhost+certbot vault, start
     ├── ntfy-deploy/              ← data/ntfy, docker-compose.ntfy.yml, vhost+certbot ntfy, création admin
+    ├── pushgateway-deploy/       ← relais de supervision (issue #18) : pushgateway + node-exporter, vhost+certbot, comptes Traefik — cf. § Pushgateway
     ├── puttini-deploy/           ← build+push local (ghcr.io, jamais sur glaurung, cf. rat-setup) + data/puttini, docker-compose.puttini.yml, vhost+certbot puttini, joué via ./run list puttini.list — source : ~/www/c/puttini/server
     ├── rustdesk-setup/           ← hbbs/hbbr RustDesk, hors Traefik (ports directs sur l'hôte), joué via ./run list rustdesk.list
     ├── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
@@ -213,6 +214,38 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 - **Docker Compose** sur glaurung : version 1 (`docker-compose` avec trait d'union). Pas de plugin Compose v2 (`docker compose`) — le serveur tourne sur Debian stretch avec Docker installé manuellement.
 - Modules Apache actifs : proxy, proxy_http, proxy_fcgi, rewrite, ssl, headers.
 - **Filtre IPv6 dans les templates Apache** : `ansible_all_ipv6_addresses` inclut les IPs Docker internes (`fd00::/8`). Filtrer `^fe80` seul ne suffit pas — filtrer aussi `^fd` et `^fc`. Sans ça, le VirtualHost est déclaré sur `fd00:0:0:1::1` au lieu de l'IP publique OVH, Let's Encrypt ne trouve pas le challenge et échoue.
+
+## Pushgateway — relais de supervision perso (issue #18)
+
+Le Prometheus de la Grange ne reçoit aucune connexion entrante : il vient chercher ici, sur `https://<pushgateway_domain>` (variable `pushgateway_domain`, `metrics.daneel.net` proposé), les mesures des émetteurs extérieurs (c3po : quotas PRIM/TomTom, c3po#113) et celles de glaurung. Seuls trois chemins sont publiés par Traefik, tout le reste (interface web, `/api`, `/-/…`) reste interne :
+
+| Chemin | Méthodes | Compte | Cible |
+|---|---|---|---|
+| `/metrics/job/<job>[/<label>/<valeur>…]` | PUT, POST, DELETE | un par émetteur (`pushgateway_emetteurs`) | pushgateway |
+| `/metrics` | GET | `pushgateway_lecteur_user` (Prometheus de la Grange) | pushgateway |
+| `/node/metrics` | GET | même compte de lecture | node-exporter de glaurung |
+
+**Avant le premier déploiement** : CNAME `<pushgateway_domain>` → `glaurung.daneel.net` (Gandi), puis comptes dans `vault.yml` (`ansible-vault edit ansible/group_vars/all/vault.yml`, modèle dans `vault.yml.example`). Hash bcrypt d'un compte : `htpasswd -nbB <compte> '<jeton>' | cut -d: -f2` (paquet `apache2-utils`). Le rôle refuse de tourner tant qu'un hash vaut `CHANGEME`. Déploiement : `./run role traefik-deploy run` (TLS + hook de renouvellement) puis `./run role pushgateway-deploy run`.
+
+**Jetons** : un compte d'écriture par émetteur, pour révoquer séparément — retirer l'entrée de `vault_pushgateway_emetteurs` et rejouer le rôle (`docker-compose up -d` recrée le conteneur avec les nouveaux labels). Le jeton en clair ne vit que chez l'émetteur et dans le gestionnaire de mots de passe, jamais dans ce dépôt.
+
+**Émetteur (ex. c3po)** : `PUT https://<domaine>/metrics/job/c3po/instance/telephone`, BasicAuth, corps au format texte Prometheus. Un échec d'envoi ne doit jamais bloquer l'émetteur (journaliser et continuer). PUT remplace tout le groupe `job/instance`, POST ne remplace que les métriques de même nom.
+
+**Prometheus de la Grange** (extrait de `prometheus.yml`) :
+```yaml
+  - job_name: relais-glaurung
+    scheme: https
+    honor_labels: true          # garder job/instance poussés par les émetteurs
+    metrics_path: /metrics
+    basic_auth: {username: grange, password_file: /etc/prometheus/relais-glaurung.mdp}
+    static_configs: [{targets: ['metrics.daneel.net']}]
+  - job_name: node-glaurung
+    scheme: https
+    metrics_path: /node/metrics
+    basic_auth: {username: grange, password_file: /etc/prometheus/relais-glaurung.mdp}
+    static_configs: [{targets: ['metrics.daneel.net']}]
+```
+Alerter sur `time() - push_time_seconds > …` pour repérer un émetteur muet ; les alertes partent d'Alertmanager (Grange) vers ntfy.
 
 ## Backlog
 

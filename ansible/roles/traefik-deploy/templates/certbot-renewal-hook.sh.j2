@@ -29,6 +29,11 @@ case "$RENEWED_LINEAGE" in
     cp /etc/letsencrypt/live/{{ phpbb_integralsport_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/phpbb-integralsport/privkey.pem
     chmod 640 ${DEPLOY_DIR}/certs/phpbb-integralsport/fullchain.pem ${DEPLOY_DIR}/certs/phpbb-integralsport/privkey.pem
     ;;
+  */{{ pushgateway_domain }})
+    cp /etc/letsencrypt/live/{{ pushgateway_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/pushgateway/fullchain.pem
+    cp /etc/letsencrypt/live/{{ pushgateway_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/pushgateway/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/pushgateway/fullchain.pem ${DEPLOY_DIR}/certs/pushgateway/privkey.pem
+    ;;
   */reader.daneel.net)
     cp /etc/letsencrypt/live/reader.daneel.net/fullchain.pem ${DEPLOY_DIR}/certs/reader-daneel/fullchain.pem
     cp /etc/letsencrypt/live/reader.daneel.net/privkey.pem  ${DEPLOY_DIR}/certs/reader-daneel/privkey.pem
