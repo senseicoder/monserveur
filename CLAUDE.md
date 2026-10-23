@@ -180,6 +180,7 @@ docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
    - Tout nouveau domaine certbot nécessite un **vhost Apache dédié** (voir section ci-dessous)
 4. **Entrypoint unique** : `mindwtr` = port 8787. Tous les services Traefik actuels sont sur 8787 (non standard). Phase 2 = Traefik sur 80/443.
 5. **Healthcheck** : utiliser `127.0.0.1` et non `localhost` — avec IPv6 activé, `localhost` résout en `::1` et échoue si le service n'écoute qu'en IPv4.
+6. **Serveur ASGI Python (Uvicorn/Hypercorn) : activer les proxy headers** — Traefik termine le TLS et parle en clair au conteneur, donc sans `--proxy-headers` (Uvicorn) le serveur applicatif ignore `X-Forwarded-Proto` et génère ses propres redirections (ex. trailing slash automatique de Starlette/FastAPI) en `http://` au lieu de `https://` — cassé côté client puisque le port 80 n'a pas de route Traefik pour ces services (seuls `mindwtr`/`websecure` le sont). Incident réel : [[project_m3gan]], 2026-09-22, `backend/Dockerfile` — fix : `uvicorn app.main:app ... --proxy-headers --forwarded-allow-ips='*'`.
 
 ### Hors Traefik (services non-HTTP)
 
