@@ -177,6 +177,7 @@ docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
    - Obtenir un cert certbot : `certbot certonly --webroot -w /var/www/html -d <domaine>`
    - Copier les certs dans `/opt/mindwtr/certs/` (ou un sous-dossier dédié)
    - Mettre à jour `traefik-tls.yml.j2` pour référencer les nouveaux certs
+   - Ajouter le domaine dans le hook `roles/traefik-deploy/templates/certbot-renewal-hook.sh.j2` — sinon certbot renouvelle dans `live/` mais Traefik garde l'ancienne copie jusqu'à expiration (incident 2026-10-23, pub.daneel.net)
    - Tout nouveau domaine certbot nécessite un **vhost Apache dédié** (voir section ci-dessous)
 4. **Entrypoint unique** : `mindwtr` = port 8787. Tous les services Traefik actuels sont sur 8787 (non standard). Phase 2 = Traefik sur 80/443.
 5. **Healthcheck** : utiliser `127.0.0.1` et non `localhost` — avec IPv6 activé, `localhost` résout en `::1` et échoue si le service n'écoute qu'en IPv4.
