@@ -38,8 +38,11 @@ clear_alert() {
 }
 
 # --- Conteneurs Docker attendus en permanence (restart policy != no) mais pas "running" ---
+IGNORED_CONTAINERS=" {{ healthcheck_ignored_containers | join(' ') }} "
 bad_containers=""
 for name in $(docker ps -a --format '{{ "{{.Names}}" }}'); do
+  # Arrêt volontaire déclaré (healthcheck_ignored_containers)
+  [[ "$IGNORED_CONTAINERS" == *" $name "* ]] && continue
   policy=$(docker inspect -f '{{ "{{.HostConfig.RestartPolicy.Name}}" }}' "$name" 2>/dev/null)
   status=$(docker inspect -f '{{ "{{.State.Status}}" }}' "$name" 2>/dev/null)
   if [ -n "$policy" ] && [ "$policy" != "no" ] && [ "$status" != "running" ]; then

@@ -11,3 +11,6 @@ healthcheck_disk_crit_pct: 90
 healthcheck_cert_warn_days: 15
 healthcheck_reminder_seconds: 14400  # 4h — délai avant de rappeler une alerte toujours active
 healthcheck_cron_minute: "*/10"
+# Conteneurs arrêtés volontairement, exclus de la vérification « conteneur en défaut »
+# (à surcharger dans host_vars, avec la raison et la condition de retrait)
+healthcheck_ignored_containers: []

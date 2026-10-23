@@ -6,3 +6,16 @@
 # analyse Informatique/20260903_puttini-glaurung-runtimerror-thread.md
 swap_size_mb: 4096
 vm_overcommit_ratio: 80
+
+# PHP2Shell (CVE-2026-109618/109619) — conteneurs PHP arrêtés le 2026-10-23 en mitigation
+# (TT-RSS par `docker compose stop`, rat-web et phpBB de test par `docker stop`), restart
+# unless-stopped. À retirer de la liste à la relance, après rebuild sur PHP ≥ 8.2.35.
+# Détail : wiki incidents/php2shell-impact-sites-perso.md
+healthcheck_ignored_containers:
+  - ttrss-docker-web-nginx-1
+  - ttrss-docker-updater-1
+  - ttrss-docker-backups-1
+  - ttrss-docker-app-1
+  - ttrss-docker-db-1
+  - rat-rat-web-1
+  - phpbb-integralsport-phpbb-integralsport-web-1
