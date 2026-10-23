@@ -39,6 +39,11 @@ case "$RENEWED_LINEAGE" in
     cp /etc/letsencrypt/live/bots.plcoder.net/privkey.pem  ${DEPLOY_DIR}/certs/bots-plcoder/privkey.pem
     chmod 640 ${DEPLOY_DIR}/certs/bots-plcoder/fullchain.pem ${DEPLOY_DIR}/certs/bots-plcoder/privkey.pem
     ;;
+  */pub.daneel.net)
+    cp /etc/letsencrypt/live/pub.daneel.net/fullchain.pem ${DEPLOY_DIR}/certs/pub-daneel-net/fullchain.pem
+    cp /etc/letsencrypt/live/pub.daneel.net/privkey.pem  ${DEPLOY_DIR}/certs/pub-daneel-net/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/pub-daneel-net/fullchain.pem ${DEPLOY_DIR}/certs/pub-daneel-net/privkey.pem
+    ;;
 esac
 
 docker restart traefik

@@ -8,6 +8,7 @@ REMINDER_SECONDS={{ healthcheck_reminder_seconds }}
 DISK_WARN={{ healthcheck_disk_warn_pct }}
 DISK_CRIT={{ healthcheck_disk_crit_pct }}
 CERT_WARN_DAYS={{ healthcheck_cert_warn_days }}
+TRAEFIK_CERTS_DIR="{{ mindwtr_deploy_dir }}/certs"
 
 mkdir -p "$STATE_DIR"
 now=$(date +%s)
@@ -100,6 +101,22 @@ for domain_dir in /etc/letsencrypt/live/*/; do
     cert_renewal_issues="${cert_renewal_issues}${domain}: ${days_left}j restants, renouvellement attendu sous ${renew_before_days}j (pas encore effectué)\n"
   fi
 done
+# Copies servies par Traefik (TRAEFIK_CERTS_DIR) : recopiées depuis live/ par le
+# hook certbot reload-traefik.sh. Un domaine absent du hook garde son ancienne copie
+# alors que live/ est renouvelé (incident 2026-10-23 : pub.daneel.net renouvelé le
+# 01/10, copie servie expirant le 31/10, aucune alerte car seul live/ était lu).
+while IFS= read -r copy_file; do
+  copy_end=$(openssl x509 -enddate -noout -in "$copy_file" | cut -d= -f2)
+  copy_days=$(( ($(date -d "$copy_end" +%s) - now) / 86400 ))
+  copy_cn=$(openssl x509 -noout -subject -nameopt multiline -in "$copy_file" | sed -n 's/^ *commonName *= *//p')
+  live_file="/etc/letsencrypt/live/${copy_cn}/fullchain.pem"
+  if [ -f "$live_file" ] && ! cmp -s "$copy_file" "$live_file"; then
+    cert_issues="${cert_issues}${copy_cn}: copie Traefik ${copy_file} différente de live/ (non recopiée après renouvellement ?), ${copy_days}j restants\n"
+  elif [ "$copy_days" -lt "$CERT_WARN_DAYS" ]; then
+    cert_issues="${cert_issues}${copy_cn}: copie Traefik ${copy_file}, ${copy_days}j restants\n"
+  fi
+done < <(find "$TRAEFIK_CERTS_DIR" -name fullchain.pem 2>/dev/null)
+
 if [ -n "$cert_issues" ]; then
   send_alert "certs" "high" "Glaurung — certificat(s) proche expiration" "$(echo -e "$cert_issues")"
 else

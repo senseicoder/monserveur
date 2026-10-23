@@ -3,6 +3,7 @@
 #   ntfy_domain             — domaine ntfy (ex. ntfy.daneel.net)
 #   ntfy_health_topic       — topic ntfy pour les alertes santé glaurung
 #   ntfy_healthcheck_token  — token d'accès ntfy dédié (vault.yml, chiffré)
+#   mindwtr_deploy_dir      — racine Traefik, copies des certificats servis dans <dir>/certs
 
 healthcheck_script_dir: /opt/glaurung-healthcheck
 healthcheck_state_dir: /var/lib/glaurung-healthcheck
