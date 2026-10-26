@@ -10,7 +10,7 @@
 
 # --- Build + publication de l'image (en local, jamais sur glaurung) ---
 
-- name: Créer le dossier de build local (gitignoré, dans le repo rat-git)
+- name: Créer le dossier de build local (dans le dépôt rat)
   ansible.builtin.file:
     path: "{{ rat_build_dir }}"
     state: directory
@@ -25,7 +25,7 @@
   delegate_to: localhost
   become: false
 
-- name: Rendre le Dockerfile dans le contexte de build local (= le repo rat-git lui-même)
+- name: Rendre le Dockerfile dans le contexte de build local (= le dépôt rat lui-même)
   ansible.builtin.template:
     src: Dockerfile.j2
     dest: "{{ rat_build_dir }}/Dockerfile.prod"
@@ -89,7 +89,7 @@
   delegate_to: localhost
   become: false
 
-# Contexte de build = le repo rat-git lui-même (pas de dossier assemblé à
+# Contexte de build = le dépôt rat lui-même (pas de dossier assemblé à
 # part) : COPY rat_code / COPY admin lisent directement le checkout réel,
 # aucune synchronisation de code n'est nécessaire.
 - name: Construire et publier l'image rat-web sur ghcr.io
