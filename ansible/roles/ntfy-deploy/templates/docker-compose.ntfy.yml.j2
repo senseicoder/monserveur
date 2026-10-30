@@ -7,7 +7,7 @@ services:
       - serve
     environment:
       TZ: "Europe/Paris"
-      NTFY_BASE_URL: "https://{{ ntfy_domain }}:8787"
+      NTFY_BASE_URL: "https://{{ ntfy_domain }}{{ traefik_public_port_suffix }}"
       NTFY_LISTEN_HTTP: ":80"
       NTFY_AUTH_FILE: "/var/lib/ntfy/auth.db"
       NTFY_AUTH_DEFAULT_ACCESS: "deny-all"
@@ -20,8 +20,11 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.ntfy.rule=Host(`{{ ntfy_domain }}`)"
-      - "traefik.http.routers.ntfy.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.ntfy.entrypoints={{ traefik_https_entrypoints }}"
       - "traefik.http.routers.ntfy.tls=true"
+{% if traefik_acme_enabled and ntfy_domain in traefik_acme_domains %}
+      - "traefik.http.routers.ntfy.tls.certresolver={{ traefik_acme_resolver }}"
+{% endif %}
       - "traefik.http.services.ntfy.loadbalancer.server.port=80"
     security_opt:
       - seccomp:unconfined

@@ -27,6 +27,35 @@ m3gan_domain: "m3gan.daneel.net"
 # numéro de version incrémenté à chaque build (files/m3gan-server.version).
 m3gan_image_repo: "ghcr.io/senseicoder/m3gan-server"
 acme_email: "cedric@daneel.net"
+
+# --- Traefik ACME natif (Phase 2 étapes 4-5, cf. PHASE2.md § Bascule ACME) ---
+# Tout est désactivé par défaut : avec ces valeurs, le rendu des templates est
+# identique à l'existant (certbot + TLS file provider + double écoute :8787).
+# Doc : https://doc.traefik.io/traefik/reference/install-configuration/tls/certificate-resolvers/acme/
+#
+# Active le certificate resolver ACME dans Traefik (challenge TLS-ALPN-01 sur
+# :443 — choisi plutôt que HTTP-01 pour ne pas entrer en concurrence avec le
+# router "acme-challenge" → Apache qui sert encore les renouvellements certbot
+# webroot des domaines pas encore basculés).
+traefik_acme_enabled: false
+traefik_acme_resolver: "le"
+# STAGING par défaut (certs non reconnus par les navigateurs, quotas larges).
+# Prod : https://acme-v02.api.letsencrypt.org/directory
+traefik_acme_ca_server: "https://acme-staging-v02.api.letsencrypt.org/directory"
+# Domaines basculés sur ACME : leur router reçoit tls.certresolver, leur cert
+# certbot sort de tls.yml et les tâches certbot de leur rôle sont sautées
+# (certificats certbot conservés sur l'hôte → rollback = retirer le domaine).
+traefik_acme_domains: []
+# Domaine jetable pour valider le resolver (staging puis prod) sans toucher à
+# un domaine en service — router file-provider vers Apache. Vide = pas de router.
+traefik_acme_test_domain: ""
+# Double écoute :8787 (entrypoint "mindwtr"). false = Phase 2 étape 5.1 :
+# entrypoint, port publié, labels, firewall et URLs ":8787" retirés.
+traefik_legacy_8787_enabled: true
+# Suffixe de port des URLs publiques générées (NTFY_URL, DOMAIN vaultwarden…).
+traefik_public_port_suffix: "{{ ':8787' if traefik_legacy_8787_enabled else '' }}"
+# Entrypoints HTTPS des routers Docker.
+traefik_https_entrypoints: "{{ 'mindwtr,websecure' if traefik_legacy_8787_enabled else 'websecure' }}"
 ipv6_gateway: "2001:41d0:302:2100::1"
 php_shell_deploy_dir: "/opt/php-shell"
 pub_daneel_net_deploy_dir: "/opt/pub-daneel-net"

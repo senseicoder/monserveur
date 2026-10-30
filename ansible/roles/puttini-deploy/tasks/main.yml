@@ -169,6 +169,7 @@
     -d {{ puttini_domain }}
   args:
     creates: /etc/letsencrypt/live/{{ puttini_domain }}/fullchain.pem
+  when: puttini_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Copier les certs puttini dans mindwtr_deploy_dir/certs/puttini
   ansible.builtin.copy:
@@ -185,6 +186,7 @@
       dest: privkey.pem
   ignore_errors: "{{ ansible_check_mode }}"
   notify: restart traefik
+  when: puttini_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Déployer docker-compose.puttini.yml
   ansible.builtin.template:

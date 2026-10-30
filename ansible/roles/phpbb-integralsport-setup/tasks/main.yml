@@ -181,6 +181,7 @@
     -d {{ phpbb_integralsport_domain }}
   args:
     creates: /etc/letsencrypt/live/{{ phpbb_integralsport_domain }}/fullchain.pem
+  when: phpbb_integralsport_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Créer le répertoire de certs dédié (traefik-deploy ne connaît que certs/vault)
   ansible.builtin.file:
@@ -205,6 +206,7 @@
       dest: privkey.pem
   ignore_errors: "{{ ansible_check_mode }}"
   notify: restart traefik
+  when: phpbb_integralsport_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Déployer le config.php réel (écrase le placeholder vide du premier passage)
   ansible.builtin.template:

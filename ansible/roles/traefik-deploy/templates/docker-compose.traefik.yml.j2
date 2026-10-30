@@ -8,21 +8,36 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network={{ docker_network_name }}"
+{% if traefik_legacy_8787_enabled %}
       - "--entrypoints.mindwtr.address=:8787"
+{% endif %}
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
       - "--log.level=INFO"
       - "--accesslog=true"
+{% if traefik_acme_enabled %}
+      # ACME natif — https://doc.traefik.io/traefik/reference/install-configuration/tls/certificate-resolvers/acme/
+      # TLS-ALPN-01 (tlschallenge) : Let's Encrypt doit joindre Traefik sur :443.
+      - "--certificatesresolvers.{{ traefik_acme_resolver }}.acme.email={{ acme_email }}"
+      - "--certificatesresolvers.{{ traefik_acme_resolver }}.acme.storage=/acme/{{ traefik_acme_storage_file }}"
+      - "--certificatesresolvers.{{ traefik_acme_resolver }}.acme.caserver={{ traefik_acme_ca_server }}"
+      - "--certificatesresolvers.{{ traefik_acme_resolver }}.acme.tlschallenge=true"
+{% endif %}
     ports:
+{% if traefik_legacy_8787_enabled %}
       - "8787:8787"
+{% endif %}
       - "80:80"
       - "443:443"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "{{ mindwtr_deploy_dir }}/certs:/certs:ro"
       - "{{ mindwtr_deploy_dir }}/traefik-dynamic:/etc/traefik/dynamic:ro"
+{% if traefik_acme_enabled %}
+      - "{{ mindwtr_deploy_dir }}/acme:/acme"
+{% endif %}
     networks:
       - "{{ docker_network_name }}"
 

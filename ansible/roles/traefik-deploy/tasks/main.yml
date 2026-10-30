@@ -14,6 +14,26 @@
     - "{{ mindwtr_deploy_dir }}/certs/reader-daneel"
     - "{{ mindwtr_deploy_dir }}/certs/bots-plcoder"
 
+- name: Créer le répertoire de stockage ACME (Traefik refuse un stockage trop ouvert)
+  file:
+    path: "{{ mindwtr_deploy_dir }}/acme"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  when: traefik_acme_enabled
+
+- name: Créer le fichier de stockage ACME en 0600 s'il n'existe pas
+  file:
+    path: "{{ mindwtr_deploy_dir }}/acme/{{ traefik_acme_storage_file }}"
+    state: touch
+    owner: root
+    group: root
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+  when: traefik_acme_enabled
+
 - name: Déployer docker-compose.traefik.yml
   template:
     src: docker-compose.traefik.yml.j2

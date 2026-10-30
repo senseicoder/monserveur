@@ -12,7 +12,7 @@ services:
       DATABASE_URL: "sqlite:////data/puttini.db"
       ICLOUD_ENABLED: "true"
       ICLOUD_CONFIG_PATH: "/data/icloud-credentials.json"
-      NTFY_URL: "https://{{ ntfy_domain }}:8787"
+      NTFY_URL: "https://{{ ntfy_domain }}{{ traefik_public_port_suffix }}"
       NTFY_TOPIC: "{{ puttini_ntfy_topic }}"
       NTFY_TOKEN: "{{ ntfy_healthcheck_token }}"
     volumes:
@@ -22,8 +22,11 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.puttini.rule=Host(`{{ puttini_domain }}`)"
-      - "traefik.http.routers.puttini.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.puttini.entrypoints={{ traefik_https_entrypoints }}"
       - "traefik.http.routers.puttini.tls=true"
+{% if traefik_acme_enabled and puttini_domain in traefik_acme_domains %}
+      - "traefik.http.routers.puttini.tls.certresolver={{ traefik_acme_resolver }}"
+{% endif %}
       - "traefik.http.services.puttini.loadbalancer.server.port=8000"
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/')"]

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -uo pipefail
 
-NTFY_URL="https://{{ ntfy_domain }}:8787/{{ ntfy_health_topic }}"
+NTFY_URL="https://{{ ntfy_domain }}{{ traefik_public_port_suffix }}/{{ ntfy_health_topic }}"
 NTFY_TOKEN="{{ ntfy_healthcheck_token }}"
 STATE_DIR="{{ healthcheck_state_dir }}"
 REMINDER_SECONDS={{ healthcheck_reminder_seconds }}
