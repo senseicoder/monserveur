@@ -1,0 +1,44 @@
+---
+# Variables attendues (group_vars/all) : oocarto_domain, collecteur_domain,
+# docker_network_name ; vault.yml : oocarto_db_password, oocarto_http_password,
+# collecteur_pwd (le même que collecteur-deploy). Procédure : CARTO.md.
+
+oocarto_deploy_dir: "/opt/oocarto"
+# Code synchronisé depuis les clones LOCAUX (aucun jeton d'accès aux dépôts sur
+# glaurung) : version = l'état du clone local au moment du run.
+oocarto_src_local: "/home/cedric/www/e/infra-oocarto/"
+oocarto_lib_src_local: "/home/cedric/www/o/infra-lib-partagee/code/"
+oocarto_code_dir: "{{ oocarto_deploy_dir }}/infra-oocarto"
+oocarto_lib_dir: "{{ oocarto_deploy_dir }}/LIB_PARTAGEE"
+# Données applicatives (contract_list.csv…), même chemin dans le conteneur.
+oocarto_data_dir: "/space/applisdata/oocarto"
+
+oocarto_container: "oocarto-web"
+oocarto_app_dir: "/space/www/apps/infra-oocarto"   # chemin dans le conteneur
+
+# MariaDB native de glaurung, jointe via la passerelle du réseau mindwtr (comme rat).
+oocarto_db_host: "172.18.0.1"
+oocarto_db_name: "oocarto"
+oocarto_db_user: "oocarto"
+oocarto_http_login: "cedric"
+oocarto_alertes: "cedric@daneel.net"
+oocarto_quarantaine: "7 days"
+
+# Image : PHP + mysqli/pdo_mysql seulement, construite et publiée EN LOCAL
+# (jamais sur glaurung). Variante buster obligatoire (noyau 3.16, cf. rat-setup).
+oocarto_php_image_tag: "8.2-apache-buster"
+oocarto_image_repo: "ghcr.io/senseicoder/oocarto-web"
+oocarto_build_dir_local: "{{ lookup('env', 'HOME') }}/.cache/monserveur/oocarto-web"
+
+# Scripts crontab.d lancés par le cron ; motifs exclus = intégrations propres à
+# l'infra d'origine, sans objet ou non configurées sur cette instance (vSphere,
+# Proxmox, inventaire déclaratif, envoi de mails, push des gravités).
+oocarto_cron_exclure:
+  - "*vsphere*"
+  - "*proxmox*"
+  - "*vmware*"
+  - "02_get_declared_servers*"
+  - "10_send_courriel*"
+  - "11_push_gravites*"
+oocarto_cron_hourly_minute: "20"
+oocarto_cron_daily_heure: "3"

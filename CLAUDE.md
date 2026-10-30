@@ -125,6 +125,8 @@ ansible/
     ├── vaultwarden-deploy/       ← data/vaultwarden, docker-compose.vaultwarden.yml, vhost+certbot vault, start
     ├── ntfy-deploy/              ← data/ntfy, docker-compose.ntfy.yml, vhost+certbot ntfy, création admin
     ├── puttini-deploy/           ← build+push local (ghcr.io, jamais sur glaurung, cf. rat-setup) + data/puttini, docker-compose.puttini.yml, vhost+certbot puttini, joué via ./run list puttini.list — source : ~/www/c/puttini/server
+    ├── collecteur-deploy/        ← collecteur des faits serveurs (php:8.2-apache-buster officiel + lib partagée de l'hôte), joué via ./run list carto.list — cf. CARTO.md
+    ├── oocarto-deploy/           ← cartographie oocarto (image locale ghcr.io sans code, code+lib rsync depuis les clones locaux, MariaDB native), joué via ./run list carto.list — cf. CARTO.md
     ├── rustdesk-setup/           ← hbbs/hbbr RustDesk, hors Traefik (ports directs sur l'hôte), joué via ./run list rustdesk.list
     ├── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
     └── backup-setup/             ← cron root quotidien (dump différentiel + mysqldump + pg_dump + chiffrement GPG asymétrique), joué via ./run list backup.list — cf. § Sauvegardes critiques

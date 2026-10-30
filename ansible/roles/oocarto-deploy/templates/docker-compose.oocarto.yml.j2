@@ -1,0 +1,27 @@
+# Généré par le rôle Ansible "oocarto-deploy" -- ne pas éditer à la main.
+# Image tirée du registre (construite en local), code et lib montés depuis l'hôte.
+version: "3"
+
+services:
+  oocarto-web:
+    image: "{{ oocarto_image }}"
+    container_name: "{{ oocarto_container }}"
+    restart: unless-stopped
+    networks:
+      - "{{ docker_network_name }}"
+    volumes:
+      - "{{ oocarto_code_dir }}:{{ oocarto_app_dir }}:ro"
+      - "/space/www/libs:/space/www/libs:ro"
+      - "{{ oocarto_lib_dir }}:/space/www/libs/LIB_PARTAGEE:ro"
+      - "{{ oocarto_deploy_dir }}/php-oocarto.ini:/usr/local/etc/php/conf.d/zz-oocarto.ini:ro"
+      - "{{ oocarto_data_dir }}:{{ oocarto_data_dir }}"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.oocarto.rule=Host(`{{ oocarto_domain }}`)"
+      - "traefik.http.routers.oocarto.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.oocarto.tls=true"
+      - "traefik.http.services.oocarto.loadbalancer.server.port=80"
+
+networks:
+  "{{ docker_network_name }}":
+    external: true

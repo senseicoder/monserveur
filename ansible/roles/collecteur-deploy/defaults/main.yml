@@ -1,0 +1,20 @@
+---
+# Variables attendues (group_vars/all) : collecteur_domain, docker_network_name,
+# mindwtr_deploy_dir ; collecteur_pwd (vault.yml, JAMAIS en clair ni repris d'un
+# autre déploiement : générer une valeur neuve, cf. CARTO.md).
+
+collecteur_deploy_dir: "/opt/collecteur"
+# Fichiers JSON déposés par les clients ecfacts (un par canal et par serveur),
+# relus par oocarto. Même chemin dans le conteneur que sur l'hôte.
+collecteur_data_dir: "/space/applisdata/collecteurweb"
+# Purge des dépôts de plus de N jours (comme le collecteur d'origine).
+collecteur_retention_jours: 2
+
+# Lib partagée installée sur glaurung par le paquet système
+# (/space/www/libs/LIB_PARTAGEE) : seul robots_serveurs/collecteurweb.class.php
+# est utilisé, montée en lecture seule.
+collecteur_lib_dir: "/space/www/libs/LIB_PARTAGEE"
+
+# Image officielle, pas de build : PHP nu suffit (zlib + json intégrés).
+# Variante buster obligatoire : noyau glaurung 3.16, cf. rat-setup/defaults.
+collecteur_image: "php:8.2-apache-buster"

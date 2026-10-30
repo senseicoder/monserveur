@@ -9,3 +9,9 @@ m3gan_master_key: "CHANGEME"
 # Mot de passe de l'interface d'admin M3gan (un seul, pour Cédric — HTTP Basic,
 # username ignoré). Générer avec, par exemple : openssl rand -base64 24
 m3gan_admin_password: "CHANGEME"
+# Cartographie (CARTO.md) — valeurs NEUVES, alphanumériques (injectées dans du
+# PHP), jamais reprises d'un autre déploiement : openssl rand -hex 24
+# collecteur_pwd est aussi à poser côté clients ecfacts (tâche séparée).
+collecteur_pwd: "CHANGEME"
+oocarto_db_password: "CHANGEME"
+oocarto_http_password: "CHANGEME"
