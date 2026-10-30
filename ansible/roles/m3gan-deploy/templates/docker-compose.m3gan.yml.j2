@@ -19,8 +19,11 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.m3gan.rule=Host(`{{ m3gan_domain }}`)"
-      - "traefik.http.routers.m3gan.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.m3gan.entrypoints={{ traefik_https_entrypoints }}"
       - "traefik.http.routers.m3gan.tls=true"
+{% if traefik_acme_enabled and m3gan_domain in traefik_acme_domains %}
+      - "traefik.http.routers.m3gan.tls.certresolver={{ traefik_acme_resolver }}"
+{% endif %}
       - "traefik.http.services.m3gan.loadbalancer.server.port=8000"
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]

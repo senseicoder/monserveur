@@ -38,6 +38,7 @@
     -d {{ vaultwarden_domain }}
   args:
     creates: /etc/letsencrypt/live/{{ vaultwarden_domain }}/fullchain.pem
+  when: vaultwarden_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Copier les certs vaultwarden dans mindwtr_deploy_dir/certs/vault
   copy:
@@ -54,6 +55,7 @@
       dest: privkey.pem
   ignore_errors: "{{ ansible_check_mode }}"
   notify: restart traefik
+  when: vaultwarden_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Déployer docker-compose.vaultwarden.yml
   template:

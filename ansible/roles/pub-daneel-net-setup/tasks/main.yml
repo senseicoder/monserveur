@@ -97,6 +97,7 @@
     -d {{ pub_daneel_net_domain }}
   args:
     creates: /etc/letsencrypt/live/{{ pub_daneel_net_domain }}/fullchain.pem
+  when: pub_daneel_net_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Créer le répertoire de certs dédié (traefik-deploy ne connaît que certs/vault)
   ansible.builtin.file:
@@ -121,3 +122,4 @@
       dest: privkey.pem
   ignore_errors: "{{ ansible_check_mode }}"
   notify: restart traefik
+  when: pub_daneel_net_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)

@@ -25,6 +25,9 @@ services:
       - "traefik.http.routers.phpbb-integralsport.rule=Host(`{{ phpbb_integralsport_domain }}`)"
       - "traefik.http.routers.phpbb-integralsport.entrypoints=websecure"
       - "traefik.http.routers.phpbb-integralsport.tls=true"
+{% if traefik_acme_enabled and phpbb_integralsport_domain in traefik_acme_domains %}
+      - "traefik.http.routers.phpbb-integralsport.tls.certresolver={{ traefik_acme_resolver }}"
+{% endif %}
       - "traefik.http.routers.phpbb-integralsport.middlewares=phpbb-integralsport-auth"
       # $ doublés : docker-compose interprète sinon $apr1$... comme une
       # interpolation de variable d'environnement (piège connu Traefik+Compose).

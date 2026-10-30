@@ -49,6 +49,7 @@
     -d {{ ntfy_domain }}
   args:
     creates: /etc/letsencrypt/live/{{ ntfy_domain }}/fullchain.pem
+  when: ntfy_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Copier les certs ntfy dans mindwtr_deploy_dir/certs/ntfy
   copy:
@@ -65,6 +66,7 @@
       dest: privkey.pem
   ignore_errors: "{{ ansible_check_mode }}"
   notify: restart traefik
+  when: ntfy_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Déployer docker-compose.ntfy.yml
   template:

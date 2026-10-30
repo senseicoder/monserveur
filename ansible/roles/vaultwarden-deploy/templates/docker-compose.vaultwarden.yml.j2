@@ -16,8 +16,11 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.vaultwarden.rule=Host(`{{ vaultwarden_domain }}`)"
-      - "traefik.http.routers.vaultwarden.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.vaultwarden.entrypoints={{ traefik_https_entrypoints }}"
       - "traefik.http.routers.vaultwarden.tls=true"
+{% if traefik_acme_enabled and vaultwarden_domain in traefik_acme_domains %}
+      - "traefik.http.routers.vaultwarden.tls.certresolver={{ traefik_acme_resolver }}"
+{% endif %}
       - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
     security_opt:
       - seccomp:unconfined

@@ -13,8 +13,11 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.mindwtr.rule=Host(`{{ mindwtr_domain }}`)"
-      - "traefik.http.routers.mindwtr.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.mindwtr.entrypoints={{ traefik_https_entrypoints }}"
       - "traefik.http.routers.mindwtr.tls=true"
+{% if traefik_acme_enabled and mindwtr_domain in traefik_acme_domains %}
+      - "traefik.http.routers.mindwtr.tls.certresolver={{ traefik_acme_resolver }}"
+{% endif %}
       - "traefik.http.services.mindwtr.loadbalancer.server.port=8787"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/health"]

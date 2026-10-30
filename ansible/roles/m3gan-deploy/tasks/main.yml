@@ -129,6 +129,7 @@
     -d {{ m3gan_domain }}
   args:
     creates: /etc/letsencrypt/live/{{ m3gan_domain }}/fullchain.pem
+  when: m3gan_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Copier les certs m3gan dans mindwtr_deploy_dir/certs/m3gan
   ansible.builtin.copy:
@@ -145,6 +146,7 @@
       dest: privkey.pem
   ignore_errors: "{{ ansible_check_mode }}"
   notify: restart traefik
+  when: m3gan_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Déployer docker-compose.m3gan.yml
   ansible.builtin.template:
