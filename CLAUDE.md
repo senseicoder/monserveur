@@ -41,7 +41,7 @@ Deux catégories bien distinctes depuis Phase 2 : les domaines legacy encore ser
 | `pub.daneel.net` | Webroot ACME uniquement | Routage réel via Traefik → `pub-daneel-net` |
 | `puttini.daneel.net` | Webroot ACME uniquement | Routage réel via Traefik → `puttini` |
 
-Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**.
+Certbot installé via **snap** (mode classic), **pas apt** — installation formalisée dans le rôle `certbot-setup` (2026-09-25). Version non épinglée : le snap se met à jour seul (5.8.0 relevé sur l'hôte le 2026-09-25).
 
 ### Routing Traefik (labels Docker, réseau `mindwtr`, source de vérité du routage public)
 | Domaine(s) | Conteneur cible | Port service | Entrypoints | Notes |
@@ -116,6 +116,7 @@ ansible/
     ├── network-ipv6-setup/       ← forwarding IPv6 kernel + service systemd ipv6-default-route
     ├── docker-network-mindwtr-setup/  ← daemon.json IPv6 + réseau Docker mindwtr (down/up des 3 stacks si reconfig)
     ├── apache-backend/           ← Phase 2 : Apache en backend interne :8081 (ports.conf, 6 vhosts legacy, mod_remoteip, drop-in systemd After=docker.service)
+    ├── certbot-setup/            ← installe Certbot lui-même (snapd + snap classic + lien /usr/bin/certbot) ; les certificats restent obtenus par chaque rôle applicatif
     ├── traefik-deploy/           ← répertoires, docker-compose.traefik.yml, TLS dynamique, hook certbot, start
     │   └── templates/
     │       ├── docker-compose.traefik.yml.j2

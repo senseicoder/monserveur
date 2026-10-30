@@ -1,0 +1,76 @@
+---
+- name: Installer snapd (dépôt de la distribution)
+  ansible.builtin.apt:
+    name: snapd
+    state: present
+    update_cache: true
+
+- name: S'assurer que snapd est démarré et activé au boot
+  ansible.builtin.systemd:
+    name: snapd
+    state: started
+    enabled: true
+
+# Sur un hôte fraîchement provisionné, "snap install" échoue tant que snapd
+# n'a pas fini son seeding initial ("error: too early for operation, device
+# not yet seeded"). "snap wait" n'existe qu'à partir de snapd 2.33 : celui de
+# stretch est en 2.21, la commande y sort en erreur -- d'où le failed_when
+# désarmé, la tâche n'est utile que sur les hôtes plus récents. Le cas stretch
+# est couvert par les retries des deux tâches snap suivantes.
+- name: Attendre la fin du seeding de snapd (sans effet si snapd < 2.33)
+  ansible.builtin.command: snap wait system seed.loaded
+  changed_when: false
+  failed_when: false
+
+- name: Installer le snap core (base des autres snaps)
+  community.general.snap:
+    name: core
+    state: present
+    channel: "{{ certbot_snap_channel }}"
+  register: certbot_snap_core
+  until: certbot_snap_core is succeeded
+  retries: 5
+  delay: 10
+
+- name: Rafraîchir le snap core (bootstrap d'un hôte neuf uniquement)
+  ansible.builtin.command: snap refresh core
+  register: certbot_snap_core_refresh
+  changed_when: "'no updates available' not in certbot_snap_core_refresh.stdout"
+  when: certbot_snap_refresh_core | bool
+
+# --classic : certbot a besoin d'un accès hors du confinement snap
+# (/etc/letsencrypt, /var/www/html pour le challenge webroot, les hooks de
+# renouvellement dans /etc/letsencrypt/renewal-hooks/deploy/).
+- name: Installer le snap certbot (mode classic)
+  community.general.snap:
+    name: certbot
+    state: present
+    classic: true
+    channel: "{{ certbot_snap_channel }}"
+  register: certbot_snap
+  until: certbot_snap is succeeded
+  retries: 5
+  delay: 10
+
+- name: Lier {{ certbot_bin_link }} vers le binaire du snap
+  ansible.builtin.file:
+    src: /snap/bin/certbot
+    dest: "{{ certbot_bin_link }}"
+    state: link
+    force: true
+
+# Le renouvellement est déjà assuré par le timer systemd "snap.certbot.renew"
+# fourni par le snap lui-même : pas de cron à poser ici (et donc rien à
+# déclarer au titre de l'ADR "cron toujours dans /etc/cron.d"). Les hooks de
+# déploiement (copie des certs + restart traefik) restent la responsabilité
+# de traefik-deploy.
+- name: Vérifier que certbot répond via le lien posé
+  ansible.builtin.command: "{{ certbot_bin_link }} --version"
+  register: certbot_version
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Afficher la version de certbot installée
+  ansible.builtin.debug:
+    msg: "{{ certbot_version.stdout }}"
+  when: not ansible_check_mode
