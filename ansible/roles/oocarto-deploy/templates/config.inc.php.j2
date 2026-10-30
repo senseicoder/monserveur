@@ -1,0 +1,36 @@
+<?php
+// Généré par le rôle Ansible "oocarto-deploy" -- ne pas éditer à la main.
+// Remplace le config.inc.php du dépôt (exclu de la synchronisation). Contient
+// des mots de passe : 0640 root:www-data.
+require_once CHEMIN_LIB_PARTAGEE . 'oowiki/coeur.inc.php';
+CConfig::$chemin_zf = CHEMIN_ZF . '1.13.0/';
+CConfig::$db_host = '{{ oocarto_db_host }}';
+CConfig::$db_login = '{{ oocarto_db_user }}';
+CConfig::$db_password = '{{ oocarto_db_password }}';
+CConfig::$db_name = '{{ oocarto_db_name }}';
+CConfig::$http_login = '{{ oocarto_http_login }}';
+CConfig::$http_password = '{{ oocarto_http_password }}';
+CConfig::$urlBase = '';
+CCoeur::Init();
+
+class CConfigCarto
+{
+	static $sDestinatairesAlertes = '{{ oocarto_alertes }}';
+	static $aComptes = array();
+
+	// intégrations non utilisées sur cette instance (cf. oocarto_cron_exclure)
+	static $vsphere_url = '';
+	static $vsphere_urlfolders = '';
+	static $vsphere_login = '';
+	static $vsphere_password = '';
+	static $proxmox_url = '';
+	static $proxmox_login = '';
+	static $proxmox_password = '';
+	static $webproxy = '';
+
+	static $sUrlCollecteur = 'https://{{ collecteur_domain }}/collecteur.php';
+	static $sMdpCollecteur = '{{ collecteur_pwd }}';
+
+	static $sQuarantineTime = '{{ oocarto_quarantaine }}';
+	static $sContractFileStorage = '{{ oocarto_data_dir }}/contract_list.csv';
+}

@@ -1,0 +1,23 @@
+# Généré par le rôle Ansible "collecteur-deploy" -- ne pas éditer à la main.
+version: "3"
+
+services:
+  collecteur:
+    image: "{{ collecteur_image }}"
+    restart: unless-stopped
+    networks:
+      - "{{ docker_network_name }}"
+    volumes:
+      - "{{ collecteur_deploy_dir }}/htdocs:/var/www/html:ro"
+      - "{{ collecteur_lib_dir }}:{{ collecteur_lib_dir }}:ro"
+      - "{{ collecteur_data_dir }}:{{ collecteur_data_dir }}"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.collecteur.rule=Host(`{{ collecteur_domain }}`)"
+      - "traefik.http.routers.collecteur.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.collecteur.tls=true"
+      - "traefik.http.services.collecteur.loadbalancer.server.port=80"
+
+networks:
+  "{{ docker_network_name }}":
+    external: true
