@@ -12,7 +12,7 @@
 
 - name: Créer le dossier de build local (gitignoré, dans le repo rat-git)
   ansible.builtin.file:
-    path: "/home/cedric/www/c/rat-git/docker"
+    path: "{{ rat_build_dir }}"
     state: directory
     mode: "0750"
   delegate_to: localhost
@@ -21,14 +21,14 @@
 - name: Rendre les vhosts Apache internes (multi-domaine) dans le contexte de build local
   ansible.builtin.template:
     src: apache-rat-vhosts.conf.j2
-    dest: "/home/cedric/www/c/rat-git/docker/apache-rat-vhosts.conf"
+    dest: "{{ rat_build_dir }}/apache-rat-vhosts.conf"
   delegate_to: localhost
   become: false
 
 - name: Rendre le Dockerfile dans le contexte de build local (= le repo rat-git lui-même)
   ansible.builtin.template:
     src: Dockerfile.j2
-    dest: "/home/cedric/www/c/rat-git/docker/Dockerfile.prod"
+    dest: "{{ rat_build_dir }}/Dockerfile.prod"
   delegate_to: localhost
   become: false
 
@@ -79,8 +79,8 @@
 
 - name: Se connecter à ghcr.io (en local, pour build+push)
   community.docker.docker_login:
-    registry_url: ghcr.io
-    username: senseicoder
+    registry_url: "{{ rat_registry }}"
+    username: "{{ rat_registry_user }}"
     password: "{{ rat_ghcr_pat.stdout_lines[0] }}"
   # Pas de no_log ici : le paramètre "password" du module est déjà protégé
   # au niveau de son argspec (no_log=True intégré), donc son contenu
@@ -96,8 +96,8 @@
   community.docker.docker_image:
     name: "{{ rat_image }}"
     build:
-      path: "/home/cedric/www/c/rat-git"
-      dockerfile: "docker/Dockerfile.prod"
+      path: "{{ rat_build_context_dir }}"
+      dockerfile: "{{ rat_build_subdir }}/Dockerfile.prod"
       pull: true
       # Sans nocache, les instructions dont le contexte n'a pas changé (ex.
       # COPY admin, si le dossier n'a pas bougé depuis le dernier build)
@@ -145,22 +145,16 @@
   loop_control:
     label: "{{ item.domain }}"
 
-# Symlinks côté hôte, dans le dossier de DATA (donc visibles une fois le
-# bind-mount monté), pointant vers le code cuit dans l'image à un chemin
-# neutre (/opt/rat-code, hors de l'arborescence bind-montée -- pas de
-# collision, ni de code dupliqué sur le disque de l'hôte). ADR : le code
-# commun ne doit jamais être synchronisé/collé dans le volume de données,
-# uniquement l'image le porte.
-- name: Créer le symlink rat_code vers le code cuit dans l'image
-  ansible.builtin.file:
-    path: "{{ rat_site_data_root }}/{{ item.domain }}/htdocs/rat_code"
-    src: "/opt/rat-code/rat_code"
-    state: link
-    force: true
-  loop: "{{ rat_sites }}"
-  loop_control:
-    label: "{{ item.domain }}"
-
+# --- Arborescence de chaque htdocs : vrais dossiers + symlinks vers le code image ---
+#
+# Le code générique (rat_code/, admin/) n'est jamais copié dans le volume de
+# données : il est cuit dans l'image à un chemin neutre (rat_container_code_dir,
+# hors de l'arborescence bind-montée -- pas de collision, ni de code dupliqué
+# sur le disque de l'hôte). ADR : le code commun ne doit jamais être
+# synchronisé/collé dans le volume de données, uniquement l'image le porte.
+# Côté hôte, dans le dossier de DATA (donc visibles une fois le bind-mount
+# monté), des symlinks pointent vers ce chemin interne au conteneur.
+#
 # admin/ ne peut PAS être un symlink de dossier entier comme rat_code/ :
 # admin/get.php est régénéré à l'exécution par admincore/regenere.fonc.php
 # (SauveSous(CHEMIN_ADMIN.'get.php', ...), par site -- pas du code statique
@@ -170,49 +164,49 @@
 # un symlink fichier-par-fichier vers le code image pour tout sauf get.php,
 # qui reste un vrai fichier écrit à la génération (créé si absent, pas
 # besoin de pré-création -- SauveSous fait fopen($fichier, 'w')).
+#
+# Construction en 3 tâches : lister admin/ (une fois, en local), créer les
+# vrais dossiers (admin/ + rat_donnees/*, même propriétaire www-data), puis
+# créer tous les symlinks (rat_code/ + chaque entrée de admin/) d'une seule
+# boucle.
 
 - name: Lister le contenu statique de admin/ (repo local, hors get.php)
   ansible.builtin.find:
-    paths: "/home/cedric/www/c/rat-git/admin"
+    paths: "{{ rat_build_context_dir }}/admin"
     file_type: any
     hidden: false
+    excludes: ["get.php"]
   register: rat_admin_static_files
   delegate_to: localhost
   become: false
 
-- name: Créer le dossier admin/ réel de chaque site
+# admin/ et rat_donnees/* : owner www-data (uid 33 dans l'image php:apache,
+# Debian). admin/ parce que get.php y est écrit à la génération
+# (fopen($fichier,'w') dans admincore/regenere.fonc.php) ; rat_donnees/*
+# (journaux, sessions...) parce que l'appli y écrit. config.php +
+# rat_donnees writable sont des artefacts de config/infra (générés par ce
+# rôle depuis les vars + le vault), pas des données Gandi -- restent dans
+# rat-setup, pas rat-migratefromgandi (qui ne traite que les vraies données).
+- name: Créer les dossiers réels writable par www-data de chaque site (admin/, rat_donnees/*)
   ansible.builtin.file:
-    path: "{{ rat_site_data_root }}/{{ item.domain }}/htdocs/admin"
+    path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/{{ item.1 }}"
     state: directory
-    owner: "33"    # www-data dans l'image php:apache -- get.php est écrit à
-    group: "33"    # la génération (fopen($fichier,'w') dans admincore/regenere.fonc.php),
-    mode: "0775"   # même besoin que rat_donnees/{journaux,sessions,...} ci-dessous.
-  loop: "{{ rat_sites }}"
-  loop_control:
-    label: "{{ item.domain }}"
-
-- name: Créer les symlinks fichier-par-fichier pour le contenu statique de admin/
-  ansible.builtin.file:
-    path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/admin/{{ item.1 | basename }}"
-    src: "/opt/rat-code/admin/{{ item.1 | basename }}"
-    state: link
-    force: true
-  loop: "{{ rat_sites | product(rat_admin_static_files.files | map(attribute='path') | map('basename') | reject('equalto', 'get.php') | list) | list }}"
+    owner: "33"
+    group: "33"
+    mode: "0775"
+  loop: "{{ rat_sites | product(rat_www_data_dirs) | list }}"
   loop_control:
     label: "{{ item.0.domain }}/{{ item.1 }}"
 
-# config.php + rat_donnees writable : artefacts de config/infra (générés par
-# ce rôle depuis les vars + le vault), pas des données Gandi -- restent dans
-# rat-setup, pas rat-migratefromgandi (qui ne traite que les vraies données).
-
-- name: Créer l'arborescence rat_donnees writable de chaque site
+- name: Créer les symlinks vers le code cuit dans l'image (rat_code/ entier, admin/ fichier par fichier)
   ansible.builtin.file:
-    path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/rat_donnees/{{ item.1 }}"
-    state: directory
-    owner: "33"    # www-data dans l'image php:apache (Debian)
-    group: "33"
-    mode: "0775"
-  loop: "{{ rat_sites | product(['journaux', 'sessions', 'modeles', 'sessionsvitrine']) | list }}"
+    path: "{{ rat_site_data_root }}/{{ item.0.domain }}/htdocs/{{ item.1 }}"
+    src: "{{ rat_container_code_dir }}/{{ item.1 }}"
+    state: link
+    force: true
+  loop: "{{ rat_sites | product(['rat_code'] + (rat_admin_static_files.files | map(attribute='path') | map('basename') | map('regex_replace', '^', 'admin/') | list)) | list }}"
+  loop_control:
+    label: "{{ item.0.domain }}/{{ item.1 }}"
 
 # journaux/<site_central>/ : EcrireLog()/EcrireFichier() (fs.lib.php) ne
 # créent jamais le dossier -- normalement fait par l'installation d'un
@@ -261,8 +255,8 @@
 
 - name: Se connecter à ghcr.io sur glaurung (pour pull, l'image rat-web est privée)
   community.docker.docker_login:
-    registry_url: ghcr.io
-    username: senseicoder
+    registry_url: "{{ rat_registry }}"
+    username: "{{ rat_registry_user }}"
     password: "{{ rat_ghcr_pat.stdout_lines[0] }}"
   # Pas de no_log ici : le paramètre "password" est déjà protégé par son
   # propre argspec (no_log=True intégré au module) -- on garde le vrai
@@ -291,13 +285,13 @@
   community.mysql.mysql_user:
     name: "{{ item.db_user }}"
     password: "{{ item.db_password }}"
-    host: "172.18.%.%"
+    host: "{{ rat_mysql_client_host }}"
     priv: "{{ item.db_name }}.*:ALL"
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
   loop: "{{ rat_sites }}"
   loop_control:
-    label: "{{ item.db_user }}@172.18.%.%"
+    label: "{{ item.db_user }}@{{ rat_mysql_client_host }}"
 
 # --- Accès réseau conteneur → MySQL natif (point ouvert résolu ici) ---
 # MySQL n'écoutait jusqu'ici que sur 127.0.0.1 (accès depuis le conteneur ad-hoc
@@ -331,7 +325,7 @@
     state: absent
   loop:
     - { source: "127.0.0.1/32", jump: "ACCEPT" }
-    - { source: "172.18.0.0/16", jump: "ACCEPT" }
+    - { source: "{{ rat_mindwtr_subnet }}", jump: "ACCEPT" }
     - { source: "0.0.0.0/0", jump: "DROP" }
   loop_control:
     label: "{{ item.source }} -> {{ item.jump }}"
@@ -348,7 +342,7 @@
     rule_num: "{{ item.num }}"
   loop:
     - { iface: "lo", jump: "ACCEPT", num: 1 }
-    - { source: "172.18.0.0/16", jump: "ACCEPT", num: 2 }
+    - { source: "{{ rat_mindwtr_subnet }}", jump: "ACCEPT", num: 2 }
     - { jump: "DROP", num: 3 }
   loop_control:
     label: "{{ item.iface | default(item.source | default('0.0.0.0/0')) }} -> {{ item.jump }}"

@@ -8,13 +8,49 @@
 # migration vers nginx nécessaire pour les .htaccess).
 rat_php_image_tag: "8.2-apache-buster"
 rat_mindwtr_gateway: "172.18.0.1"
+# Sous-réseau du réseau Docker partagé (docker_network_name), seul autorisé à
+# joindre le MySQL natif (règles INPUT), et son équivalent en motif d'hôte
+# MySQL pour les comptes -- même réseau que rat_mindwtr_gateway ci-dessus.
+rat_mindwtr_subnet: "172.18.0.0/16"
+rat_mysql_client_host: "172.18.%.%"
+# Registre + compte de publication de l'image (une seule source pour le
+# domaine du registre, aussi utilisé par les deux docker_login).
+rat_registry: "ghcr.io"
+rat_registry_user: "senseicoder"
 # ADR : jamais de tag "latest" -- rat_image (le tag complet effectif) est
 # calculé dynamiquement dans tasks/main.yml à partir de ce préfixe + un
 # numéro de version incrémenté à chaque build (files/rat-web.version).
-rat_image_repo: "ghcr.io/senseicoder/rat-web"
+rat_image_repo: "{{ rat_registry }}/{{ rat_registry_user }}/rat-web"
 
 # glaurung (Debian 9 stretch) : le Python3 système (3.5.3) est trop ancien
 # pour ansible-core (>=3.6 requis, échec dès "Gathering Facts" en le forçant
 # -- testé). Python 2.7 reste donc l'interpréteur viable ici ; le fix pour
 # community.docker n'est pas de changer d'interpréteur mais d'installer le
 # paquet manquant pour Python 2 (voir tasks/main.yml).
+
+# --- Chemins de build (poste local) et chemin du code dans l'image ---
+# Une seule source pour ces chemins, auparavant répétés en dur dans
+# tasks/main.yml et Dockerfile.j2.
+# Checkout local du dépôt rat = contexte de build de l'image (jamais sur
+# glaurung). Valeur historique conservée à l'identique : le dépôt a depuis
+# été renommé $HOME/www/c/rat, mais changer ce chemin change le comportement du
+# rôle -- à faire dans un changement séparé.
+rat_build_context_dir: "/home/cedric/www/c/rat-git"
+# Sous-dossier (gitignoré) du contexte de build où sont rendus le Dockerfile
+# et les vhosts Apache -- relatif au contexte, car référencé tel quel par le
+# Dockerfile (COPY) et par docker_image (dockerfile:).
+rat_build_subdir: "docker"
+rat_build_dir: "{{ rat_build_context_dir }}/{{ rat_build_subdir }}"
+# Chemin neutre où le code générique (rat_code, admin) est cuit dans l'image,
+# hors de l'arborescence bind-montée -- cible des symlinks créés côté hôte.
+rat_container_code_dir: "/opt/rat-code"
+
+# Vrais dossiers (pas des symlinks) créés dans chaque htdocs, owner www-data,
+# relatifs à htdocs : admin/ (get.php y est régénéré, cf. tasks/main.yml) et
+# l'arborescence writable de rat_donnees/.
+rat_www_data_dirs:
+  - admin
+  - rat_donnees/journaux
+  - rat_donnees/sessions
+  - rat_donnees/modeles
+  - rat_donnees/sessionsvitrine
