@@ -1,20 +1,9 @@
+{# Certs certbot copiés dans certs/ (cf. traefik_file_certs). Les domaines
+   basculés sur ACME (traefik_acme_domains) sont exclus : sinon le cert
+   certbot du TLS store resterait candidat pour ce SNI. #}
 tls:
   certificates:
-    - certFile: /certs/fullchain.pem
-      keyFile: /certs/privkey.pem
-    - certFile: /certs/vault/fullchain.pem
-      keyFile: /certs/vault/privkey.pem
-    - certFile: /certs/ntfy/fullchain.pem
-      keyFile: /certs/ntfy/privkey.pem
-    - certFile: /certs/puttini/fullchain.pem
-      keyFile: /certs/puttini/privkey.pem
-    - certFile: /certs/phpbb-integralsport/fullchain.pem
-      keyFile: /certs/phpbb-integralsport/privkey.pem
-    - certFile: /certs/reader-daneel/fullchain.pem
-      keyFile: /certs/reader-daneel/privkey.pem
-    - certFile: /certs/bots-plcoder/fullchain.pem
-      keyFile: /certs/bots-plcoder/privkey.pem
-    - certFile: /certs/pub-daneel-net/fullchain.pem
-      keyFile: /certs/pub-daneel-net/privkey.pem
-    - certFile: /certs/m3gan/fullchain.pem
-      keyFile: /certs/m3gan/privkey.pem
+{% for c in traefik_file_certs if c.domain not in traefik_acme_domains %}
+    - certFile: /certs/{{ c.dir ~ '/' if c.dir else '' }}fullchain.pem
+      keyFile: /certs/{{ c.dir ~ '/' if c.dir else '' }}privkey.pem
+{% endfor %}

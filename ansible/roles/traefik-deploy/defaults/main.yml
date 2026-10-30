@@ -2,3 +2,22 @@
 # Variables consommées, définies dans group_vars/all/vars.yml (pas de default
 # local, cf. docker-network-mindwtr-setup/defaults/main.yml) :
 #   mindwtr_deploy_dir  — répertoire de la stack, ex. /opt/mindwtr
+#   traefik_acme_*, traefik_legacy_8787_enabled — cf. group_vars (Phase 2 étapes 4-5)
+
+# Certificats certbot servis par le TLS file provider (tls.yml). Un domaine
+# présent dans traefik_acme_domains est exclu du rendu (servi par ACME).
+# dir vide = racine de certs/ (mindwtr, historique Phase 1).
+traefik_file_certs:
+  - { domain: "{{ mindwtr_domain }}", dir: "" }
+  - { domain: "{{ vaultwarden_domain }}", dir: "vault" }
+  - { domain: "{{ ntfy_domain }}", dir: "ntfy" }
+  - { domain: "{{ puttini_domain }}", dir: "puttini" }
+  - { domain: "{{ phpbb_integralsport_domain }}", dir: "phpbb-integralsport" }
+  - { domain: "reader.daneel.net", dir: "reader-daneel" }
+  - { domain: "bots.plcoder.net", dir: "bots-plcoder" }
+  - { domain: "pub.daneel.net", dir: "pub-daneel-net" }
+  - { domain: "{{ m3gan_domain }}", dir: "m3gan" }
+
+# Fichier de stockage ACME : séparé staging/prod pour qu'un passage en prod ne
+# réutilise pas le compte/les certs staging.
+traefik_acme_storage_file: "{{ 'acme-staging.json' if 'staging' in traefik_acme_ca_server else 'acme.json' }}"

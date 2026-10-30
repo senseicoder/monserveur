@@ -32,7 +32,12 @@ http:
       rule: "Host(`bots.plcoder.net`)"
       entryPoints:
         - websecure
+{% if traefik_acme_enabled and 'bots.plcoder.net' in traefik_acme_domains %}
+      tls:
+        certResolver: {{ traefik_acme_resolver }}
+{% else %}
       tls: {}
+{% endif %}
       service: apache-backend
 
     apache-reader-daneel-web:
@@ -47,7 +52,12 @@ http:
       rule: "Host(`reader.daneel.net`)"
       entryPoints:
         - websecure
+{% if traefik_acme_enabled and 'reader.daneel.net' in traefik_acme_domains %}
+      tls:
+        certResolver: {{ traefik_acme_resolver }}
+{% else %}
       tls: {}
+{% endif %}
       service: apache-backend
 
     # Domaines HTTP seul, jamais eu de TLS (cf. CLAUDE.md) — pas de redirection,
@@ -73,6 +83,17 @@ http:
         - web
       service: apache-backend
 
+{% if traefik_acme_enabled and traefik_acme_test_domain %}
+    # Domaine jetable de validation du resolver ACME (cf. PHASE2.md § Bascule ACME).
+    acme-test-secure:
+      rule: "Host(`{{ traefik_acme_test_domain }}`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: {{ traefik_acme_resolver }}
+      service: apache-backend
+
+{% endif %}
   services:
     apache-backend:
       loadBalancer:
