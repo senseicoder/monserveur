@@ -1,0 +1,33 @@
+---
+- name: Créer /var/log/journal (stockage persistant du journal)
+  ansible.builtin.file:
+    path: /var/log/journal
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: "2755"
+  become: true
+  notify: restart systemd-journald
+
+- name: Créer /etc/systemd/journald.conf.d
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Forcer le stockage persistant et plafonner la taille du journal
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/persistent.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Géré par Ansible (monserveur, rôle journald-persistent-setup)
+      [Journal]
+      Storage=persistent
+      SystemMaxUse={{ journald_system_max_use }}
+  become: true
+  notify: restart systemd-journald
