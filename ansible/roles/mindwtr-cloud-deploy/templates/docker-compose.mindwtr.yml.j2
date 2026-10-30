@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       MINDWTR_CLOUD_AUTH_TOKENS: "{{ mindwtr_token }}"
-      MINDWTR_CLOUD_CORS_ORIGIN: "https://{{ mindwtr_domain }}:8787"
+      MINDWTR_CLOUD_CORS_ORIGIN: "https://{{ mindwtr_domain }}{{ traefik_public_port_suffix }}"
     volumes:
       - "{{ mindwtr_deploy_dir }}/data/cloud:/app/cloud_data"
     networks:

@@ -7,7 +7,7 @@ services:
       - serve
     environment:
       TZ: "Europe/Paris"
-      NTFY_BASE_URL: "https://{{ ntfy_domain }}:8787"
+      NTFY_BASE_URL: "https://{{ ntfy_domain }}{{ traefik_public_port_suffix }}"
       NTFY_LISTEN_HTTP: ":80"
       NTFY_AUTH_FILE: "/var/lib/ntfy/auth.db"
       NTFY_AUTH_DEFAULT_ACCESS: "deny-all"

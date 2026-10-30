@@ -4,7 +4,7 @@ services:
     container_name: vaultwarden
     restart: unless-stopped
     environment:
-      DOMAIN: "https://{{ vaultwarden_domain }}:8787"
+      DOMAIN: "https://{{ vaultwarden_domain }}{{ traefik_public_port_suffix }}"
       SIGNUPS_ALLOWED: "false"
 {% if vaultwarden_admin_token is defined %}
       ADMIN_TOKEN: "{{ vaultwarden_admin_token }}"
