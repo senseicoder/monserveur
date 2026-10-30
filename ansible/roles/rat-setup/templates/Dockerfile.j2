@@ -1,9 +1,9 @@
 {# Genere par le role Ansible "rat" -- ne pas editer a la main. Construit et
    publié EN LOCAL (jamais sur glaurung, cf. rat-setup/tasks/main.yml) avec
-   pour contexte de build le repo rat-git lui-même -- COPY rat_code/admin
+   pour contexte de build le dépôt rat lui-même -- COPY rat_code/admin
    lisent directement le checkout reel, aucune synchronisation de code
    n'est necessaire. Meme base que le test local etape 3
-   (~/www/c/rat-git/docker/Dockerfile), adaptee pour 2 vhosts internes
+   (~/www/c/rat/docker/Dockerfile), adaptee pour 2 vhosts internes
    (plcoder + placedusport2) au lieu d'un DocumentRoot unique. Seules les
    données par site (config.php, rat_sites, logs/sessions) restent en
    bind-mount, cf. docker-compose.rat.yml.j2. #}
@@ -41,7 +41,7 @@ RUN echo "short_open_tag = On" > /usr/local/etc/php/conf.d/rat-legacy.ini
 
 # Vhosts internes (un par domaine rat), DocumentRoot = chemin absolu Gandi.
 # Fichier rendu par Ansible dans docker/apache-rat-vhosts.conf (contexte de
-# build = racine du repo rat-git).
+# build = racine du dépôt rat).
 COPY {{ rat_build_subdir }}/apache-rat-vhosts.conf /etc/apache2/sites-available/rat-vhosts.conf
 RUN a2dissite 000-default && a2ensite rat-vhosts
 

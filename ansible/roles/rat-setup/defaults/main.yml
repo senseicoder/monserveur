@@ -32,10 +32,9 @@ rat_image_repo: "{{ rat_registry }}/{{ rat_registry_user }}/rat-web"
 # Une seule source pour ces chemins, auparavant répétés en dur dans
 # tasks/main.yml et Dockerfile.j2.
 # Checkout local du dépôt rat = contexte de build de l'image (jamais sur
-# glaurung). Valeur historique conservée à l'identique : le dépôt a depuis
-# été renommé $HOME/www/c/rat, mais changer ce chemin change le comportement du
-# rôle -- à faire dans un changement séparé.
-rat_build_context_dir: "/home/cedric/www/c/rat-git"
+# glaurung). Le dépôt s'appelle /home/cedric/www/c/rat sur tous les postes
+# (décision du 2026-10-26 ; ex-rat-git, qui n'existe plus nulle part).
+rat_build_context_dir: "/home/cedric/www/c/rat"
 # Sous-dossier (gitignoré) du contexte de build où sont rendus le Dockerfile
 # et les vhosts Apache -- relatif au contexte, car référencé tel quel par le
 # Dockerfile (COPY) et par docker_image (dockerfile:).
