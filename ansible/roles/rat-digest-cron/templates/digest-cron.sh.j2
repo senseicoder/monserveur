@@ -1,0 +1,42 @@
+#!/bin/bash
+# Généré par le rôle Ansible "rat-digest-cron" -- ne pas éditer à la main sur le
+# serveur.
+#
+# Digest quotidien des éléments rat à modérer : admin/digest.php (dépôt rat,
+# ticket 22) affiche une ligne par site ayant quelque chose en attente, rien
+# sinon. Un exec docker par base (une par entrée de rat_sites), comme
+# robot-cron.sh ; les sorties sont regroupées en UNE notification ntfy,
+# envoyée seulement s'il y a quelque chose à traiter.
+#
+# Chemin ABSOLU de digest.php obligatoire : rat.php déduit SYSTEM du premier
+# caractère de SCRIPT_FILENAME (relatif -> WIN32 -> fatal « Cannot redeclare
+# checkdnsrr() » pour un LIEU hors NEXEN/FREE/ONLINE, ex. pds2 en OASIS).
+# -w : rat.php cherche rat_donnees/config.php relatif au CWD (cf. robot-cron.sh).
+# stdout = digest seul ; les messages PHP partent sur stderr -> ce journal.
+set -uo pipefail
+
+NTFY_URL="https://{{ ntfy_domain }}:8787/{{ rat_digest_ntfy_topic }}"
+NTFY_TOKEN="{{ ntfy_healthcheck_token }}"
+
+echo "=== $(date '+%F %T') ==="
+digest=""
+erreurs=0
+{% for site in rat_sites %}
+docroot="{{ rat_container_docroot_root }}/{{ site.domain }}/htdocs"
+if sortie=$(docker exec -w "$docroot" {{ rat_digest_container }} php "$docroot/admin/digest.php"); then
+  [ -n "$sortie" ] && digest+="${sortie}"$'\n'
+else
+  echo "ERREUR : digest.php en échec pour {{ site.domain }}"
+  erreurs=1
+fi
+{% endfor %}
+
+if [ -n "$digest" ]; then
+  echo "$digest"
+  curl -sS -o /dev/null -w "ntfy HTTP %{http_code}\n" -H "Authorization: Bearer $NTFY_TOKEN" \
+    -H "Priority: {{ rat_digest_ntfy_priority }}" -H "Title: rat : éléments à modérer" -H "Tags: inbox_tray" \
+    -d "${digest%$'\n'}" "$NTFY_URL" || erreurs=1
+else
+  echo "rien en attente, pas de notification"
+fi
+exit $erreurs

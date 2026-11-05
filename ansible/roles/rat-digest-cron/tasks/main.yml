@@ -1,0 +1,26 @@
+---
+# rat-digest-cron : digest quotidien ntfy des éléments rat à modérer (messages
+# du formulaire de contact, commentaires, petites annonces, signets, articles).
+# admin/digest.php (dépôt rat, ticket 22) affiche les comptes en attente ; ce
+# script les regroupe pour toutes les bases et les pousse sur ntfy avec le jeton
+# déjà géré ici (ntfy_healthcheck_token) -- aucun secret ntfy côté rat. Même
+# mécanique que rat-robot-cron (docker exec dans le conteneur rat-web).
+
+- name: Déployer le script digest-cron.sh
+  ansible.builtin.template:
+    src: digest-cron.sh.j2
+    dest: "{{ rat_deploy_dir }}/digest-cron.sh"
+    owner: root
+    group: root
+    mode: "0750"    # contient le jeton ntfy
+
+# Cron toujours via /etc/cron.d/, jamais crontab utilisateur -- cf.
+# adr-cron-toujours-etc-cron-d (wiki), comme rat-robot-cron.
+- name: Planifier le cron root du digest rat
+  ansible.builtin.cron:
+    name: rat-digest
+    cron_file: rat-digest
+    minute: "{{ rat_digest_cron_minute }}"
+    hour: "{{ rat_digest_cron_hour }}"
+    job: "{{ rat_deploy_dir }}/digest-cron.sh >> /var/log/rat-digest.log 2>&1"
+    user: root

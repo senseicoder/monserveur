@@ -1,0 +1,17 @@
+---
+# Variables attendues (group_vars/all) :
+#   rat_sites, rat_deploy_dir, rat_container_docroot_root — comme rat-robot-cron
+#   ntfy_domain             — domaine ntfy (ex. ntfy.daneel.net)
+#   ntfy_healthcheck_token  — token ntfy (compte admin, réutilisé — accès à tous les topics)
+
+# Même conteneur que rat-robot-cron (cf. son defaults/main.yml).
+rat_digest_container: "rat-rat-web-1"
+
+# Topic dédié : un digest n'est pas une alerte (≠ glaurung-health, puttini-alerts).
+rat_digest_ntfy_topic: "rat-moderation"
+# Non critique, mais doit apparaître sur le téléphone : priorité par défaut (3).
+rat_digest_ntfy_priority: "default"
+
+# Une fois par jour, le matin.
+rat_digest_cron_minute: "0"
+rat_digest_cron_hour: "8"
