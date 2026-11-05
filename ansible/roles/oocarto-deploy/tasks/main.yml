@@ -1,0 +1,279 @@
+---
+# oocarto-deploy : cartographie (oocarto) derrière Traefik, alimentée par le
+# collecteur (collecteur-deploy). Même schéma que rat-setup : image construite
+# et publiée EN LOCAL, glaurung ne fait que pull + run. Code et lib
+# synchronisés depuis les clones locaux. Procédure : CARTO.md.
+
+- name: Vérifier les secrets (vault.yml)
+  ansible.builtin.assert:
+    that:
+      - item is defined
+      - item | length >= 20
+      - item is match("^[A-Za-z0-9]+$")
+    # alphanumérique : injectés tels quels dans des chaînes PHP entre apostrophes
+    fail_msg: "secret absent du vault, trop court ou non alphanumérique (openssl rand -hex 24, cf. CARTO.md)"
+  loop:
+    - "{{ oocarto_db_password | default('') }}"
+    - "{{ oocarto_http_password | default('') }}"
+    - "{{ collecteur_pwd | default('') }}"
+  no_log: true
+
+- name: Vérifier les clones locaux (source du code synchronisé)
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: oocarto_src
+  failed_when: not oocarto_src.stat.exists
+  loop:
+    - "{{ oocarto_src_local }}code/index.php"
+    - "{{ oocarto_lib_src_local }}oowiki/coeur.inc.php"
+  delegate_to: localhost
+  become: false
+
+# --- Image : build + push en local (copie du schéma rat-setup) ---
+
+- name: Créer le contexte de build local
+  ansible.builtin.file:
+    path: "{{ oocarto_build_dir_local }}"
+    state: directory
+  delegate_to: localhost
+  become: false
+
+- name: Rendre le Dockerfile dans le contexte de build local
+  ansible.builtin.template:
+    src: Dockerfile.j2
+    dest: "{{ oocarto_build_dir_local }}/Dockerfile"
+  delegate_to: localhost
+  become: false
+  register: oocarto_dockerfile
+
+- name: Lire la version actuelle de l'image
+  ansible.builtin.set_fact:
+    oocarto_web_version: "{{ lookup('file', role_path + '/files/oocarto-web.version') | trim }}"
+
+# Nouvelle version seulement si le Dockerfile change (l'image ne contient pas
+# de code applicatif : pas de rebuild à chaque mise à jour du code).
+- name: Calculer la version à utiliser
+  ansible.builtin.set_fact:
+    oocarto_web_version: "{{ (oocarto_web_version.split('.')[:-1] + [(oocarto_web_version.split('.')[-1] | int + 1) | string]) | join('.') }}"
+  when: oocarto_dockerfile.changed or oocarto_web_version == "0.0"
+
+- name: Enregistrer la version
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/oocarto-web.version"
+    content: "{{ oocarto_web_version }}"
+  delegate_to: localhost
+  become: false
+
+- name: Fixer le tag d'image (jamais "latest")
+  ansible.builtin.set_fact:
+    oocarto_image: "{{ oocarto_image_repo }}:{{ oocarto_web_version }}"
+
+- name: Récupérer le PAT ghcr.io (cmdp, jamais loggé)
+  ansible.builtin.command: cmdp show services/github.com/docker_registry
+  register: oocarto_ghcr_pat
+  changed_when: false
+  no_log: true
+  delegate_to: localhost
+  become: false
+  check_mode: false
+
+- name: Se connecter à ghcr.io (en local, pour build+push)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ oocarto_ghcr_pat.stdout_lines[0] }}"
+  delegate_to: localhost
+  become: false
+
+- name: Construire et publier l'image oocarto-web
+  community.docker.docker_image:
+    name: "{{ oocarto_image }}"
+    build:
+      path: "{{ oocarto_build_dir_local }}"
+      pull: true
+    source: build
+    push: true
+  delegate_to: localhost
+  become: false
+
+# --- Déploiement sur glaurung ---
+
+- name: Créer les dossiers
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.owner }}"
+    mode: "0755"
+  loop:
+    - { path: "{{ oocarto_deploy_dir }}", owner: "root" }
+    - { path: "{{ oocarto_code_dir }}", owner: "root" }
+    - { path: "{{ oocarto_lib_dir }}", owner: "root" }
+    - { path: "{{ oocarto_data_dir }}", owner: "33" }
+
+# config.inc.php du dépôt exclu : il contient la configuration d'origine
+# (secrets compris) et ne doit jamais arriver ici ; remplacé par le template.
+- name: Synchroniser le code oocarto depuis le clone local
+  ansible.posix.synchronize:
+    src: "{{ oocarto_src_local }}"
+    dest: "{{ oocarto_code_dir }}/"
+    delete: true
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=docker_dev"
+      - "--exclude=graphify-out"
+      - "--exclude=/code/config.inc.php"
+
+- name: Synchroniser la lib partagée depuis le clone local
+  ansible.posix.synchronize:
+    src: "{{ oocarto_lib_src_local }}"
+    dest: "{{ oocarto_lib_dir }}/"
+    delete: true
+    rsync_opts:
+      - "--exclude=.git"
+
+- name: Déployer config.inc.php (contient des mots de passe)
+  ansible.builtin.template:
+    src: config.inc.php.j2
+    dest: "{{ oocarto_code_dir }}/code/config.inc.php"
+    owner: root
+    group: "33"
+    mode: "0640"
+  no_log: true
+
+# --- TLS : même schéma que puttini-deploy (vhost ACME + certbot + certs/oocarto,
+# déclarés dans traefik-deploy : traefik-tls.yml + hook de renouvellement) ---
+
+- name: Déployer le vhost Apache ACME pour {{ oocarto_domain }}
+  ansible.builtin.template:
+    src: apache-acme.conf.j2
+    dest: "/etc/apache2/sites-available/{{ oocarto_domain }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  register: oocarto_vhost
+
+- name: Activer le vhost Apache ACME
+  ansible.builtin.command: "a2ensite {{ oocarto_domain }}"
+  register: oocarto_a2ensite
+  changed_when: "'Enabling site' in oocarto_a2ensite.stdout"
+
+- name: Recharger Apache si le vhost a changé
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  when: oocarto_vhost is changed or oocarto_a2ensite is changed
+
+- name: Créer le dossier certs/oocarto
+  ansible.builtin.file:
+    path: "{{ mindwtr_deploy_dir }}/certs/oocarto"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Obtenir le certificat TLS pour {{ oocarto_domain }}
+  ansible.builtin.command: >
+    certbot certonly --webroot -w /var/www/html --non-interactive --agree-tos
+    --email {{ acme_email }} -d {{ oocarto_domain }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ oocarto_domain }}/fullchain.pem"
+
+- name: Copier les certs dans certs/oocarto
+  ansible.builtin.copy:
+    src: "/etc/letsencrypt/live/{{ oocarto_domain }}/{{ item }}"
+    dest: "{{ mindwtr_deploy_dir }}/certs/oocarto/{{ item }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - fullchain.pem
+    - privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: restart traefik
+
+- name: Déployer la conf PHP et le docker-compose
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ oocarto_deploy_dir }}/{{ item.dest }}"
+    mode: "0644"
+  loop:
+    - { src: php-oocarto.ini.j2, dest: php-oocarto.ini }
+    - { src: docker-compose.oocarto.yml.j2, dest: docker-compose.oocarto.yml }
+
+# --- Base MariaDB native (même schéma que rat-setup : compte restreint à mindwtr) ---
+
+- name: Créer la base oocarto
+  community.mysql.mysql_db:
+    name: "{{ oocarto_db_name }}"
+    encoding: utf8
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Créer le compte oocarto, restreint au subnet du réseau mindwtr
+  community.mysql.mysql_user:
+    name: "{{ oocarto_db_user }}"
+    password: "{{ oocarto_db_password }}"
+    host: "172.18.%.%"
+    priv: "{{ oocarto_db_name }}.*:ALL"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  no_log: true
+
+- name: Se connecter à ghcr.io sur glaurung (image privée)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ oocarto_ghcr_pat.stdout_lines[0] }}"
+
+- name: Démarrer oocarto
+  ansible.builtin.command:
+    cmd: docker-compose -f docker-compose.oocarto.yml up -d
+    chdir: "{{ oocarto_deploy_dir }}"
+  register: oocarto_up
+  changed_when: "'Creating' in oocarto_up.stderr or 'Recreating' in oocarto_up.stderr"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+# --- Initialisation du schéma (équivalent de docker_dev/oocarto/oocarto.sh) ---
+
+- name: Mettre à jour le schéma (base.inc.php → COOData::MajBdd)
+  ansible.builtin.command:
+    cmd: "docker exec -w {{ oocarto_app_dir }}/code {{ oocarto_container }} php base.inc.php"
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Tester si les données de référence sont chargées
+  ansible.builtin.command:
+    cmd: "mysql -N -e 'SELECT COUNT(*) FROM ecsi_gravites' {{ oocarto_db_name }}"
+  register: oocarto_gravites
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Charger les données de référence (sql/installation.sql) si la base est vide
+  ansible.builtin.shell:
+    cmd: "mysql {{ oocarto_db_name }} < {{ oocarto_code_dir }}/sql/installation.sql"
+  when:
+    - not ansible_check_mode
+    - oocarto_gravites.rc != 0 or (oocarto_gravites.stdout | trim) == "0"
+
+# --- Traitements périodiques (code/crontab.d) ---
+
+- name: Déployer le lanceur des traitements périodiques
+  ansible.builtin.template:
+    src: oocarto-cron.sh.j2
+    dest: "{{ oocarto_deploy_dir }}/oocarto-cron.sh"
+    mode: "0750"
+
+- name: Planifier les traitements horaires et quotidiens (/etc/cron.d)
+  ansible.builtin.cron:
+    name: "oocarto-{{ item.periode }}"
+    cron_file: oocarto
+    minute: "{{ item.minute }}"
+    hour: "{{ item.heure }}"
+    user: root
+    job: "{{ oocarto_deploy_dir }}/oocarto-cron.sh {{ item.periode }} >> /var/log/oocarto-cron.log 2>&1"
+  loop:
+    - { periode: hourly, minute: "{{ oocarto_cron_hourly_minute }}", heure: "*" }
+    - { periode: daily, minute: "0", heure: "{{ oocarto_cron_daily_heure }}" }

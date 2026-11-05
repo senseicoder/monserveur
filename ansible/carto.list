@@ -1,0 +1,4 @@
+# Cartographie privée : collecteur des faits serveurs puis oocarto (lit le
+# collecteur). Procédure de mise en service : CARTO.md — ne pas lancer avant.
+collecteur-deploy
+oocarto-deploy

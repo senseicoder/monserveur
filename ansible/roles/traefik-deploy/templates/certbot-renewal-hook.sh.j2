@@ -49,6 +49,16 @@ case "$RENEWED_LINEAGE" in
     cp /etc/letsencrypt/live/{{ m3gan_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/m3gan/privkey.pem
     chmod 640 ${DEPLOY_DIR}/certs/m3gan/fullchain.pem ${DEPLOY_DIR}/certs/m3gan/privkey.pem
     ;;
+  */{{ collecteur_domain }})
+    cp /etc/letsencrypt/live/{{ collecteur_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/collecteur/fullchain.pem
+    cp /etc/letsencrypt/live/{{ collecteur_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/collecteur/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/collecteur/fullchain.pem ${DEPLOY_DIR}/certs/collecteur/privkey.pem
+    ;;
+  */{{ oocarto_domain }})
+    cp /etc/letsencrypt/live/{{ oocarto_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/oocarto/fullchain.pem
+    cp /etc/letsencrypt/live/{{ oocarto_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/oocarto/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/oocarto/fullchain.pem ${DEPLOY_DIR}/certs/oocarto/privkey.pem
+    ;;
 esac
 
 docker restart traefik

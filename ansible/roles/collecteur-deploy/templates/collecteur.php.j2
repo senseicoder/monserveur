@@ -1,0 +1,10 @@
+<?php
+// Généré par le rôle Ansible "collecteur-deploy" -- ne pas éditer à la main.
+// Point de dépôt/lecture des faits serveurs (clients CCollecteurWebClient :
+// ecfacts sur les serveurs, oocarto en lecture). Contient le mot de passe
+// partagé avec les clients : fichier 0640 root:www-data.
+if (!defined('CHEMIN_LIB_PARTAGEE')) define('CHEMIN_LIB_PARTAGEE', '{{ collecteur_lib_dir }}/');
+require CHEMIN_LIB_PARTAGEE . 'robots_serveurs/collecteurweb.class.php';
+
+$o = new CCollecteurWebServeur('{{ collecteur_data_dir }}/', '{{ collecteur_pwd }}');
+$o->Handle($_POST);

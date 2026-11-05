@@ -1,0 +1,125 @@
+---
+# collecteur-deploy : point de collecte des faits serveurs (dépôt/lecture de
+# JSON par canal) derrière Traefik. Reprend le déploiement historique du
+# collecteur (vhost + collecter.php + dossier de stockage + purge par cron),
+# en conteneur. Procédure de mise en service : CARTO.md.
+
+- name: Vérifier que le mot de passe du collecteur est défini (vault.yml)
+  ansible.builtin.assert:
+    that:
+      - collecteur_pwd is defined
+      - collecteur_pwd | length >= 20
+      - collecteur_pwd is match("^[A-Za-z0-9]+$")
+    # alphanumérique seulement : injecté tel quel dans une chaîne PHP entre apostrophes
+    fail_msg: "collecteur_pwd absent du vault, trop court ou non alphanumérique (openssl rand -hex 24, cf. CARTO.md)"
+  no_log: true
+
+- name: Vérifier la présence de la lib partagée sur l'hôte
+  ansible.builtin.stat:
+    path: "{{ collecteur_lib_dir }}/robots_serveurs/collecteurweb.class.php"
+  register: collecteur_lib
+  failed_when: not collecteur_lib.stat.exists
+
+- name: Créer les dossiers de déploiement
+  ansible.builtin.file:
+    path: "{{ collecteur_deploy_dir }}/htdocs"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# www-data = uid/gid 33 dans l'image php:apache comme sur l'hôte Debian.
+- name: Créer le dossier de stockage (écrit par Apache dans le conteneur)
+  ansible.builtin.file:
+    path: "{{ collecteur_data_dir }}"
+    state: directory
+    owner: "33"
+    group: "33"
+    mode: "0750"
+
+- name: Déployer collecteur.php (contient le mot de passe)
+  ansible.builtin.template:
+    src: collecteur.php.j2
+    dest: "{{ collecteur_deploy_dir }}/htdocs/collecteur.php"
+    owner: root
+    group: "33"
+    mode: "0640"
+  no_log: true
+
+# --- TLS : même schéma que puttini-deploy (vhost ACME + certbot + certs/collecteur,
+# déclarés dans traefik-deploy : traefik-tls.yml + hook de renouvellement) ---
+
+- name: Déployer le vhost Apache ACME pour {{ collecteur_domain }}
+  ansible.builtin.template:
+    src: apache-acme.conf.j2
+    dest: "/etc/apache2/sites-available/{{ collecteur_domain }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  register: collecteur_vhost
+
+- name: Activer le vhost Apache ACME
+  ansible.builtin.command: "a2ensite {{ collecteur_domain }}"
+  register: collecteur_a2ensite
+  changed_when: "'Enabling site' in collecteur_a2ensite.stdout"
+
+- name: Recharger Apache si le vhost a changé
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  when: collecteur_vhost is changed or collecteur_a2ensite is changed
+
+- name: Créer le dossier certs/collecteur
+  ansible.builtin.file:
+    path: "{{ mindwtr_deploy_dir }}/certs/collecteur"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Obtenir le certificat TLS pour {{ collecteur_domain }}
+  ansible.builtin.command: >
+    certbot certonly --webroot -w /var/www/html --non-interactive --agree-tos
+    --email {{ acme_email }} -d {{ collecteur_domain }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ collecteur_domain }}/fullchain.pem"
+
+- name: Copier les certs dans certs/collecteur
+  ansible.builtin.copy:
+    src: "/etc/letsencrypt/live/{{ collecteur_domain }}/{{ item }}"
+    dest: "{{ mindwtr_deploy_dir }}/certs/collecteur/{{ item }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - fullchain.pem
+    - privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: restart traefik
+
+- name: Déployer le docker-compose du collecteur
+  ansible.builtin.template:
+    src: docker-compose.collecteur.yml.j2
+    dest: "{{ collecteur_deploy_dir }}/docker-compose.collecteur.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Démarrer le collecteur
+  ansible.builtin.command:
+    cmd: docker-compose -f docker-compose.collecteur.yml up -d
+    chdir: "{{ collecteur_deploy_dir }}"
+  register: collecteur_up
+  changed_when: "'Creating' in collecteur_up.stderr or 'Recreating' in collecteur_up.stderr"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+# Cron toujours via /etc/cron.d/ (adr-cron-toujours-etc-cron-d), comme rat-robot-cron.
+- name: Purger les dépôts anciens
+  ansible.builtin.cron:
+    name: collecteur-purge
+    cron_file: collecteur-purge
+    minute: "0"
+    hour: "0"
+    user: root
+    job: "find {{ collecteur_data_dir }} -type f -mtime +{{ collecteur_retention_jours }} -delete"

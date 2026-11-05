@@ -38,6 +38,11 @@ rat_deploy_dir: "/opt/rat"
 # pas d'accès aux defaults l'un de l'autre) -- même raison que
 # phpbb_integralsport_* ci-dessous.
 rat_site_data_root: "{{ rat_deploy_dir }}/data"
+
+# Cartographie : collecteur des faits serveurs + oocarto (rôles collecteur-deploy,
+# oocarto-deploy, CARTO.md). Enregistrements DNS à créer avant la mise en service.
+collecteur_domain: "collecteur.daneel.net"
+oocarto_domain: "carto.daneel.net"
 # Racine du DocumentRoot vu depuis l'intérieur du conteneur rat-web -- reproduit
 # le chemin absolu Gandi (/srv/data/web/vhosts/<domaine>/htdocs) pour que le
 # code à chemins codés en dur (rss.php, rat_sites/*/index.php, .htaccess)

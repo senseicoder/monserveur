@@ -1,0 +1,21 @@
+#!/bin/bash
+# Généré par le rôle Ansible "oocarto-deploy" -- ne pas éditer à la main.
+# Usage : oocarto-cron.sh daily|hourly — lance dans l'ordre les scripts PHP de
+# code/crontab.d/<période>/ dans le conteneur, sauf les motifs exclus
+# (oocarto_cron_exclure). Un script en échec n'arrête pas les suivants ;
+# code retour non nul si au moins un échec.
+set -uo pipefail
+periode="${1:?daily|hourly}"
+dossier="{{ oocarto_code_dir }}/code/crontab.d/$periode"
+echo "=== $periode $(date '+%F %T') ==="
+erreurs=0
+for f in $(ls "$dossier" | grep '\.php$' | sort); do
+  case "$f" in
+{% for motif in oocarto_cron_exclure %}
+    {{ motif }}) echo "-- $f exclu"; continue ;;
+{% endfor %}
+  esac
+  echo "-- $f"
+  docker exec -w {{ oocarto_app_dir }}/code {{ oocarto_container }} php "crontab.d/$periode/$f" || { echo "ERREUR $f (rc=$?)"; erreurs=1; }
+done
+exit $erreurs
