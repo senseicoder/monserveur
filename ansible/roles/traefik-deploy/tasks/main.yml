@@ -14,29 +14,29 @@
     - "{{ mindwtr_deploy_dir }}/certs/reader-daneel"
     - "{{ mindwtr_deploy_dir }}/certs/bots-plcoder"
 
-# Image traefik:v3 non épinglée : les options statiques de relecture-ia
-# (core.strictTLSOptions, aliasHeadersStrategy) ont été validées avec la 3.7.15
-# (banc tests/e2e-mtls du dépôt relecture-ia). Une version plus ancienne
-# refuserait de démarrer avec ces options : on vérifie avant (lecture seule).
-- name: Lire la version de Traefik en service (si mTLS persoca activé)
-  command: docker exec traefik traefik version
-  register: traefik_version_en_service
+# Options statiques de relecture-ia (core.strictTLSOptions, aliasHeadersStrategy) :
+# on vérifie qu'elles existent dans l'image QUI VA TOURNER (traefik_image), et non
+# un numéro de version. Incident du 2026-11-06 : contrôle « >= 3.7 » réussi sur la
+# 3.7.5 de glaurung, qui ne connaît aucune des deux options → Traefik en boucle,
+# tous les sites coupés 4 min. Ce contrôle tourne aussi en dry-run (check_mode:
+# false, lecture seule ; il télécharge l'image si elle manque sur l'hôte).
+- name: Lire les options connues de l'image Traefik (si mTLS persoca activé)
+  command: "docker run --rm {{ traefik_image }} --help"
+  register: traefik_aide_image
   changed_when: false
-  failed_when: false
   check_mode: false
-  when: traefik_mtls_persoca | default(false)
+  when: traefik_mtls_persoca | bool
 
-- name: Exiger Traefik >= 3.7 pour les options mTLS persoca
+- name: Exiger les options mTLS persoca dans l'image Traefik
   assert:
     that:
-      - traefik_version_en_service.rc == 0
-      # '\\1' et non '\1' : dans une chaîne Jinja, '\1' devient le caractère \x01
-      # (« Unknown argument » de regex_search, constaté au dry-run du 2026-11-06).
-      - (traefik_version_en_service.stdout | regex_search('Version:\s+v?([0-9.]+)', '\\1') | first) is version('3.7', '>=')
+      - "'--core.stricttlsoptions' in (traefik_aide_image.stdout | lower)"
+      - "'.http.aliasheadersstrategy' in (traefik_aide_image.stdout | lower)"
     fail_msg: >-
-      Traefik en service introuvable ou < 3.7 ({{ traefik_version_en_service.stdout | default('') | regex_search('Version:.*') }}) :
-      mettre à jour l'image (docker-compose pull) avant d'activer traefik_mtls_persoca.
-  when: traefik_mtls_persoca | default(false)
+      L'image {{ traefik_image }} ne connaît pas --core.strictTLSOptions et/ou
+      --entrypoints.<name>.http.aliasHeadersStrategy : Traefik refuserait de démarrer.
+      Choisir une image qui les a (validées : traefik:v3.7.15) avant d'activer traefik_mtls_persoca.
+  when: traefik_mtls_persoca | bool
 
 - name: Déployer docker-compose.traefik.yml
   template:
