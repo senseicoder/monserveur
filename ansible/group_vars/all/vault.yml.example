@@ -19,3 +19,7 @@ relecture_worker_secret_proxy: "CHANGEME"
 # (SMTP_MOT_DE_PASSE, ADR-030). Sans lui, aucune adresse ne peut être
 # confirmée : le rôle relecture-ia-deploy refuse de déployer.
 relecture_smtp_mot_de_passe: "CHANGEME"
+# relecture-ia : FACULTATIF — URL du webhook Discord prévenu à chaque
+# soumission acceptée (RELECTURE_WEBHOOK_SOUMISSIONS, ADR-035). Vide ou
+# absente = alerte désactivée. Secret : l'URL contient le jeton du webhook.
+relecture_webhook_soumissions: ""
