@@ -15,6 +15,15 @@ services:
       - "--providers.file.watch=true"
       - "--log.level=INFO"
       - "--accesslog=true"
+{% if traefik_mtls_persoca | default(false) %}
+      # relecture-ia (mTLS persoca, ADR-025/026 du dépôt relecture-ia) : un
+      # conflit d'options TLS sur un hôte désactive les routeurs au lieu de
+      # retomber sur les options par défaut (sans mTLS).
+      - "--core.strictTLSOptions=true"
+      # Rejette les en-têtes dont le nom en imite un autre (X_Forwarded_…).
+      # Vaut pour TOUS les sites de l'entrypoint websecure.
+      - "--entrypoints.websecure.http.aliasHeadersStrategy=reject"
+{% endif %}
     ports:
       - "8787:8787"
       - "80:80"
@@ -23,6 +32,10 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "{{ mindwtr_deploy_dir }}/certs:/certs:ro"
       - "{{ mindwtr_deploy_dir }}/traefik-dynamic:/etc/traefik/dynamic:ro"
+{% if traefik_mtls_persoca | default(false) %}
+      # Chaîne persoca (copiée par relecture-ia-deploy) : vérifie les certificats clients.
+      - "{{ mindwtr_deploy_dir }}/persoca:/etc/traefik/persoca:ro"
+{% endif %}
     networks:
       - "{{ docker_network_name }}"
 

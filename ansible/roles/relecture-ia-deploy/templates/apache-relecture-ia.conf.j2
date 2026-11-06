@@ -1,0 +1,7 @@
+<VirtualHost 172.18.0.1:8081>
+    ServerName {{ relecture_domain }}
+    ServerAlias {{ relecture_admin_domain }} {{ relecture_workers_domain }}
+    DocumentRoot /var/www/html
+    # Vhost minimal pour le challenge certbot webroot des trois noms (Phase 2 :
+    # Traefik route /.well-known/acme-challenge/ vers Apache 172.18.0.1:8081).
+</VirtualHost>
