@@ -51,9 +51,11 @@
   delegate_to: localhost
   become: false
 
+# Lecture tolérante : au tout premier déploiement en dry-run (check mode), la tâche
+# précédente n'écrit pas le fichier ; on part alors de 0.0 au lieu d'échouer.
 - name: Lire la version actuelle
   ansible.builtin.set_fact:
-    relecture_current_version: "{{ lookup('file', role_path + '/files/relecture-ia-backend.version') | trim }}"
+    relecture_current_version: "{{ lookup('file', role_path + '/files/relecture-ia-backend.version', errors='ignore') | default('0.0', true) | trim }}"
 
 - name: Calculer la prochaine version (incrémente le dernier nombre)
   ansible.builtin.set_fact:
