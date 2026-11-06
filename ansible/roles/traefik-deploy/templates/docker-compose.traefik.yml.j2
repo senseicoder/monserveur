@@ -25,6 +25,15 @@ services:
       - "--certificatesresolvers.{{ traefik_acme_resolver }}.acme.caserver={{ traefik_acme_ca_server }}"
       - "--certificatesresolvers.{{ traefik_acme_resolver }}.acme.tlschallenge=true"
 {% endif %}
+{% if traefik_mtls_persoca | default(false) %}
+      # relecture-ia (mTLS persoca, ADR-025/026 du dépôt relecture-ia) : un
+      # conflit d'options TLS sur un hôte désactive les routeurs au lieu de
+      # retomber sur les options par défaut (sans mTLS).
+      - "--core.strictTLSOptions=true"
+      # Rejette les en-têtes dont le nom en imite un autre (X_Forwarded_…).
+      # Vaut pour TOUS les sites de l'entrypoint websecure.
+      - "--entrypoints.websecure.http.aliasHeadersStrategy=reject"
+{% endif %}
     ports:
 {% if traefik_legacy_8787_enabled %}
       - "8787:8787"
@@ -37,6 +46,10 @@ services:
       - "{{ mindwtr_deploy_dir }}/traefik-dynamic:/etc/traefik/dynamic:ro"
 {% if traefik_acme_enabled %}
       - "{{ mindwtr_deploy_dir }}/acme:/acme"
+{% endif %}
+{% if traefik_mtls_persoca | default(false) %}
+      # Chaîne persoca (copiée par relecture-ia-deploy) : vérifie les certificats clients.
+      - "{{ mindwtr_deploy_dir }}/persoca:/etc/traefik/persoca:ro"
 {% endif %}
     networks:
       - "{{ docker_network_name }}"

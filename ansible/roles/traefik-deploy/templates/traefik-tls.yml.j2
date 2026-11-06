@@ -7,3 +7,11 @@ tls:
     - certFile: /certs/{{ c.dir ~ '/' if c.dir else '' }}fullchain.pem
       keyFile: /certs/{{ c.dir ~ '/' if c.dir else '' }}privkey.pem
 {% endfor %}
+{# relecture-ia hors traefik_file_certs : ses routeurs (mTLS) sont dans le
+   fichier dynamique du rôle relecture-ia-deploy, pas en labels — la bascule
+   ACME par traefik_acme_domains ne le couvre pas. #}
+{% if relecture_domain is defined %}
+    # relecture-ia : un certificat pour le site, l'admin et les workers.
+    - certFile: /certs/relecture-ia/fullchain.pem
+      keyFile: /certs/relecture-ia/privkey.pem
+{% endif %}

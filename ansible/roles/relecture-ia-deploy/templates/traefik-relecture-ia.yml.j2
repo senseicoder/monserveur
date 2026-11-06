@@ -1,0 +1,94 @@
+# Configuration dynamique Traefik (fournisseur fichier) — relecture-ia.
+# Adaptée de deploiement/traefik/relecture-ia.yml du dépôt relecture-ia
+# (ADR-025 administration, ADR-026 workers) pour glaurung : certificat obtenu
+# par certbot et déclaré dans tls.yml (traefik-deploy), pas de certResolver.
+# Contient les deux secrets du proxy : déployé en 0600.
+# Exige dans la configuration statique : core.strictTLSOptions=true
+# (traefik-deploy, variable traefik_mtls_persoca).
+
+tls:
+  options:
+    # Choisie d'après le SNI : ne vaut que pour l'hôte admin.
+    relecture-admin:
+      minVersion: VersionTLS12
+      clientAuth:
+        caFiles:
+          - /etc/traefik/persoca/chaine.pem
+        clientAuthType: RequireAndVerifyClientCert
+    relecture-workers:
+      minVersion: VersionTLS12
+      clientAuth:
+        caFiles:
+          - /etc/traefik/persoca/chaine.pem
+        clientAuthType: RequireAndVerifyClientCert
+
+http:
+  middlewares:
+    # Sur TOUTES les routes : supprime les en-têtes d'identité et le secret du
+    # proxy envoyés par le client (valeur vide = suppression).
+    relecture-nettoyage:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Tls-Client-Cert: ""
+          X-Forwarded-Tls-Client-Cert-Info: ""
+          X-Relecture-Proxy: ""
+    # POC entre copains, non référencé : en plus de /robots.txt.
+    relecture-noindex:
+      headers:
+        customResponseHeaders:
+          X-Robots-Tag: "noindex, nofollow"
+    relecture-identite:
+      passTLSClientCert:
+        info:
+          serialNumber: true
+          notAfter: true
+          subject:
+            commonName: true
+            organizationalUnit: true
+    relecture-secret-proxy:
+      headers:
+        customRequestHeaders:
+          X-Relecture-Proxy: "{{ relecture_admin_secret_proxy }}"
+    relecture-secret-proxy-workers:
+      headers:
+        customRequestHeaders:
+          X-Relecture-Proxy: "{{ relecture_worker_secret_proxy }}"
+    relecture-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  routers:
+    relecture-public-http:
+      rule: Host(`{{ relecture_domain }}`)
+      entryPoints: [web]
+      middlewares: [relecture-https]
+      service: relecture-ia
+      priority: 10
+    relecture-public:
+      rule: Host(`{{ relecture_domain }}`) && !PathPrefix(`/admin`) && !PathPrefix(`/api/admin`) && !PathPrefix(`/api/worker`)
+      entryPoints: [websecure]
+      service: relecture-ia
+      middlewares: [relecture-nettoyage, relecture-noindex]
+      tls: {}
+    relecture-admin:
+      rule: Host(`{{ relecture_admin_domain }}`)
+      entryPoints: [websecure]
+      service: relecture-ia
+      # Dans cet ordre : nettoyer, transmettre l'identité, signer.
+      middlewares: [relecture-nettoyage, relecture-noindex, relecture-identite, relecture-secret-proxy]
+      tls:
+        options: relecture-admin
+    relecture-workers:
+      rule: Host(`{{ relecture_workers_domain }}`) && PathPrefix(`/api/worker/`)
+      entryPoints: [websecure]
+      service: relecture-ia
+      middlewares: [relecture-nettoyage, relecture-identite, relecture-secret-proxy-workers]
+      tls:
+        options: relecture-workers
+
+  services:
+    relecture-ia:
+      loadBalancer:
+        servers:
+          - url: http://relecture-ia-backend:8000

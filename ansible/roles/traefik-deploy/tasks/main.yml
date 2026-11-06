@@ -34,6 +34,28 @@
     access_time: preserve
   when: traefik_acme_enabled
 
+# Image traefik:v3 non épinglée : les options statiques de relecture-ia
+# (core.strictTLSOptions, aliasHeadersStrategy) ont été validées avec la 3.7.15
+# (banc tests/e2e-mtls du dépôt relecture-ia). Une version plus ancienne
+# refuserait de démarrer avec ces options : on vérifie avant (lecture seule).
+- name: Lire la version de Traefik en service (si mTLS persoca activé)
+  command: docker exec traefik traefik version
+  register: traefik_version_en_service
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: traefik_mtls_persoca | default(false)
+
+- name: Exiger Traefik >= 3.7 pour les options mTLS persoca
+  assert:
+    that:
+      - traefik_version_en_service.rc == 0
+      - (traefik_version_en_service.stdout | regex_search('Version:\s+v?([0-9.]+)', '\1') | first) is version('3.7', '>=')
+    fail_msg: >-
+      Traefik en service introuvable ou < 3.7 ({{ traefik_version_en_service.stdout | default('') | regex_search('Version:.*') }}) :
+      mettre à jour l'image (docker-compose pull) avant d'activer traefik_mtls_persoca.
+  when: traefik_mtls_persoca | default(false)
+
 - name: Déployer docker-compose.traefik.yml
   template:
     src: docker-compose.traefik.yml.j2

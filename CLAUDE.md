@@ -41,7 +41,7 @@ Deux catégories bien distinctes depuis Phase 2 : les domaines legacy encore ser
 | `pub.daneel.net` | Webroot ACME uniquement | Routage réel via Traefik → `pub-daneel-net` |
 | `puttini.daneel.net` | Webroot ACME uniquement | Routage réel via Traefik → `puttini` |
 
-Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**.
+Certbot installé via **snap** (mode classic), **pas apt** — installation formalisée dans le rôle `certbot-setup` (2026-09-25). Version non épinglée : le snap se met à jour seul (5.8.0 relevé sur l'hôte le 2026-09-25).
 
 ### Routing Traefik (labels Docker, réseau `mindwtr`, source de vérité du routage public)
 | Domaine(s) | Conteneur cible | Port service | Entrypoints | Notes |
@@ -114,8 +114,10 @@ ansible/
 └── roles/
     ├── docker-engine-setup/      ← install Docker CE + plugin Compose
     ├── network-ipv6-setup/       ← forwarding IPv6 kernel + service systemd ipv6-default-route
+    ├── journald-persistent-setup/ ← journal systemd persistant (/var/log/journal + journald.conf.d, plafond SystemMaxUse) — prérequis des conteneurs en driver de logs journald (puttini), joué via ./run list glaurung.list
     ├── docker-network-mindwtr-setup/  ← daemon.json IPv6 + réseau Docker mindwtr (down/up des 3 stacks si reconfig)
     ├── apache-backend/           ← Phase 2 : Apache en backend interne :8081 (ports.conf, 6 vhosts legacy, mod_remoteip, drop-in systemd After=docker.service)
+    ├── certbot-setup/            ← installe Certbot lui-même (snapd + snap classic + lien /usr/bin/certbot) ; les certificats restent obtenus par chaque rôle applicatif
     ├── traefik-deploy/           ← répertoires, docker-compose.traefik.yml, TLS dynamique, hook certbot, start
     │   └── templates/
     │       ├── docker-compose.traefik.yml.j2
@@ -125,6 +127,7 @@ ansible/
     ├── vaultwarden-deploy/       ← data/vaultwarden, docker-compose.vaultwarden.yml, vhost+certbot vault, start
     ├── ntfy-deploy/              ← data/ntfy, docker-compose.ntfy.yml, vhost+certbot ntfy, création admin
     ├── puttini-deploy/           ← build+push local (ghcr.io, jamais sur glaurung, cf. rat-setup) + data/puttini, docker-compose.puttini.yml, vhost+certbot puttini, joué via ./run list puttini.list — source : ~/www/c/puttini/server
+    ├── relecture-ia-deploy/      ← build+push local (ghcr.io) + backend relecture-ia sur le réseau mindwtr sans port publié ; routage par fichier dynamique Traefik (site, admin et workers en mTLS persoca), certificat certbot à 3 noms, sauvegarde SQLite quotidienne — joué via ./run list relecture-ia.list ; active traefik_mtls_persoca (options statiques Traefik, version >= 3.7 vérifiée) — procédure : deploiement/README.md du dépôt relecture-ia
     ├── rustdesk-setup/           ← hbbs/hbbr RustDesk, hors Traefik (ports directs sur l'hôte), joué via ./run list rustdesk.list
     ├── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
     └── backup-setup/             ← cron root quotidien (dump différentiel + mysqldump + pg_dump + chiffrement GPG asymétrique), joué via ./run list backup.list — cf. § Sauvegardes critiques
