@@ -26,7 +26,11 @@ relecture_persoca_chaine_locale: "/home/cedric/.cache/persoca/chaine.pem"
 relecture_data_dir: "{{ mindwtr_deploy_dir }}/data/relecture-ia"
 
 # Sauvegarde cohérente quotidienne (API de sauvegarde SQLite, ADR-028) avant le
-# backup général de 03:30 ; rotation sur 14 jours (décision du 2026-11-05).
+# backup général de 03:30, suivie de la purge (ADR-032). Durées passées en
+# --jours au conteneur (le compose ne transmet pas RELECTURE_*_JOURS) : ces
+# variables sont la seule source de vérité sur glaurung (décision du 2026-11-05,
+# reprise dans docs/legal du dépôt relecture-ia).
 relecture_sauvegarde_heure: 3
 relecture_sauvegarde_minute: 0
 relecture_sauvegarde_retention_jours: 14
+relecture_conservation_jours: 30

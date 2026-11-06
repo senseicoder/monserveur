@@ -230,13 +230,21 @@
   changed_when: false
   ignore_errors: "{{ ansible_check_mode }}"
 
-- name: Sauvegarde cohérente quotidienne de la base (avant le backup général)
+# Conservation (ADR-032 du dépôt relecture-ia) : sauvegarde (avec rotation
+# intégrée), PUIS purge des soumissions de plus de relecture_conservation_jours,
+# seulement si la sauvegarde a réussi (une restauration récente reste possible).
+# Groupe { … } avant le tube : /bin/sh n'a pas pipefail, le && doit porter sur
+# les commandes et non sur logger. Sortie dans le journal :
+# journalctl -t relecture-ia-conservation
+- name: Sauvegarde puis purge quotidiennes (avant le backup général)
   ansible.builtin.cron:
     name: relecture-ia sauvegarde
     user: root
     hour: "{{ relecture_sauvegarde_heure }}"
     minute: "{{ relecture_sauvegarde_minute }}"
     job: >-
-      docker exec relecture-ia-backend python gestion_donnees.py sauvegarder >/dev/null
-      && find {{ relecture_data_dir }}/sauvegardes -name 'relecture-*.tar.gz'
-      -mtime +{{ relecture_sauvegarde_retention_jours }} -delete
+      { docker exec relecture-ia-backend python gestion_donnees.py sauvegarder
+      --jours {{ relecture_sauvegarde_retention_jours }}
+      && docker exec relecture-ia-backend python gestion_donnees.py purger
+      --jours {{ relecture_conservation_jours }}; } 2>&1
+      | logger -t relecture-ia-conservation
