@@ -74,3 +74,46 @@ client → 80/443 → Traefik v3 (frontal unique, ACME HTTP-01 natif)
 - **URLs `:8787` en dur** chez les clients Vaultwarden/MindWTR — couvert par la double écoute (1.1, 5.1)
 - **IPv6** : les vhosts actuels écoutent sur IPs v6 explicites — vérifier après bascule que docker-proxy publie bien 80/443 en v6 (comme il le fait pour 8787)
 - **docker-compose v1 / Docker 19.03 / Debian stretch** : pas de plugin Compose v2, piège seccomp `clone3` connu (cf. CLAUDE.md)
+
+## Bascule ACME natif + fermeture :8787 (étapes 4-5) — plan
+
+Code : branche `traefik-acme-natif`. Tout est piloté par des variables de `group_vars/all/vars.yml`, **désactivées par défaut** : avec les valeurs par défaut, les templates rendent exactement comme master (vérifié par rendu Jinja2 comparé, pas par un run Ansible). Doc Traefik de référence : https://doc.traefik.io/traefik/reference/install-configuration/tls/certificate-resolvers/acme/
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `traefik_acme_enabled` | `false` | déclare le resolver `le` (TLS-ALPN-01, `tlschallenge`) + volume `/opt/mindwtr/acme` |
+| `traefik_acme_ca_server` | staging LE | passer à `https://acme-v02.api.letsencrypt.org/directory` pour la prod (fichier de stockage distinct : `acme-staging.json` / `acme.json`) |
+| `traefik_acme_test_domain` | `""` | router jetable → Apache pour valider le resolver sans toucher un domaine en service |
+| `traefik_acme_domains` | `[]` | domaines basculés : label `tls.certresolver`, sortie de `tls.yml`, tâches certbot sautées |
+| `traefik_legacy_8787_enabled` | `true` | `false` = entrypoint/port `:8787`, labels, URLs `:8787` et port firewall retirés |
+
+Pourquoi TLS-ALPN-01 et pas HTTP-01 : le router `acme-challenge` (priorité 1000, port 80) envoie encore `/.well-known/acme-challenge/` vers Apache pour les renouvellements certbot webroot des domaines non basculés. Avec TLS-ALPN-01, Traefik valide sur :443 et ne touche pas à ce router : les deux mécanismes coexistent pendant toute la bascule.
+
+### Prérequis
+1. Dry-run systématique avant chaque run réel (`./run role X` sans `run`), lire les lignes **retirées** (cf. branches déployées sans merge, incident m3gan du 23/10).
+2. Le domaine doit pointer vers glaurung en IPv4 **et** IPv6 (TLS-ALPN-01 sur :443). **Exclure** les domaines dont le DNS n'est pas sur glaurung (aujourd'hui `www.plcoder.net`, `www.placedusport2.com` et les alias rat tant que la bascule DNS rat n'est pas faite — à vérifier).
+3. Quotas Let's Encrypt : valider en staging d'abord, puis basculer en prod domaine par domaine.
+
+### Étapes
+0. **Test resolver en staging** : créer un CNAME jetable (ex. `acme-test.daneel.net` → `glaurung.daneel.net`), puis `traefik_acme_enabled: true`, `traefik_acme_test_domain: acme-test.daneel.net` → `./run role traefik-deploy` (dry-run) puis `run`. Vérifier `docker logs traefik` (pas d'erreur ACME), `/opt/mindwtr/acme/acme-staging.json` rempli et en 0600, `curl -vk https://acme-test.daneel.net` → émetteur « (STAGING) ». Aucun domaine en service touché.
+1. **Test resolver en prod** : `traefik_acme_ca_server` = prod, rejouer `traefik-deploy` → cert reconnu sur `acme-test` (`curl -v` sans `-k`).
+2. **Bascule domaine par domaine** (ordre du moins au plus critique) : `pub.daneel.net` → `migration.integralsport.com` → `m3gan.daneel.net` → `puttini.daneel.net` → `ntfy.daneel.net` → `reader.daneel.net` / `bots.plcoder.net` → `mindwtr.daneel.net` → `vault.daneel.net`. Pour chaque domaine : l'ajouter à `traefik_acme_domains`, rejouer `traefik-deploy` (tls.yml) **et** le rôle du service (labels ; rien pour reader/bots, routers file-provider), puis vérifier :
+   - `echo | openssl s_client -connect <domaine>:443 -servername <domaine> 2>/dev/null | openssl x509 -noout -issuer -dates` → émetteur Let's Encrypt, date d'émission du jour ;
+   - idem en IPv6 (`-connect '[2001:41d0:302:2100::4203]:443'`) ;
+   - client applicatif OK (app Vaultwarden, MindWTR, ntfy…).
+   Laisser tourner quelques jours entre les domaines critiques.
+3. **Fermeture :8787** (après migration des clients) : passer les URLs clientes en `https://<domaine>` sans port — apps Vaultwarden/MindWTR, et côté poste : `claude/script/{mcp-local-all.json,mcp-check.sh,claude-install.sh,mindwtr-liste-coach.py,backup-pull-pcloud.sh,glaurung-backup-freshness-check.sh}`, `skills/mindwtr-quality/*`. Puis `traefik_legacy_8787_enabled: false` et rejouer : `traefik-deploy`, `mindwtr-cloud-deploy`, `vaultwarden-deploy`, `ntfy-deploy`, `puttini-deploy`, `m3gan-deploy`, `rat-setup`, `glaurung-healthcheck`, `backup-setup`, `firewall-setup`. Vérifier `ss -ltn | grep 8787` vide, ntfy reçoit bien les alertes healthcheck/backup.
+4. **Retrait certbot** (quelques semaines après validation complète) : `certbot delete --cert-name <domaine>` pour les domaines basculés, retrait du hook `reload-traefik.sh` et des vhosts webroot Apache, suppression du code certbot devenu mort (tâches sautées, `traefik_file_certs`, copies reader/bots dans `traefik-deploy`), puis du router `acme-challenge`. Commit séparé.
+
+### Rollback
+- Un domaine : le retirer de `traefik_acme_domains`, rejouer `traefik-deploy` + rôle du service → le cert certbot (resté sur l'hôte, toujours renouvelé) revient dans `tls.yml`, le label `certresolver` disparaît.
+- Tout ACME : `traefik_acme_enabled: false` + `traefik_acme_domains: []`, rejouer les mêmes rôles.
+- :8787 : `traefik_legacy_8787_enabled: true` et rejouer la liste de l'étape 3.
+Tant que l'étape 4 n'est pas faite, le rollback ne demande aucune nouvelle émission de certificat.
+
+### Points à valider
+- Comportement de Traefik quand un cert du TLS store (file provider) couvre déjà un domaine qui a aussi un `certresolver` : la doc ne le précise pas. Le code évite la question en retirant le domaine de `tls.yml` au moment de la bascule.
+- `glaurung-healthcheck` surveille `/etc/letsencrypt/live/` et les copies dans `certs/` : il ne voit pas les certs ACME. À adapter (contrôle du cert réellement servi via `openssl s_client`) avant l'étape 4.
+- `firewall-setup` n'ajoute que des règles (`state: present`) : la règle multiport existante qui contient 8787 restera tant qu'elle n'est pas supprimée à la main ; une nouvelle règle sans 8787 sera insérée. Sans conséquence de sécurité une fois le port non publié, mais à nettoyer.
+- `acme.json` contient des clés privées : il est sous `/opt/mindwtr/acme`, hors du périmètre `backup_fs_paths` actuel. À ajouter si on veut éviter une réémission après restauration (pas indispensable).
+- Docker 19.03 / compose v1 sur glaurung : la syntaxe CLI `--certificatesresolvers...` ne dépend que de l'image `traefik:v3`, mais aucun run n'a été fait.

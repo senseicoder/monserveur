@@ -54,6 +54,7 @@
     -d {{ mindwtr_domain }}
   args:
     creates: /etc/letsencrypt/live/{{ mindwtr_domain }}/fullchain.pem
+  when: mindwtr_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Copier les certs mindwtr dans mindwtr_deploy_dir/certs (isolation Traefik)
   copy:
@@ -69,6 +70,7 @@
     - src: /etc/letsencrypt/live/{{ mindwtr_domain }}/privkey.pem
       dest: privkey.pem
   ignore_errors: "{{ ansible_check_mode }}"
+  when: mindwtr_domain not in traefik_acme_domains  # domaine basculé sur ACME Traefik → certbot sauté (certs conservés)
 
 - name: Démarrer mindwtr-cloud
   command: docker-compose -f {{ mindwtr_deploy_dir }}/docker-compose.mindwtr.yml up -d

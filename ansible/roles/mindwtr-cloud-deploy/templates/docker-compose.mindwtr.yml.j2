@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       MINDWTR_CLOUD_AUTH_TOKENS: "{{ mindwtr_token }}"
-      MINDWTR_CLOUD_CORS_ORIGIN: "https://{{ mindwtr_domain }}:8787"
+      MINDWTR_CLOUD_CORS_ORIGIN: "https://{{ mindwtr_domain }}{{ traefik_public_port_suffix }}"
     volumes:
       - "{{ mindwtr_deploy_dir }}/data/cloud:/app/cloud_data"
     networks:
@@ -13,8 +13,11 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.mindwtr.rule=Host(`{{ mindwtr_domain }}`)"
-      - "traefik.http.routers.mindwtr.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.mindwtr.entrypoints={{ traefik_https_entrypoints }}"
       - "traefik.http.routers.mindwtr.tls=true"
+{% if traefik_acme_enabled and mindwtr_domain in traefik_acme_domains %}
+      - "traefik.http.routers.mindwtr.tls.certresolver={{ traefik_acme_resolver }}"
+{% endif %}
       - "traefik.http.services.mindwtr.loadbalancer.server.port=8787"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/health"]

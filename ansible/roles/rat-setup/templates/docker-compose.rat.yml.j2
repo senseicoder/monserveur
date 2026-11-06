@@ -23,8 +23,11 @@ services:
       - "traefik.enable=true"
 {% for site in rat_sites %}
       - "traefik.http.routers.rat-{{ site.site_central | lower }}.rule=Host(`{{ site.domain }}`)"
-      - "traefik.http.routers.rat-{{ site.site_central | lower }}.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.rat-{{ site.site_central | lower }}.entrypoints={{ traefik_https_entrypoints }}"
       - "traefik.http.routers.rat-{{ site.site_central | lower }}.tls=true"
+{% if traefik_acme_enabled and site.domain in traefik_acme_domains %}
+      - "traefik.http.routers.rat-{{ site.site_central | lower }}.tls.certresolver={{ traefik_acme_resolver }}"
+{% endif %}
 {% endfor %}
 {# Sites logiques secondaires (rat_site_aliases) : même service/port, mais
    Traefik a besoin de son propre routeur par domaine -- sans ça, l'Apache
@@ -32,8 +35,11 @@ services:
    atteint (404 systématique, constaté le 2026-08-04). #}
 {% for alias in rat_site_aliases | default([]) %}
       - "traefik.http.routers.rat-alias-{{ loop.index }}.rule=Host(`{{ alias.domain }}`)"
-      - "traefik.http.routers.rat-alias-{{ loop.index }}.entrypoints=mindwtr,websecure"
+      - "traefik.http.routers.rat-alias-{{ loop.index }}.entrypoints={{ traefik_https_entrypoints }}"
       - "traefik.http.routers.rat-alias-{{ loop.index }}.tls=true"
+{% if traefik_acme_enabled and alias.domain in traefik_acme_domains %}
+      - "traefik.http.routers.rat-alias-{{ loop.index }}.tls.certresolver={{ traefik_acme_resolver }}"
+{% endif %}
       - "traefik.http.routers.rat-alias-{{ loop.index }}.service=rat-web"
 {% endfor %}
       - "traefik.http.services.rat-web.loadbalancer.server.port=80"

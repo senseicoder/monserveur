@@ -14,7 +14,8 @@ firewall_host_udp_ports: [22000]
 # Ports publiés par Docker — chaîne DOCKER-USER en IPv4 (trafic DNATé/FORWARD).
 # En IPv6 ils passent par docker-proxy (Docker 19.03 sans NAT v6) = socket
 # local de l'hôte, donc chaîne INPUT v6 (union faite dans les tâches).
-firewall_docker_tcp_ports: [80, 443, 8787, 21115, 21116, 21117]
+# 8787 retiré quand traefik_legacy_8787_enabled=false (Phase 2 étape 5.1).
+firewall_docker_tcp_ports: "{{ [80, 443] + ([8787] if traefik_legacy_8787_enabled else []) + [21115, 21116, 21117] }}"
 firewall_docker_udp_ports: [21116]
 
 # MySQL natif (3306) : uniquement loopback + réseaux Docker listés ici.

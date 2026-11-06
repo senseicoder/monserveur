@@ -25,6 +25,9 @@ services:
       - "traefik.http.routers.pub-daneel-net-secure.rule=Host(`{{ pub_daneel_net_domain }}`)"
       - "traefik.http.routers.pub-daneel-net-secure.entrypoints=websecure"
       - "traefik.http.routers.pub-daneel-net-secure.tls=true"
+{% if traefik_acme_enabled and pub_daneel_net_domain in traefik_acme_domains %}
+      - "traefik.http.routers.pub-daneel-net-secure.tls.certresolver={{ traefik_acme_resolver }}"
+{% endif %}
       - "traefik.http.services.pub-daneel-net.loadbalancer.server.port=80"
 
 networks:
