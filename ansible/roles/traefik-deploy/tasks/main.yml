@@ -30,7 +30,9 @@
   assert:
     that:
       - traefik_version_en_service.rc == 0
-      - (traefik_version_en_service.stdout | regex_search('Version:\s+v?([0-9.]+)', '\1') | first) is version('3.7', '>=')
+      # '\\1' et non '\1' : dans une chaîne Jinja, '\1' devient le caractère \x01
+      # (« Unknown argument » de regex_search, constaté au dry-run du 2026-11-06).
+      - (traefik_version_en_service.stdout | regex_search('Version:\s+v?([0-9.]+)', '\\1') | first) is version('3.7', '>=')
     fail_msg: >-
       Traefik en service introuvable ou < 3.7 ({{ traefik_version_en_service.stdout | default('') | regex_search('Version:.*') }}) :
       mettre à jour l'image (docker-compose pull) avant d'activer traefik_mtls_persoca.
