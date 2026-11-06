@@ -2,3 +2,11 @@
 # Variables consommées, définies dans group_vars/all/vars.yml (pas de default
 # local, cf. docker-network-mindwtr-setup/defaults/main.yml) :
 #   mindwtr_deploy_dir  — répertoire de la stack, ex. /opt/mindwtr
+
+# Image Traefik épinglée (avant : traefik:v3, étiquette flottante restée en 3.7.5
+# sur glaurung). 3.7.15 : version validée par les bancs mTLS du dépôt relecture-ia,
+# et vérifiée le 2026-11-06 : son --help contient --core.stricttlsoptions et
+# --entrypoints.<name>.http.aliasheadersstrategy (absents de la 3.7.5).
+# Changer de version : vérifier ces deux options (le rôle le fait si
+# traefik_mtls_persoca est actif) et rejouer traefik-deploy à blanc d'abord.
+traefik_image: "traefik:v3.7.15"

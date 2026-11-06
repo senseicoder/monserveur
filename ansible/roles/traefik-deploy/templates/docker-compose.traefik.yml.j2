@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:v3
+    image: {{ traefik_image }}
     container_name: traefik
     restart: unless-stopped
     command:
@@ -15,7 +15,7 @@ services:
       - "--providers.file.watch=true"
       - "--log.level=INFO"
       - "--accesslog=true"
-{% if traefik_mtls_persoca | default(false) %}
+{% if traefik_mtls_persoca | default(false) | bool %}
       # relecture-ia (mTLS persoca, ADR-025/026 du dépôt relecture-ia) : un
       # conflit d'options TLS sur un hôte désactive les routeurs au lieu de
       # retomber sur les options par défaut (sans mTLS).
@@ -32,7 +32,7 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "{{ mindwtr_deploy_dir }}/certs:/certs:ro"
       - "{{ mindwtr_deploy_dir }}/traefik-dynamic:/etc/traefik/dynamic:ro"
-{% if traefik_mtls_persoca | default(false) %}
+{% if traefik_mtls_persoca | default(false) | bool %}
       # Chaîne persoca (copiée par relecture-ia-deploy) : vérifie les certificats clients.
       - "{{ mindwtr_deploy_dir }}/persoca:/etc/traefik/persoca:ro"
 {% endif %}
