@@ -14,6 +14,9 @@
 #                                    DIFFÉRENT du précédent
 #   relecture_smtp_mot_de_passe    — mot de passe de la boîte Infomaniak relecture@daneel.net
 #                                    (SMTP_MOT_DE_PASSE, ADR-030)
+#   relecture_webhook_soumissions  — FACULTATIF : URL du webhook Discord prévenu à chaque
+#                                    soumission acceptée (RELECTURE_WEBHOOK_SOUMISSIONS,
+#                                    ADR-035) ; défaut vide ci-dessous = alerte désactivée
 
 # Dépôt source (build local, jamais sur glaurung — même principe que m3gan-deploy).
 relecture_repo_path: "/home/cedric/www/c/relecture-ia"
@@ -50,3 +53,10 @@ relecture_smtp_port: 587
 relecture_smtp_tls: "starttls"
 relecture_smtp_utilisateur: "relecture@daneel.net"
 relecture_smtp_expediteur: "Relecture IA <relecture@daneel.net>"
+
+# Alerte Discord à chaque soumission acceptée (ADR-035 du dépôt relecture-ia).
+# Facultative : vide = désactivée, sans erreur (pas de garde-fou bloquant).
+# Pour l'activer, définir relecture_webhook_soumissions dans le vault (l'URL
+# contient le jeton du webhook : c'est un secret) — group_vars l'emporte sur
+# ce défaut.
+relecture_webhook_soumissions: ""

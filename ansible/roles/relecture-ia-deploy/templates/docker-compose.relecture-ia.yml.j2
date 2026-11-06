@@ -35,6 +35,9 @@ services:
       # sinon docker-compose l'interpréterait comme une variable.
       SMTP_MOT_DE_PASSE: {{ relecture_smtp_mot_de_passe | replace('$', '$$') | to_json }}
       SMTP_EXPEDITEUR: "{{ relecture_smtp_expediteur }}"
+      # Alerte Discord à chaque soumission acceptée (ADR-035) ; vide = désactivée.
+      # Secret (jeton du webhook dans l'URL) : même échappement que le mot de passe SMTP.
+      RELECTURE_WEBHOOK_SOUMISSIONS: {{ relecture_webhook_soumissions | default('') | replace('$', '$$') | to_json }}
     volumes:
       - "{{ relecture_data_dir }}:/app/backend/data"
     networks:
