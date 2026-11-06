@@ -127,6 +127,7 @@ ansible/
     ├── vaultwarden-deploy/       ← data/vaultwarden, docker-compose.vaultwarden.yml, vhost+certbot vault, start
     ├── ntfy-deploy/              ← data/ntfy, docker-compose.ntfy.yml, vhost+certbot ntfy, création admin
     ├── puttini-deploy/           ← build+push local (ghcr.io, jamais sur glaurung, cf. rat-setup) + data/puttini, docker-compose.puttini.yml, vhost+certbot puttini, joué via ./run list puttini.list — source : ~/www/c/puttini/server
+    ├── relecture-ia-deploy/      ← build+push local (ghcr.io) + backend relecture-ia sur le réseau mindwtr sans port publié ; routage par fichier dynamique Traefik (site, admin et workers en mTLS persoca), certificat certbot à 3 noms, sauvegarde SQLite quotidienne — joué via ./run list relecture-ia.list ; active traefik_mtls_persoca (options statiques Traefik, version >= 3.7 vérifiée) — procédure : deploiement/README.md du dépôt relecture-ia
     ├── rustdesk-setup/           ← hbbs/hbbr RustDesk, hors Traefik (ports directs sur l'hôte), joué via ./run list rustdesk.list
     ├── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
     └── backup-setup/             ← cron root quotidien (dump différentiel + mysqldump + pg_dump + chiffrement GPG asymétrique), joué via ./run list backup.list — cf. § Sauvegardes critiques

@@ -1,0 +1,242 @@
+---
+# relecture-ia-deploy : construit + publie l'image du backend relecture-ia (en
+# local, jamais sur glaurung), puis la déploie derrière Traefik :
+#   - site public sur relecture_domain ;
+#   - administration sur relecture_admin_domain, certificat client persoca exigé ;
+#   - API des workers sur relecture_workers_domain, certificat machine persoca exigé.
+# Le routage passe par un fichier du fournisseur fichier de Traefik (et non
+# par des labels Docker) parce que les options TLS mTLS par hôte et les
+# middlewares d'identité y sont déclarés (conf de référence :
+# deploiement/traefik/relecture-ia.yml du dépôt relecture-ia).
+# Procédure complète de mise en service : deploiement/README.md du dépôt relecture-ia.
+
+- name: Vérifier que les secrets du proxy sont définis et distincts
+  ansible.builtin.assert:
+    that:
+      - relecture_admin_secret_proxy is defined
+      - relecture_worker_secret_proxy is defined
+      - relecture_admin_secret_proxy | length >= 32
+      - relecture_worker_secret_proxy | length >= 32
+      - relecture_admin_secret_proxy != relecture_worker_secret_proxy
+      - relecture_admin_secret_proxy != "CHANGEME"
+    fail_msg: >-
+      relecture_admin_secret_proxy / relecture_worker_secret_proxy absents, trop courts,
+      identiques ou laissés à CHANGEME dans group_vars/all/vault.yml.
+    quiet: true
+  no_log: true
+
+# --- Build + publication de l'image (en local, jamais sur glaurung) ---
+
+- name: Initialiser le compteur de version à 0.0 s'il n'existe pas encore
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/relecture-ia-backend.version"
+    content: "0.0"
+    force: false
+  delegate_to: localhost
+  become: false
+
+- name: Lire la version actuelle
+  ansible.builtin.set_fact:
+    relecture_current_version: "{{ lookup('file', role_path + '/files/relecture-ia-backend.version') | trim }}"
+
+- name: Calculer la prochaine version (incrémente le dernier nombre)
+  ansible.builtin.set_fact:
+    relecture_next_version: "{{ (relecture_current_version.split('.')[:-1] + [(relecture_current_version.split('.')[-1] | int + 1) | string]) | join('.') }}"
+
+- name: Enregistrer la nouvelle version (avant le build, pour rester incrémental même en cas d'échec)
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/relecture-ia-backend.version"
+    content: "{{ relecture_next_version }}"
+  delegate_to: localhost
+  become: false
+
+- name: Fixer le tag d'image (jamais "latest")
+  ansible.builtin.set_fact:
+    relecture_image: "{{ relecture_image_repo }}:{{ relecture_next_version }}"
+
+- name: Récupérer le PAT ghcr.io (cmdp, jamais loggé)
+  ansible.builtin.command: cmdp show services/github.com/docker_registry
+  register: relecture_ghcr_pat
+  changed_when: false
+  no_log: true
+  delegate_to: localhost
+  become: false
+  check_mode: false
+
+- name: Se connecter à ghcr.io (en local, pour build+push)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ relecture_ghcr_pat.stdout_lines[0] }}"
+  delegate_to: localhost
+  become: false
+
+- name: Construire et publier l'image du backend sur ghcr.io
+  community.docker.docker_image:
+    name: "{{ relecture_image }}"
+    build:
+      # Contexte = racine du dépôt : le Dockerfile copie backend/, frontend/ et frontend_admin/.
+      path: "{{ relecture_repo_path }}"
+      dockerfile: "backend/Dockerfile"
+      pull: true
+      nocache: true
+    source: build
+    force_source: true
+    push: true
+  delegate_to: localhost
+  become: false
+
+# --- Déploiement sur glaurung : uniquement pull + run, aucun code ni build ---
+
+- name: Se connecter à ghcr.io sur glaurung (image privée)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ relecture_ghcr_pat.stdout_lines[0] }}"
+
+- name: Créer les répertoires (données, certificats, chaîne persoca)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - "{{ relecture_data_dir }}"
+    - "{{ relecture_data_dir }}/sauvegardes"
+    - "{{ mindwtr_deploy_dir }}/certs/relecture-ia"
+    - "{{ mindwtr_deploy_dir }}/persoca"
+
+# Listes blanches et révocations (ADR-025/026) : jamais écrasées si présentes.
+# Absentes = personne n'est autorisé (comportement voulu tant que Cédric ne
+# les a pas remplies, cf. procédure).
+- name: Créer les listes blanches vides si absentes
+  ansible.builtin.copy:
+    dest: "{{ relecture_data_dir }}/{{ item }}"
+    content: "# Une série hexadécimale par ligne (openssl x509 -noout -serial), # pour commenter.\n"
+    force: false
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - admin-autorises.txt
+    - workers-autorises.txt
+
+- name: Vérifier la présence locale de la chaîne persoca
+  ansible.builtin.stat:
+    path: "{{ relecture_persoca_chaine_locale }}"
+  register: relecture_chaine
+  delegate_to: localhost
+  become: false
+
+- name: Exiger la chaîne persoca (persoca exporter-chaine)
+  ansible.builtin.assert:
+    that: relecture_chaine.stat.exists
+    fail_msg: "Exporter d'abord la chaîne : persoca exporter-chaine {{ relecture_persoca_chaine_locale }}"
+  when: not ansible_check_mode
+
+- name: Copier la chaîne persoca pour Traefik
+  ansible.builtin.copy:
+    src: "{{ relecture_persoca_chaine_locale }}"
+    dest: "{{ mindwtr_deploy_dir }}/persoca/chaine.pem"
+    owner: root
+    group: root
+    mode: "0644"
+  when: relecture_chaine.stat.exists
+  notify: restart traefik
+
+- name: Déployer le vhost Apache (challenge ACME) des trois noms
+  ansible.builtin.template:
+    src: apache-relecture-ia.conf.j2
+    dest: /etc/apache2/sites-available/{{ relecture_domain }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: relecture_vhost
+
+- name: Activer le vhost Apache
+  ansible.builtin.command: a2ensite {{ relecture_domain }}
+  register: relecture_a2ensite
+  changed_when: "'Enabling site' in relecture_a2ensite.stdout"
+  failed_when: relecture_a2ensite.rc != 0
+
+- name: Recharger Apache si le vhost a changé
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  when: relecture_vhost is changed or relecture_a2ensite is changed
+
+# Un seul certificat pour les trois noms (lineage = relecture_domain, cf. hook
+# de renouvellement de traefik-deploy). Exige les trois enregistrements DNS.
+- name: Obtenir le certificat TLS (public + admin + workers)
+  ansible.builtin.command: >
+    certbot certonly --webroot
+    -w /var/www/html
+    --non-interactive
+    --agree-tos
+    --email {{ acme_email }}
+    --cert-name {{ relecture_domain }}
+    -d {{ relecture_domain }}
+    -d {{ relecture_admin_domain }}
+    -d {{ relecture_workers_domain }}
+  args:
+    creates: /etc/letsencrypt/live/{{ relecture_domain }}/fullchain.pem
+
+- name: Copier le certificat pour Traefik
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ mindwtr_deploy_dir }}/certs/relecture-ia/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - src: /etc/letsencrypt/live/{{ relecture_domain }}/fullchain.pem
+      dest: fullchain.pem
+    - src: /etc/letsencrypt/live/{{ relecture_domain }}/privkey.pem
+      dest: privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: restart traefik
+
+# Contient les deux secrets du proxy : lisible par root seul, monté en lecture
+# seule dans Traefik. Le fournisseur fichier surveille le dossier (watch=true).
+- name: Déployer la configuration dynamique Traefik de relecture-ia
+  ansible.builtin.template:
+    src: traefik-relecture-ia.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/traefik-dynamic/relecture-ia.yml"
+    owner: root
+    group: root
+    mode: "0600"
+  diff: false
+
+- name: Déployer docker-compose.relecture-ia.yml
+  ansible.builtin.template:
+    src: docker-compose.relecture-ia.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/docker-compose.relecture-ia.yml"
+    owner: root
+    group: root
+    mode: "0600"
+  diff: false
+
+- name: Tirer l'image et démarrer/mettre à jour le backend
+  ansible.builtin.command: "{{ item }}"
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  loop:
+    - "docker-compose -f docker-compose.relecture-ia.yml pull"
+    - "docker-compose -f docker-compose.relecture-ia.yml up -d"
+  loop_control:
+    label: "{{ item }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Sauvegarde cohérente quotidienne de la base (avant le backup général)
+  ansible.builtin.cron:
+    name: relecture-ia sauvegarde
+    user: root
+    hour: "{{ relecture_sauvegarde_heure }}"
+    minute: "{{ relecture_sauvegarde_minute }}"
+    job: >-
+      docker exec relecture-ia-backend python gestion_donnees.py sauvegarder >/dev/null
+      && find {{ relecture_data_dir }}/sauvegardes -name 'relecture-*.tar.gz'
+      -mtime +{{ relecture_sauvegarde_retention_jours }} -delete

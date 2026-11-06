@@ -1,0 +1,39 @@
+# Backend relecture-ia (API + site statique, ADR-022 du dépôt) — image tirée de
+# ghcr.io, jamais construite sur glaurung. Aucun port publié : joignable
+# uniquement par Traefik sur le réseau {{ docker_network_name }} (routage dans
+# traefik-dynamic/relecture-ia.yml, pas de labels : options mTLS par hôte).
+# Contient les secrets du proxy : fichier en 0600.
+services:
+  relecture-ia-backend:
+    image: "{{ relecture_image }}"
+    container_name: relecture-ia-backend
+    restart: unless-stopped
+    security_opt:
+      - "seccomp:unconfined"  # Docker 19.03 ne whitelist pas clone3, cf. CLAUDE.md § Pièges Docker
+    environment:
+      # Écoute sur le réseau Docker (non publié), cf. backend/Dockerfile du dépôt.
+      RELECTURE_HOTE: "0.0.0.0"
+      # Uvicorn lit X-Forwarded-For/Proto seulement depuis ces adresses
+      # (défaut 127.0.0.1) : sans ça, tous les visiteurs auraient l'IP de
+      # Traefik et la limite de débit par IP (ADR-015) deviendrait commune.
+      # Traefik remplace le X-Forwarded-For envoyé par le client (forwardedHeaders
+      # non configuré = aucune IP de confiance en entrée).
+      FORWARDED_ALLOW_IPS: "{{ relecture_proxy_de_confiance }}"
+      # Preuves que la requête vient du routeur admin / workers (ADR-025/026).
+      ADMIN_SECRET_PROXY: "{{ relecture_admin_secret_proxy }}"
+      WORKER_SECRET_PROXY: "{{ relecture_worker_secret_proxy }}"
+      # Courriel (ADR-030, PR relecture-ia#17 non mergée au 2026-11-06) : ajouter
+      # ici les variables SMTP une fois la PR mergée, mot de passe dans vault.yml.
+    volumes:
+      - "{{ relecture_data_dir }}:/app/backend/data"
+    networks:
+      - "{{ docker_network_name }}"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/etat')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  "{{ docker_network_name }}":
+    external: true

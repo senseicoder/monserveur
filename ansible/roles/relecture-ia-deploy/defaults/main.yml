@@ -1,0 +1,32 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml (pas de default
+# local, même convention que m3gan-deploy) :
+#   mindwtr_deploy_dir        — répertoire de la stack, ex. /opt/mindwtr
+#   docker_network_name       — réseau Docker partagé avec Traefik
+#   relecture_domain          — site public, ex. relecture.daneel.net
+#   relecture_admin_domain    — hôte DÉDIÉ à l'administration (mTLS, ADR-025 du dépôt relecture-ia)
+#   relecture_workers_domain  — hôte DÉDIÉ à l'API des workers (mTLS, ADR-026)
+#   relecture_image_repo      — préfixe d'image ghcr.io (jamais "latest")
+#   acme_email                — contact Let's Encrypt
+# Secrets (group_vars/all/vault.yml, chiffré) :
+#   relecture_admin_secret_proxy   — en-tête posé par le routeur admin (ADMIN_SECRET_PROXY)
+#   relecture_worker_secret_proxy  — en-tête posé par le routeur workers (WORKER_SECRET_PROXY),
+#                                    DIFFÉRENT du précédent
+
+# Dépôt source (build local, jamais sur glaurung — même principe que m3gan-deploy).
+relecture_repo_path: "/home/cedric/www/c/relecture-ia"
+
+# Chaîne de l'autorité persoca, exportée sur le poste par
+# `persoca exporter-chaine <ce chemin>` avant le run (publique, pas un secret).
+# Traefik la lit pour vérifier les certificats clients (admin) et machines (workers).
+relecture_persoca_chaine_locale: "/home/cedric/.cache/persoca/chaine.pem"
+
+# Données du backend (base SQLite, journal d'activité, listes blanches,
+# revoques.txt, sauvegardes) — bind mount, incluses dans backup-setup.
+relecture_data_dir: "{{ mindwtr_deploy_dir }}/data/relecture-ia"
+
+# Sauvegarde cohérente quotidienne (API de sauvegarde SQLite, ADR-028) avant le
+# backup général de 03:30 ; rotation sur 14 jours (décision du 2026-11-05).
+relecture_sauvegarde_heure: 3
+relecture_sauvegarde_minute: 0
+relecture_sauvegarde_retention_jours: 14

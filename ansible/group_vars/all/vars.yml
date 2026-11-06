@@ -26,6 +26,22 @@ m3gan_domain: "m3gan.daneel.net"
 # — tag calculé dynamiquement dans tasks/main.yml à partir de ce préfixe + un
 # numéro de version incrémenté à chaque build (files/m3gan-server.version).
 m3gan_image_repo: "ghcr.io/senseicoder/m3gan-server"
+
+# relecture-ia (rôle relecture-ia-deploy) — POC non référencé. Trois noms
+# DISTINCTS : un hôte ne doit porter qu'un seul jeu d'options TLS (ADR-025/026
+# du dépôt relecture-ia).
+relecture_domain: "relecture.daneel.net"
+relecture_admin_domain: "admin.relecture.daneel.net"
+relecture_workers_domain: "workers.relecture.daneel.net"
+# Jamais de tag "latest" (compteur files/relecture-ia-backend.version du rôle).
+relecture_image_repo: "ghcr.io/senseicoder/relecture-ia-backend"
+# Adresses dont le backend accepte X-Forwarded-For (IP réelle pour la limite de
+# débit) : le réseau Docker partagé avec Traefik (cf. CLAUDE.md § Subnets).
+relecture_proxy_de_confiance: "172.18.0.0/16,fd00:0:0:1::/64"
+# Active dans traefik-deploy le montage de la chaîne persoca et les options
+# statiques core.strictTLSOptions / aliasHeadersStrategy=reject (ce dernier
+# vaut pour tous les sites de l'entrypoint websecure).
+traefik_mtls_persoca: true
 acme_email: "cedric@daneel.net"
 ipv6_gateway: "2001:41d0:302:2100::1"
 php_shell_deploy_dir: "/opt/php-shell"

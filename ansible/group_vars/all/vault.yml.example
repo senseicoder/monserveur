@@ -9,3 +9,9 @@ m3gan_master_key: "CHANGEME"
 # Mot de passe de l'interface d'admin M3gan (un seul, pour Cédric — HTTP Basic,
 # username ignoré). Générer avec, par exemple : openssl rand -base64 24
 m3gan_admin_password: "CHANGEME"
+# relecture-ia : secrets posés par les routeurs Traefik admin et workers
+# (ADMIN_SECRET_PROXY / WORKER_SECRET_PROXY du backend). Deux valeurs
+# DIFFÉRENTES, au moins 32 caractères chacune — par exemple :
+# python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
+relecture_admin_secret_proxy: "CHANGEME"
+relecture_worker_secret_proxy: "CHANGEME"
