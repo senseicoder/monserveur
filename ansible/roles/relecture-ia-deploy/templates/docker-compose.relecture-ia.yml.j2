@@ -22,8 +22,19 @@ services:
       # Preuves que la requête vient du routeur admin / workers (ADR-025/026).
       ADMIN_SECRET_PROXY: "{{ relecture_admin_secret_proxy }}"
       WORKER_SECRET_PROXY: "{{ relecture_worker_secret_proxy }}"
-      # Courriel (ADR-030, PR relecture-ia#17 non mergée au 2026-11-06) : ajouter
-      # ici les variables SMTP une fois la PR mergée, mot de passe dans vault.yml.
+      # Courriel (ADR-030 du dépôt relecture-ia) : confirmation d'adresse et avis
+      # de fin de traitement, lus par backend/courriel.py. Sans eux, aucune
+      # adresse ne peut être confirmée (le rôle refuse donc de déployer sans
+      # mot de passe SMTP). Délai SMTP fixe (20 s), non réglable par variable.
+      RELECTURE_URL_SITE: "https://{{ relecture_domain }}"
+      SMTP_HOTE: "{{ relecture_smtp_hote }}"
+      SMTP_PORT: "{{ relecture_smtp_port }}"
+      SMTP_TLS: "{{ relecture_smtp_tls }}"
+      SMTP_UTILISATEUR: "{{ relecture_smtp_utilisateur }}"
+      # to_json : chaîne YAML valide quels que soient les caractères ; $ doublé,
+      # sinon docker-compose l'interpréterait comme une variable.
+      SMTP_MOT_DE_PASSE: {{ relecture_smtp_mot_de_passe | replace('$', '$$') | to_json }}
+      SMTP_EXPEDITEUR: "{{ relecture_smtp_expediteur }}"
     volumes:
       - "{{ relecture_data_dir }}:/app/backend/data"
     networks:

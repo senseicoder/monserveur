@@ -12,6 +12,8 @@
 #   relecture_admin_secret_proxy   — en-tête posé par le routeur admin (ADMIN_SECRET_PROXY)
 #   relecture_worker_secret_proxy  — en-tête posé par le routeur workers (WORKER_SECRET_PROXY),
 #                                    DIFFÉRENT du précédent
+#   relecture_smtp_mot_de_passe    — mot de passe de la boîte Infomaniak relecture@daneel.net
+#                                    (SMTP_MOT_DE_PASSE, ADR-030)
 
 # Dépôt source (build local, jamais sur glaurung — même principe que m3gan-deploy).
 relecture_repo_path: "/home/cedric/www/c/relecture-ia"
@@ -34,3 +36,17 @@ relecture_sauvegarde_heure: 3
 relecture_sauvegarde_minute: 0
 relecture_sauvegarde_retention_jours: 14
 relecture_conservation_jours: 30
+
+# Envoi des e-mails (ADR-030 du dépôt relecture-ia) — boîte Infomaniak
+# relecture@daneel.net. Réglages publics Infomaniak (FAQ n° 468,
+# https://www.infomaniak.com/fr/support/faq/468) : mail.infomaniak.com, 587 en
+# STARTTLS (ou 465 en SSL implicite : port 465 ET relecture_smtp_tls: ssl), authentification
+# obligatoire avec l'adresse complète. L'adresse de SMTP_EXPEDITEUR doit être
+# celle de l'identifiant, sinon Infomaniak refuse (550 5.7.1 « Sender mismatch »).
+# Limite d'envoi : 200 ou 500 e-mails / 24 h glissantes selon l'offre (FAQ n° 2065),
+# voir deploiement/README.md § 0 du dépôt relecture-ia.
+relecture_smtp_hote: "mail.infomaniak.com"
+relecture_smtp_port: 587
+relecture_smtp_tls: "starttls"
+relecture_smtp_utilisateur: "relecture@daneel.net"
+relecture_smtp_expediteur: "Relecture IA <relecture@daneel.net>"
