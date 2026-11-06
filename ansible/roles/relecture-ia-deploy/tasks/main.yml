@@ -25,6 +25,22 @@
     quiet: true
   no_log: true
 
+# Sans SMTP, la confirmation d'adresse d'ADR-030 est impossible : aucun texte ne
+# pourrait être traité. Le rôle refuse donc de déployer sans mot de passe.
+- name: Vérifier que le mot de passe SMTP est défini
+  ansible.builtin.assert:
+    that:
+      - relecture_smtp_mot_de_passe is defined
+      - relecture_smtp_mot_de_passe | length > 0
+      - relecture_smtp_mot_de_passe != "CHANGEME"
+      - relecture_smtp_hote | length > 0
+      - relecture_smtp_expediteur | length > 0
+    fail_msg: >-
+      relecture_smtp_mot_de_passe absent, vide ou laissé à CHANGEME dans
+      group_vars/all/vault.yml (boîte Infomaniak relecture@daneel.net, ADR-030).
+    quiet: true
+  no_log: true
+
 # --- Build + publication de l'image (en local, jamais sur glaurung) ---
 
 - name: Initialiser le compteur de version à 0.0 s'il n'existe pas encore

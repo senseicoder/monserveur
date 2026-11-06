@@ -15,3 +15,7 @@ m3gan_admin_password: "CHANGEME"
 # python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
 relecture_admin_secret_proxy: "CHANGEME"
 relecture_worker_secret_proxy: "CHANGEME"
+# relecture-ia : mot de passe de la boîte Infomaniak relecture@daneel.net
+# (SMTP_MOT_DE_PASSE, ADR-030). Sans lui, aucune adresse ne peut être
+# confirmée : le rôle relecture-ia-deploy refuse de déployer.
+relecture_smtp_mot_de_passe: "CHANGEME"
