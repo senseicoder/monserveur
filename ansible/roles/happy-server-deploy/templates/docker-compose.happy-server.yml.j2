@@ -1,0 +1,38 @@
+# Relais happy auto-hébergé (slopus/happy, mode standalone : PGlite + fichiers locaux).
+# Image tirée du registre (ghcr.io) — jamais construite sur glaurung. Build + push
+# faits en local par tasks/main.yml de ce rôle.
+services:
+  happy-server:
+    image: "{{ happy_image }}"
+    container_name: happy-server
+    restart: unless-stopped
+    security_opt:
+      - "seccomp:unconfined"  # Docker 19.03 ne whitelist pas clone3 (Linux 5.3+), cf. CLAUDE.md § Pièges Docker
+    logging:
+      driver: journald
+      options:
+        tag: happy-server
+    # HANDY_MASTER_SECRET : généré sur glaurung au premier déploiement (tasks/main.yml),
+    # jamais dans le dépôt. Le perdre rend illisibles les jetons tiers chiffrés côté serveur.
+    env_file:
+      - "{{ mindwtr_deploy_dir }}/data/happy-server/master-secret.env"
+    volumes:
+      - "{{ mindwtr_deploy_dir }}/data/happy-server/data:/data"
+    networks:
+      - "{{ docker_network_name }}"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.happy-server.rule=Host(`{{ happy_domain }}`)"
+      - "traefik.http.routers.happy-server.entrypoints=websecure"
+      - "traefik.http.routers.happy-server.tls=true"
+      - "traefik.http.services.happy-server.loadbalancer.server.port=3005"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3005/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+networks:
+  "{{ docker_network_name }}":
+    external: true

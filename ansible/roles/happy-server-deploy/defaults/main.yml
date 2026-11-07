@@ -1,0 +1,15 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml :
+#   mindwtr_deploy_dir   — répertoire de la stack, ex. /opt/mindwtr
+#   docker_network_name  — réseau Docker partagé avec Traefik
+#   happy_domain         — domaine du relais, ex. happy.daneel.net (enregistrement DNS à créer à la main)
+#   happy_image_repo     — préfixe d'image ghcr.io (jamais "latest")
+#   acme_email           — email de contact Let's Encrypt
+
+# Version du paquet npm happy-server-self-host (slopus/happy) installée dans l'image.
+# 1.1.11 = dernière publiée sur npm au 2026-11-07 (publiée le 2026-06-10). Monter de
+# version = changer cette valeur puis rejouer le rôle (nouvelle image, migrations au démarrage).
+happy_server_self_host_version: "1.1.11"
+
+# uid:gid de l'utilisateur « node » de l'image node:22-bookworm-slim, propriétaire de /data.
+happy_server_uid: 1000

@@ -1,0 +1,190 @@
+---
+# happy-server-deploy : relais happy auto-hébergé (slopus/happy) derrière Traefik.
+# Construit + publie l'image en local (files/image/Dockerfile, paquet npm
+# happy-server-self-host épinglé), puis déploie sur glaurung en tirant l'image depuis
+# ghcr.io — même principe que puttini-deploy (jamais de build sur glaurung).
+# Mode standalone du serveur : PGlite embarqué + fichiers locaux, ni Postgres, ni Redis,
+# ni S3 (packages/happy-server-self-host/README.md du projet).
+#
+# Prérequis NON automatisé : enregistrement DNS de happy_domain (CNAME vers
+# glaurung.daneel.net, cf. CLAUDE.md § DNS) — sans lui, le certificat échoue.
+
+# --- Build + publication de l'image (en local, jamais sur glaurung) ---
+
+# Jamais de tag "latest" — compteur persisté dans ce rôle (files/happy-server.version,
+# versionné), incrémenté à chaque build. Démarre à 0.0 si le fichier n'existe pas.
+- name: Initialiser le compteur de version à 0.0 s'il n'existe pas encore
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/happy-server.version"
+    content: "0.0"
+    force: false
+  delegate_to: localhost
+  become: false
+
+- name: Lire la version actuelle
+  ansible.builtin.set_fact:
+    happy_current_version: "{{ lookup('file', role_path + '/files/happy-server.version') | trim }}"
+
+- name: Calculer la prochaine version (incrémente le dernier nombre)
+  ansible.builtin.set_fact:
+    happy_next_version: "{{ (happy_current_version.split('.')[:-1] + [(happy_current_version.split('.')[-1] | int + 1) | string]) | join('.') }}"
+
+- name: Enregistrer la nouvelle version (avant le build, pour rester incrémental même en cas d'échec)
+  ansible.builtin.copy:
+    dest: "{{ role_path }}/files/happy-server.version"
+    content: "{{ happy_next_version }}"
+  delegate_to: localhost
+  become: false
+
+- name: Fixer le tag d'image à construire/publier (jamais "latest")
+  ansible.builtin.set_fact:
+    happy_image: "{{ happy_image_repo }}:{{ happy_next_version }}"
+
+- name: Récupérer le PAT ghcr.io (cmdp, jamais loggé)
+  ansible.builtin.command: cmdp show services/github.com/docker_registry
+  register: happy_ghcr_pat
+  changed_when: false
+  no_log: true
+  delegate_to: localhost
+  become: false
+  check_mode: false
+
+- name: Se connecter à ghcr.io (en local, pour build+push)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ happy_ghcr_pat.stdout_lines[0] }}"
+  delegate_to: localhost
+  become: false
+
+- name: Construire et publier l'image happy-server sur ghcr.io (happy-server-self-host {{ happy_server_self_host_version }})
+  community.docker.docker_image:
+    name: "{{ happy_image }}"
+    build:
+      path: "{{ role_path }}/files/image"
+      dockerfile: "Dockerfile"
+      args:
+        HAPPY_SERVER_SELF_HOST_VERSION: "{{ happy_server_self_host_version }}"
+      pull: true
+      nocache: true
+    source: build
+    force_source: true
+    push: true
+  delegate_to: localhost
+  become: false
+
+# --- Déploiement sur glaurung : uniquement pull + run, aucun code ni build ---
+
+- name: Se connecter à ghcr.io sur glaurung (pour pull, image privée)
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: senseicoder
+    password: "{{ happy_ghcr_pat.stdout_lines[0] }}"
+
+- name: Créer le répertoire du relais (secret, hors du volume du conteneur)
+  ansible.builtin.file:
+    path: "{{ mindwtr_deploy_dir }}/data/happy-server"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Créer le répertoire de données (PGlite + fichiers), propriété de l'utilisateur node de l'image
+  ansible.builtin.file:
+    path: "{{ mindwtr_deploy_dir }}/data/happy-server/data"
+    state: directory
+    owner: "{{ happy_server_uid }}"
+    group: "{{ happy_server_uid }}"
+    mode: "0750"
+
+# HANDY_MASTER_SECRET : 32 octets aléatoires, générés une seule fois sur glaurung (même
+# principe que `happy server`, qui écrit ~/.happy/server-data/master-secret en 0600).
+# Jamais dans le dépôt ni dans les journaux Ansible ; sauvegardé avec les données
+# (backup-setup) — le perdre rend illisibles les jetons tiers chiffrés côté serveur.
+- name: Générer le secret maître du relais s'il n'existe pas encore
+  ansible.builtin.shell: >
+    umask 077 &&
+    printf 'HANDY_MASTER_SECRET=%s\n' "$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    > {{ mindwtr_deploy_dir }}/data/happy-server/master-secret.env
+  args:
+    creates: "{{ mindwtr_deploy_dir }}/data/happy-server/master-secret.env"
+  no_log: true
+
+- name: Déployer le vhost Apache pour {{ happy_domain }}
+  ansible.builtin.template:
+    src: apache-happy-server.conf.j2
+    dest: /etc/apache2/sites-available/{{ happy_domain }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: apache_vhost_happy
+
+- name: Activer le vhost Apache pour {{ happy_domain }}
+  ansible.builtin.command: a2ensite {{ happy_domain }}
+  register: apache_a2ensite_happy
+  changed_when: "'Enabling site' in apache_a2ensite_happy.stdout"
+  failed_when: apache_a2ensite_happy.rc != 0
+
+- name: Recharger Apache si vhost happy modifié
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  when: apache_vhost_happy is changed or apache_a2ensite_happy is changed
+
+- name: Créer le répertoire certs/happy (copy ne crée pas les parents manquants)
+  ansible.builtin.file:
+    path: "{{ mindwtr_deploy_dir }}/certs/happy"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Obtenir le certificat TLS pour {{ happy_domain }}
+  ansible.builtin.command: >
+    certbot certonly --webroot
+    -w /var/www/html
+    --non-interactive
+    --agree-tos
+    --email {{ acme_email }}
+    -d {{ happy_domain }}
+  args:
+    creates: /etc/letsencrypt/live/{{ happy_domain }}/fullchain.pem
+
+- name: Copier les certs happy dans mindwtr_deploy_dir/certs/happy
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ mindwtr_deploy_dir }}/certs/happy/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - src: /etc/letsencrypt/live/{{ happy_domain }}/fullchain.pem
+      dest: fullchain.pem
+    - src: /etc/letsencrypt/live/{{ happy_domain }}/privkey.pem
+      dest: privkey.pem
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: restart traefik
+
+- name: Déployer docker-compose.happy-server.yml
+  ansible.builtin.template:
+    src: docker-compose.happy-server.yml.j2
+    dest: "{{ mindwtr_deploy_dir }}/docker-compose.happy-server.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart happy-server
+
+# Les migrations PGlite sont appliquées par le conteneur lui-même à chaque démarrage
+# (« happy-server migrate » avant « serve », idempotent).
+- name: Tirer l'image et démarrer/mettre à jour le relais happy
+  ansible.builtin.command: "{{ item }}"
+  args:
+    chdir: "{{ mindwtr_deploy_dir }}"
+  loop:
+    - "docker-compose -f docker-compose.happy-server.yml pull"
+    - "docker-compose -f docker-compose.happy-server.yml up -d"
+  loop_control:
+    label: "{{ item }}"
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"

@@ -21,6 +21,12 @@ puttini_image_repo: "ghcr.io/senseicoder/puttini-server"
 # dédié, même pattern que backup-setup/glaurung-healthcheck.
 puttini_ntfy_topic: "puttini-alerts"
 
+# Relais happy auto-hébergé (rôle happy-server-deploy, slopus/happy) — enregistrement DNS
+# à créer à la main (CNAME vers glaurung.daneel.net) avant le premier déploiement.
+happy_domain: "happy.daneel.net"
+# Jamais de tag "latest" (compteur files/happy-server.version du rôle).
+happy_image_repo: "ghcr.io/senseicoder/happy-server"
+
 m3gan_domain: "m3gan.daneel.net"
 # ADR (m3gan-deploy, même principe que puttini-deploy) : jamais de tag "latest"
 # — tag calculé dynamiquement dans tasks/main.yml à partir de ce préfixe + un

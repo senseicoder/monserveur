@@ -1,0 +1,6 @@
+# Relais happy auto-hébergé (slopus/happy, mode standalone PGlite) derrière Traefik.
+# traefik-deploy APRÈS happy-server-deploy : il régénère traefik-tls.yml (certificat
+# happy) et le hook de renouvellement certbot, puis redémarre Traefik.
+# Prérequis : enregistrement DNS happy_domain (non automatisé).
+happy-server-deploy
+traefik-deploy

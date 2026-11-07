@@ -35,6 +35,9 @@ backup_fs_paths:
   # 03:00 (data/relecture-ia/sauvegardes/, cron du rôle relecture-ia-deploy) ;
   # le fichier vivant relecture.sqlite3 est aussi pris, sans garantie de cohérence.
   - /opt/mindwtr/data/relecture-ia
+  # Relais happy : base PGlite + fichiers ET master-secret.env (sans lui, les jetons
+  # tiers chiffrés côté serveur sont illisibles) — happy-server-deploy
+  - /opt/mindwtr/data/happy-server
   - /etc/letsencrypt
   - /opt/rat/data
   - /opt/phpbb-integralsport/data
