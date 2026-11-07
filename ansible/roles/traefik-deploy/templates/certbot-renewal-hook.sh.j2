@@ -49,6 +49,13 @@ case "$RENEWED_LINEAGE" in
     cp /etc/letsencrypt/live/{{ m3gan_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/m3gan/privkey.pem
     chmod 640 ${DEPLOY_DIR}/certs/m3gan/fullchain.pem ${DEPLOY_DIR}/certs/m3gan/privkey.pem
     ;;
+{% if happy_domain is defined %}
+  */{{ happy_domain }})
+    cp /etc/letsencrypt/live/{{ happy_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/happy/fullchain.pem
+    cp /etc/letsencrypt/live/{{ happy_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/happy/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/happy/fullchain.pem ${DEPLOY_DIR}/certs/happy/privkey.pem
+    ;;
+{% endif %}
 {% if relecture_domain is defined %}
   */{{ relecture_domain }})
     # Un seul lineage pour le site, l'admin et les workers (relecture-ia-deploy).
