@@ -5,3 +5,8 @@
 #   ntfy_domain         — domaine du vhost/certbot, ex. ntfy.daneel.net
 #   acme_email          — email de contact Let's Encrypt
 #   ntfy_admin_password — mot de passe du compte admin ntfy (vault.yml, chiffré)
+#   ntfy_image          — image épinglée, ex. binwiederhier/ntfy:v2.26.3 (vars.yml)
+#   ntfy_relecture_topic — topic des alertes de relecture-ia (vars.yml)
+#   ntfy_relecture_hash / ntfy_relecture_jeton — FACULTATIFS (vault.yml) : compte de
+#     service « relecture », écriture seule sur ntfy_relecture_topic. Les deux absents
+#     ou vides = rien de provisionné. Voir vault.yml.example.

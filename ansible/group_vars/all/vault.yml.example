@@ -23,3 +23,9 @@ relecture_smtp_mot_de_passe: "CHANGEME"
 # soumission acceptée (RELECTURE_WEBHOOK_SOUMISSIONS, ADR-035). Vide ou
 # absente = alerte désactivée. Secret : l'URL contient le jeton du webhook.
 relecture_webhook_soumissions: ""
+# ntfy : compte de service « relecture », écriture seule sur ntfy_relecture_topic
+# (rôle ntfy-deploy, provisioning déclaratif). FACULTATIF : les deux vides = rien.
+#   hash  : docker exec -it ntfy ntfy user hash      (saisir un mot de passe long, jamais réutilisé)
+#   jeton : docker exec ntfy ntfy token generate     (tk_ + 29 caractères)
+ntfy_relecture_hash: ""
+ntfy_relecture_jeton: ""
