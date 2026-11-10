@@ -1,6 +1,6 @@
 services:
   ntfy:
-    image: binwiederhier/ntfy
+    image: {{ ntfy_image }}
     container_name: ntfy
     restart: unless-stopped
     command:
@@ -12,6 +12,16 @@ services:
       NTFY_AUTH_FILE: "/var/lib/ntfy/auth.db"
       NTFY_AUTH_DEFAULT_ACCESS: "deny-all"
       NTFY_BEHIND_PROXY: "true"
+{% if ntfy_relecture_hash | default('') and ntfy_relecture_jeton | default('') %}
+      # Compte de service relecture-ia (ADR-039 de relecture-ia) : utilisateur, droit
+      # en écriture seule sur son topic et jeton, provisionnés à chaque démarrage
+      # (option vérifiée sur ntfy 2.26.3, la version en service le 2026-11-10). Le compte admin « cedric », créé à la main, n'est PAS listé ici :
+      # ntfy supprime tout utilisateur provisionné qui disparaît de cette liste.
+      # `$` du hash bcrypt doublé : docker-compose interpole `$`.
+      NTFY_AUTH_USERS: {{ ('relecture:' ~ ntfy_relecture_hash ~ ':user') | replace('$', '$$') | to_json }}
+      NTFY_AUTH_ACCESS: {{ ('relecture:' ~ ntfy_relecture_topic ~ ':wo') | to_json }}
+      NTFY_AUTH_TOKENS: {{ ('relecture:' ~ ntfy_relecture_jeton ~ ':relecture-ia') | to_json }}
+{% endif %}
     volumes:
       - "{{ mindwtr_deploy_dir }}/data/ntfy/cache:/var/cache/ntfy"
       - "{{ mindwtr_deploy_dir }}/data/ntfy/lib:/var/lib/ntfy"

@@ -9,6 +9,12 @@ mindwtr_domain: "mindwtr.daneel.net"
 vaultwarden_domain: "vault.daneel.net"
 ntfy_domain: "ntfy.daneel.net"
 ntfy_health_topic: "glaurung-health"
+# Image ntfy épinglée (plus de « latest ») : v2.26.3 = l'image en service le 2026-11-10
+# (digest sha256:081b53db… identique à celui du tag sur Docker Hub). Monter de version
+# volontairement, après lecture des notes de version.
+ntfy_image: "binwiederhier/ntfy:v2.26.3"
+# Alertes de relecture-ia (caractères suspects, injection vue par le modèle — ADR-039).
+ntfy_relecture_topic: "relecture-alerts"
 rustdesk_domain: "rustdesk.daneel.net"
 puttini_domain: "puttini.daneel.net"
 # ADR (puttini-deploy) : jamais de tag "latest" — le tag complet (puttini_image)
