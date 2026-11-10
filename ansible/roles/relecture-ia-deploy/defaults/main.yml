@@ -17,6 +17,10 @@
 #   relecture_webhook_soumissions  — FACULTATIF : URL du webhook Discord prévenu à chaque
 #                                    soumission acceptée (RELECTURE_WEBHOOK_SOUMISSIONS,
 #                                    ADR-035) ; défaut vide ci-dessous = alerte désactivée
+#   ntfy_relecture_jeton           — FACULTATIF : jeton du compte ntfy « relecture » (rôle
+#                                    ntfy-deploy), alertes d'injection (RELECTURE_NTFY_JETON,
+#                                    ADR-039) ; absent ou vide = alertes désactivées
+# Aussi lus dans vars.yml : ntfy_domain, ntfy_relecture_topic (ADR-039).
 
 # Dépôt source (build local, jamais sur glaurung — même principe que m3gan-deploy).
 relecture_repo_path: "/home/cedric/www/c/relecture-ia"
