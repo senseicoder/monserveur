@@ -18,6 +18,9 @@ MIGRATIONS = [
     # Notification en temps réel par liaison zone ↔ appareil (puttini#109) : désactivée
     # pour les liaisons existantes comme pour les nouvelles (décision du 07/11/2026)
     ("device_zones", "notify", "BOOLEAN NOT NULL DEFAULT 0"),
+    # Dernier état notifié par liaison (puttini#112, revue du 11/11) : NULL pour les liaisons
+    # existantes, aligné sans notification au premier relevé
+    ("device_zones", "notified_inside", "BOOLEAN"),
 ]
 
 
