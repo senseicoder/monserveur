@@ -21,6 +21,9 @@ MIGRATIONS = [
     # Dernier état notifié par liaison (puttini#112, revue du 11/11) : NULL pour les liaisons
     # existantes, aligné sans notification au premier relevé
     ("device_zones", "notified_inside", "BOOLEAN"),
+    # Seuil d'alerte disque par appareil (puttini#78, PR #87) : NULL = seuil global (90 %),
+    # même convention que battery_alert_threshold_pct. La table storages est créée par create_all.
+    ("devices", "disk_alert_threshold_pct", "INTEGER"),
 ]
 
 
