@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, notification par liaison #109, état réseau #108).
+"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, notification par liaison #109, état réseau #108, seuil disque #78).
 Base.metadata.create_all() ne crée que les tables manquantes, jamais les
 colonnes manquantes sur une table existante — d'où ce script, exécuté dans le
 conteneur en cours (docker exec) avant le redémarrage sur la nouvelle image."""
@@ -24,6 +24,9 @@ MIGRATIONS = [
     # État réseau de la remontée (puttini#108) : wifi / wifi_masque / mobile / ethernet / aucun ;
     # NULL pour les lignes existantes et les sources qui ne le déclarent pas (pyicloud)
     ("positions", "network", "TEXT"),
+    # Seuil d'alerte disque par appareil (puttini#78, PR #87) : NULL = seuil global (90 %),
+    # même convention que battery_alert_threshold_pct. La table storages est créée par create_all.
+    ("devices", "disk_alert_threshold_pct", "INTEGER"),
 ]
 
 
