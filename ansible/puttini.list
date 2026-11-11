@@ -3,5 +3,7 @@
 # AirTags, issue #29 -- pas encore consommé par puttini-deploy tant que
 # l'adaptateur n'est pas écrit, mais démarré dès maintenant pour préparer
 # l'extraction des clés AirTag depuis la VM macOS).
+# Désactivé depuis le 16/10/2026 (anisette_enabled: false, blocage Apple du
+# 12/10) : le rôle supprime alors le conteneur au lieu de le démarrer.
 anisette-deploy
 puttini-deploy

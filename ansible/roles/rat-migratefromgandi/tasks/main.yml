@@ -9,7 +9,7 @@
 # comptes + config.php + rat_donnees existants).
 
 # --- Données spécifiques par site, depuis le montage sshfs Gandi ---
-# Exclusions : rat_code/admin (vieux PHP5, gérés par rat-setup depuis rat-git),
+# Exclusions : rat_code/admin (vieux PHP5, gérés par rat-setup depuis le dépôt rat),
 # rat_donnees (logs/sessions sans valeur, et config.php géré par rat-setup —
 # ne pas écraser), et le contenu legacy statique (hors périmètre, décidé avec
 # Cédric : reste sur Gandi).
@@ -42,7 +42,7 @@
 
 # --- Conversion d'encodage des données spécifiques par site ---
 # rat_code/admin (générique) sont déjà en UTF-8 depuis les tickets 2B/2C
-# du repo rat-git. Les données rsync'ées ci-dessus (rat_sites/, modeles/)
+# du dépôt rat. Les données rsync'ées ci-dessus (rat_sites/, modeles/)
 # viennent de Gandi et restent en ISO-8859-1 -- mojibake constaté sur
 # toutes les pages utilisant un template encore dans cet état (cf. wiki
 # migration-rat-docker.md, section "Mojibake confirmé sur les templates
@@ -65,12 +65,10 @@
 
 - name: Copier les dumps prod (déjà rapatriés) vers glaurung pour import
   ansible.builtin.copy:
-    src: "/space/Work/ArchivesGandi/mysql/{{ item.dump }}"
+    src: "{{ rat_gandi_dumps_dir }}/{{ item.dump }}"
     dest: "/tmp/{{ item.dump }}"
     mode: "0600"
-  loop:
-    - { db_name: rat_plc, dump: "rat_plc_2026-07-14_00h56m44s.sql.gz" }
-    - { db_name: pds, dump: "pds_2026-07-14_00h55m55s.sql.gz" }
+  loop: "{{ rat_gandi_dumps }}"
   loop_control:
     label: "{{ item.db_name }}"
 
@@ -80,9 +78,7 @@
     zcat /tmp/{{ item.dump }} | mysql --default-character-set=latin1 {{ item.db_name }}
   args:
     executable: /bin/bash
-  loop:
-    - { db_name: rat_plc, dump: "rat_plc_2026-07-14_00h56m44s.sql.gz" }
-    - { db_name: pds, dump: "pds_2026-07-14_00h55m55s.sql.gz" }
+  loop: "{{ rat_gandi_dumps }}"
   loop_control:
     label: "{{ item.db_name }}"
 
@@ -90,8 +86,6 @@
   ansible.builtin.file:
     path: "/tmp/{{ item.dump }}"
     state: absent
-  loop:
-    - { dump: "rat_plc_2026-07-14_00h56m44s.sql.gz" }
-    - { dump: "pds_2026-07-14_00h55m55s.sql.gz" }
+  loop: "{{ rat_gandi_dumps }}"
   loop_control:
     label: "{{ item.dump }}"

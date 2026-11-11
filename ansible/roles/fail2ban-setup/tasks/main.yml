@@ -1,0 +1,20 @@
+---
+- name: Installer fail2ban
+  apt:
+    name: fail2ban
+    state: present
+  become: true
+
+- name: Configurer la jail SSH (/etc/fail2ban/jail.local)
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+  become: true
+  notify: restart fail2ban
+
+- name: S'assurer que fail2ban est activé et démarré
+  service:
+    name: fail2ban
+    state: started
+    enabled: true
+  become: true

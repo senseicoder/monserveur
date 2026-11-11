@@ -1,0 +1,66 @@
+---
+# Variables consommées, définies dans group_vars/all/vars.yml (pas de default
+# local, même convention que m3gan-deploy) :
+#   mindwtr_deploy_dir        — répertoire de la stack, ex. /opt/mindwtr
+#   docker_network_name       — réseau Docker partagé avec Traefik
+#   relecture_domain          — site public, ex. relecture.daneel.net
+#   relecture_admin_domain    — hôte DÉDIÉ à l'administration (mTLS, ADR-025 du dépôt relecture-ia)
+#   relecture_workers_domain  — hôte DÉDIÉ à l'API des workers (mTLS, ADR-026)
+#   relecture_image_repo      — préfixe d'image ghcr.io (jamais "latest")
+#   acme_email                — contact Let's Encrypt
+# Secrets (group_vars/all/vault.yml, chiffré) :
+#   relecture_admin_secret_proxy   — en-tête posé par le routeur admin (ADMIN_SECRET_PROXY)
+#   relecture_worker_secret_proxy  — en-tête posé par le routeur workers (WORKER_SECRET_PROXY),
+#                                    DIFFÉRENT du précédent
+#   relecture_smtp_mot_de_passe    — mot de passe de la boîte Infomaniak relecture@daneel.net
+#                                    (SMTP_MOT_DE_PASSE, ADR-030)
+#   relecture_webhook_soumissions  — FACULTATIF : URL du webhook Discord prévenu à chaque
+#                                    soumission acceptée (RELECTURE_WEBHOOK_SOUMISSIONS,
+#                                    ADR-035) ; défaut vide ci-dessous = alerte désactivée
+#   ntfy_relecture_jeton           — FACULTATIF : jeton du compte ntfy « relecture » (rôle
+#                                    ntfy-deploy), alertes d'injection (RELECTURE_NTFY_JETON,
+#                                    ADR-039) ; absent ou vide = alertes désactivées
+# Aussi lus dans vars.yml : ntfy_domain, ntfy_relecture_topic (ADR-039).
+
+# Dépôt source (build local, jamais sur glaurung — même principe que m3gan-deploy).
+relecture_repo_path: "/home/cedric/www/c/relecture-ia"
+
+# Chaîne de l'autorité persoca, exportée sur le poste par
+# `persoca exporter-chaine <ce chemin>` avant le run (publique, pas un secret).
+# Traefik la lit pour vérifier les certificats clients (admin) et machines (workers).
+relecture_persoca_chaine_locale: "/home/cedric/.cache/persoca/chaine.pem"
+
+# Données du backend (base SQLite, journal d'activité, listes blanches,
+# revoques.txt, sauvegardes) — bind mount, incluses dans backup-setup.
+relecture_data_dir: "{{ mindwtr_deploy_dir }}/data/relecture-ia"
+
+# Sauvegarde cohérente quotidienne (API de sauvegarde SQLite, ADR-028) avant le
+# backup général de 03:30, suivie de la purge (ADR-032). Durées passées en
+# --jours au conteneur (le compose ne transmet pas RELECTURE_*_JOURS) : ces
+# variables sont la seule source de vérité sur glaurung (décision du 2026-11-05,
+# reprise dans docs/legal du dépôt relecture-ia).
+relecture_sauvegarde_heure: 3
+relecture_sauvegarde_minute: 0
+relecture_sauvegarde_retention_jours: 14
+relecture_conservation_jours: 30
+
+# Envoi des e-mails (ADR-030 du dépôt relecture-ia) — boîte Infomaniak
+# relecture@daneel.net. Réglages publics Infomaniak (FAQ n° 468,
+# https://www.infomaniak.com/fr/support/faq/468) : mail.infomaniak.com, 587 en
+# STARTTLS (ou 465 en SSL implicite : port 465 ET relecture_smtp_tls: ssl), authentification
+# obligatoire avec l'adresse complète. L'adresse de SMTP_EXPEDITEUR doit être
+# celle de l'identifiant, sinon Infomaniak refuse (550 5.7.1 « Sender mismatch »).
+# Limite d'envoi : 200 ou 500 e-mails / 24 h glissantes selon l'offre (FAQ n° 2065),
+# voir deploiement/README.md § 0 du dépôt relecture-ia.
+relecture_smtp_hote: "mail.infomaniak.com"
+relecture_smtp_port: 587
+relecture_smtp_tls: "starttls"
+relecture_smtp_utilisateur: "relecture@daneel.net"
+relecture_smtp_expediteur: "Relecture IA <relecture@daneel.net>"
+
+# Alerte Discord à chaque soumission acceptée (ADR-035 du dépôt relecture-ia).
+# Facultative : vide = désactivée, sans erreur (pas de garde-fou bloquant).
+# Pour l'activer, définir relecture_webhook_soumissions dans le vault (l'URL
+# contient le jeton du webhook : c'est un secret) — group_vars l'emporte sur
+# ce défaut.
+relecture_webhook_soumissions: ""

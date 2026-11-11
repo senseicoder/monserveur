@@ -1,0 +1,60 @@
+# Backend relecture-ia (API + site statique, ADR-022 du dépôt) — image tirée de
+# ghcr.io, jamais construite sur glaurung. Aucun port publié : joignable
+# uniquement par Traefik sur le réseau {{ docker_network_name }} (routage dans
+# traefik-dynamic/relecture-ia.yml, pas de labels : options mTLS par hôte).
+# Contient les secrets du proxy : fichier en 0600.
+services:
+  relecture-ia-backend:
+    image: "{{ relecture_image }}"
+    container_name: relecture-ia-backend
+    restart: unless-stopped
+    security_opt:
+      - "seccomp:unconfined"  # Docker 19.03 ne whitelist pas clone3, cf. CLAUDE.md § Pièges Docker
+    environment:
+      # Écoute sur le réseau Docker (non publié), cf. backend/Dockerfile du dépôt.
+      RELECTURE_HOTE: "0.0.0.0"
+      # Uvicorn lit X-Forwarded-For/Proto seulement depuis ces adresses
+      # (défaut 127.0.0.1) : sans ça, tous les visiteurs auraient l'IP de
+      # Traefik et la limite de débit par IP (ADR-015) deviendrait commune.
+      # Traefik remplace le X-Forwarded-For envoyé par le client (forwardedHeaders
+      # non configuré = aucune IP de confiance en entrée).
+      FORWARDED_ALLOW_IPS: "{{ relecture_proxy_de_confiance }}"
+      # Preuves que la requête vient du routeur admin / workers (ADR-025/026).
+      ADMIN_SECRET_PROXY: "{{ relecture_admin_secret_proxy }}"
+      WORKER_SECRET_PROXY: "{{ relecture_worker_secret_proxy }}"
+      # Courriel (ADR-030 du dépôt relecture-ia) : confirmation d'adresse et avis
+      # de fin de traitement, lus par backend/courriel.py. Sans eux, aucune
+      # adresse ne peut être confirmée (le rôle refuse donc de déployer sans
+      # mot de passe SMTP). Délai SMTP fixe (20 s), non réglable par variable.
+      RELECTURE_URL_SITE: "https://{{ relecture_domain }}"
+      SMTP_HOTE: "{{ relecture_smtp_hote }}"
+      SMTP_PORT: "{{ relecture_smtp_port }}"
+      SMTP_TLS: "{{ relecture_smtp_tls }}"
+      SMTP_UTILISATEUR: "{{ relecture_smtp_utilisateur }}"
+      # to_json : chaîne YAML valide quels que soient les caractères ; $ doublé,
+      # sinon docker-compose l'interpréterait comme une variable.
+      SMTP_MOT_DE_PASSE: {{ relecture_smtp_mot_de_passe | replace('$', '$$') | to_json }}
+      SMTP_EXPEDITEUR: "{{ relecture_smtp_expediteur }}"
+      # Alerte Discord à chaque soumission acceptée (ADR-035) ; vide = désactivée.
+      # Secret (jeton du webhook dans l'URL) : même échappement que le mot de passe SMTP.
+      RELECTURE_WEBHOOK_SOUMISSIONS: {{ relecture_webhook_soumissions | default('') | replace('$', '$$') | to_json }}
+      # Alertes de tentative d'injection sur ntfy (ADR-039) : compte de service « relecture »,
+      # écriture seule sur le topic (rôle ntfy-deploy). Jeton vide = alertes désactivées.
+      RELECTURE_NTFY_URL: "https://{{ ntfy_domain }}:8787"
+      RELECTURE_NTFY_TOPIC: "{{ ntfy_relecture_topic }}"
+      RELECTURE_NTFY_JETON: {{ ntfy_relecture_jeton | default('') | replace('$', '$$') | to_json }}
+      # Lien ouvert au clic sur l'alerte : l'admin (mTLS, ADR-025).
+      RELECTURE_URL_ADMIN: "https://{{ relecture_admin_domain }}/admin/"
+    volumes:
+      - "{{ relecture_data_dir }}:/app/backend/data"
+    networks:
+      - "{{ docker_network_name }}"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/etat')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  "{{ docker_network_name }}":
+    external: true

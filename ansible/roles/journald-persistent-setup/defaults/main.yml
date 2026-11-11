@@ -1,0 +1,7 @@
+---
+# Journal systemd persistant : sans /var/log/journal, journald (Storage=auto)
+# n'écrit que dans /run/log/journal, perdu à chaque reboot. Prérequis des
+# conteneurs passés au driver de logs journald (puttini) : leurs logs survivent
+# à la recréation du conteneur, et avec ce rôle au reboot de l'hôte.
+# Plafond prudent, à surcharger par host_vars selon le disque disponible.
+journald_system_max_use: 500M

@@ -1,2 +1,2 @@
 #!/bin/bash
-cmdp hebergements/mindwtr/vault | head -1
+cmdp show hebergements/mindwtr/vault | head -1

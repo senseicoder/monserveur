@@ -4,7 +4,7 @@
 # des documents HTML complets qui le déclarent explicitement.
 #
 # Contexte : rat_code/admin (générique) sont déjà en UTF-8 depuis les
-# tickets 2B/2C du repo rat-git. Les données spécifiques par site
+# tickets 2B/2C du dépôt rat. Les données spécifiques par site
 # (rat_sites/<nom>/modeles/, etc.) sont hors de ce repo et restaient en
 # ISO-8859-1 -- mojibake constaté sur toutes les pages utilisant un
 # template encore en ISO-8859-1 (voir wiki migration-rat-docker.md,

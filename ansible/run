@@ -116,7 +116,13 @@ list)
 			exit 1
 		fi
 		echo "==> $role"
-		ansible-playbook -i "$inventory" "$role_playbook" -e "role=$role" $params
+		# Arrêt au premier rôle en échec : les rôles d'une liste dépendent souvent
+		# des précédents (ex. relecture-ia.list : traefik-deploy déclare le
+		# certificat et active les options mTLS que relecture-ia-deploy prépare).
+		if ! ansible-playbook -i "$inventory" "$role_playbook" -e "role=$role" $params; then
+			echo "==> échec de $role : arrêt de la liste $item (rôles suivants non joués)"
+			exit 1
+		fi
 	done < "$item"
 	;;
 

@@ -2,3 +2,30 @@
 mindwtr_token: "CHANGEME"
 ntfy_admin_password: "CHANGEME"
 ntfy_healthcheck_token: "CHANGEME"
+# Clé maîtresse de l'API M3gan — protège l'endpoint d'enregistrement des clés
+# d'appareil (/appareils/enregistrer, cf. ARCHITECTURE.md du repo M3gan).
+# Générer une vraie valeur avec, par exemple : openssl rand -hex 32
+m3gan_master_key: "CHANGEME"
+# Mot de passe de l'interface d'admin M3gan (un seul, pour Cédric — HTTP Basic,
+# username ignoré). Générer avec, par exemple : openssl rand -base64 24
+m3gan_admin_password: "CHANGEME"
+# relecture-ia : secrets posés par les routeurs Traefik admin et workers
+# (ADMIN_SECRET_PROXY / WORKER_SECRET_PROXY du backend). Deux valeurs
+# DIFFÉRENTES, au moins 32 caractères chacune — par exemple :
+# python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
+relecture_admin_secret_proxy: "CHANGEME"
+relecture_worker_secret_proxy: "CHANGEME"
+# relecture-ia : mot de passe de la boîte Infomaniak relecture@daneel.net
+# (SMTP_MOT_DE_PASSE, ADR-030). Sans lui, aucune adresse ne peut être
+# confirmée : le rôle relecture-ia-deploy refuse de déployer.
+relecture_smtp_mot_de_passe: "CHANGEME"
+# relecture-ia : FACULTATIF — URL du webhook Discord prévenu à chaque
+# soumission acceptée (RELECTURE_WEBHOOK_SOUMISSIONS, ADR-035). Vide ou
+# absente = alerte désactivée. Secret : l'URL contient le jeton du webhook.
+relecture_webhook_soumissions: ""
+# ntfy : compte de service « relecture », écriture seule sur ntfy_relecture_topic
+# (rôle ntfy-deploy, provisioning déclaratif). FACULTATIF : les deux vides = rien.
+#   hash  : docker exec -it ntfy ntfy user hash      (saisir un mot de passe long, jamais réutilisé)
+#   jeton : docker exec ntfy ntfy token generate     (tk_ + 29 caractères)
+ntfy_relecture_hash: ""
+ntfy_relecture_jeton: ""

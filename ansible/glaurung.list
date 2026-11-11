@@ -1,10 +1,12 @@
 ssh-securite
 firewall-setup
 swap-setup
+journald-persistent-setup
 docker-engine-setup
 network-ipv6-setup
 docker-network-mindwtr-setup
 apache-backend
+certbot-setup
 traefik-deploy
 rustdesk-setup
 mindwtr-cloud-deploy

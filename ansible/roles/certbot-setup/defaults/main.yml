@@ -1,0 +1,24 @@
+---
+# Installation de Certbot lui-même (le binaire), pas des certificats : chaque
+# rôle applicatif garde son propre "certbot certonly --webroot" pour son
+# domaine. Ce rôle n'existe que pour que glaurung.list soit reconstructible
+# depuis zéro — jusqu'ici aucun rôle n'installait Certbot alors que 6 rôles
+# l'appellent (mindwtr-cloud-deploy, vaultwarden-deploy, ntfy-deploy,
+# puttini-deploy, phpbb-integralsport-setup, pub-daneel-net-setup).
+#
+# Voie snap et pas apt : c'est l'installation réelle sur glaurung depuis
+# 2021 (Debian 9 stretch, dont le certbot apt est bloqué en 0.28), et la
+# seule voie recommandée en amont par l'EFF. Le snap se met à jour seul,
+# d'où l'absence de version épinglée ici.
+certbot_snap_channel: latest/stable
+
+# Symlink attendu par tous les rôles appelants, qui invoquent "certbot" nu :
+# /snap/bin n'est pas dans le PATH non interactif d'Ansible.
+certbot_bin_link: /usr/bin/certbot
+
+# Rafraîchissement explicite du snap "core" — recommandé par la procédure
+# amont uniquement au bootstrap d'un hôte neuf dont le snapd vient du dépôt
+# de la distribution (celui de stretch est en 2.21, très en retard). Laissé
+# à false en régime de croisière : snapd se rafraîchit tout seul, et un
+# refresh de "core" peut redémarrer les snaps qui en dépendent.
+certbot_snap_refresh_core: false

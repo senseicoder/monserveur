@@ -41,7 +41,7 @@ Deux catégories bien distinctes depuis Phase 2 : les domaines legacy encore ser
 | `pub.daneel.net` | Webroot ACME uniquement | Routage réel via Traefik → `pub-daneel-net` |
 | `puttini.daneel.net` | Webroot ACME uniquement | Routage réel via Traefik → `puttini` |
 
-Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**.
+Certbot installé via **snap** (mode classic), **pas apt** — installation formalisée dans le rôle `certbot-setup` (2026-09-25). Version non épinglée : le snap se met à jour seul (5.8.0 relevé sur l'hôte le 2026-09-25).
 
 ### Routing Traefik (labels Docker, réseau `mindwtr`, source de vérité du routage public)
 | Domaine(s) | Conteneur cible | Port service | Entrypoints | Notes |
@@ -57,7 +57,7 @@ Certbot installé via **snap** (v5.6.0, mode classic), **pas apt**.
 ### Conteneurs Docker actifs
 | Conteneur | Image | Réseau | Notes |
 |-----------|-------|--------|-------|
-| `traefik` | `traefik:v3` | mindwtr | Ports hôte 80/443/8787 |
+| `traefik` | `traefik:v3` (épinglée en `traefik:v3.7.15` depuis le 2026-11-06, variable `traefik_image`) | mindwtr | Ports hôte 80/443/8787 |
 | `mindwtr-cloud` | `ghcr.io/dongdongbh/mindwtr-cloud:latest` | mindwtr | Healthy |
 | `vaultwarden` | `vaultwarden/server:latest` | mindwtr | Healthy |
 | `puttini` | `ghcr.io/senseicoder/puttini-server:0.7` | mindwtr | Healthy — swap ajouté 2026-09-03 suite crash en boucle, cf. TODO.md |
@@ -114,8 +114,10 @@ ansible/
 └── roles/
     ├── docker-engine-setup/      ← install Docker CE + plugin Compose
     ├── network-ipv6-setup/       ← forwarding IPv6 kernel + service systemd ipv6-default-route
+    ├── journald-persistent-setup/ ← journal systemd persistant (/var/log/journal + journald.conf.d, plafond SystemMaxUse) — prérequis des conteneurs en driver de logs journald (puttini), joué via ./run list glaurung.list
     ├── docker-network-mindwtr-setup/  ← daemon.json IPv6 + réseau Docker mindwtr (down/up des 3 stacks si reconfig)
     ├── apache-backend/           ← Phase 2 : Apache en backend interne :8081 (ports.conf, 6 vhosts legacy, mod_remoteip, drop-in systemd After=docker.service)
+    ├── certbot-setup/            ← installe Certbot lui-même (snapd + snap classic + lien /usr/bin/certbot) ; les certificats restent obtenus par chaque rôle applicatif
     ├── traefik-deploy/           ← répertoires, docker-compose.traefik.yml, TLS dynamique, hook certbot, start
     │   └── templates/
     │       ├── docker-compose.traefik.yml.j2
@@ -125,6 +127,7 @@ ansible/
     ├── vaultwarden-deploy/       ← data/vaultwarden, docker-compose.vaultwarden.yml, vhost+certbot vault, start
     ├── ntfy-deploy/              ← data/ntfy, docker-compose.ntfy.yml, vhost+certbot ntfy, création admin
     ├── puttini-deploy/           ← build+push local (ghcr.io, jamais sur glaurung, cf. rat-setup) + data/puttini, docker-compose.puttini.yml, vhost+certbot puttini, joué via ./run list puttini.list — source : ~/www/c/puttini/server
+    ├── relecture-ia-deploy/      ← build+push local (ghcr.io) + backend relecture-ia sur le réseau mindwtr sans port publié ; routage par fichier dynamique Traefik (site, admin et workers en mTLS persoca), certificat certbot à 3 noms, sauvegarde SQLite quotidienne — joué via ./run list relecture-ia.list ; active traefik_mtls_persoca (options statiques Traefik `--core.strictTLSOptions` et `aliasHeadersStrategy`, dont la présence est vérifiée dans le `--help` de l'image `traefik_image` épinglée — v3.7.15 ; la 3.7.5 ne les a pas, incident du 2026-11-06 : Traefik en boucle, tous les sites coupés 4 min) — procédure : deploiement/README.md du dépôt relecture-ia
     ├── rustdesk-setup/           ← hbbs/hbbr RustDesk, hors Traefik (ports directs sur l'hôte), joué via ./run list rustdesk.list
     ├── ssh-securite/             ← durcissement sshd (PasswordAuthentication/PermitRootLogin/AllowUsers), joué via ./run list security.list
     └── backup-setup/             ← cron root quotidien (dump différentiel + mysqldump + pg_dump + chiffrement GPG asymétrique), joué via ./run list backup.list — cf. § Sauvegardes critiques
@@ -169,17 +172,20 @@ docker-compose -f /opt/mindwtr/docker-compose.mindwtr.yml ps
    labels:
      - "traefik.enable=true"
      - "traefik.http.routers.<nom>.rule=Host(`<domaine>`)"
-     - "traefik.http.routers.<nom>.entrypoints=mindwtr"
+     - "traefik.http.routers.<nom>.entrypoints=websecure"
      - "traefik.http.routers.<nom>.tls=true"
      - "traefik.http.services.<nom>.loadbalancer.server.port=<port interne>"
    ```
-3. **TLS file provider** — Traefik n'a pas d'ACME (Apache tient 80/443). Pour chaque nouveau domaine :
-   - Obtenir un cert certbot : `certbot certonly --webroot -w /var/www/html -d <domaine>`
+3. **TLS file provider** — depuis la Phase 2 (2026-08-02), Traefik tient 80/443, mais n'obtient pas encore ses certificats lui-même (ACME natif : PR #23, désactivé par défaut). Les certificats viennent de certbot en webroot : le router file-provider `acme-challenge` (entrypoint `web`, priorité 1000, `traefik-routers-apache.yml.j2`) envoie `/.well-known/acme-challenge/` vers Apache en backend interne (`172.18.0.1:8081`). Pour chaque nouveau domaine :
+   - Obtenir un cert certbot : `certbot certonly --webroot -w /var/www/html -d <domaine>` (en pratique, la tâche du rôle applicatif, cf. `relecture-ia-deploy`)
    - Copier les certs dans `/opt/mindwtr/certs/` (ou un sous-dossier dédié)
    - Mettre à jour `traefik-tls.yml.j2` pour référencer les nouveaux certs
-   - Tout nouveau domaine certbot nécessite un **vhost Apache dédié** (voir section ci-dessous)
-4. **Entrypoint unique** : `mindwtr` = port 8787. Tous les services Traefik actuels sont sur 8787 (non standard). Phase 2 = Traefik sur 80/443.
+   - Ajouter le domaine dans le hook `roles/traefik-deploy/templates/certbot-renewal-hook.sh.j2` — sinon certbot renouvelle dans `live/` mais Traefik garde l'ancienne copie jusqu'à expiration (incident 2026-10-23, pub.daneel.net)
+   - Tout nouveau domaine certbot nécessite un **vhost Apache dédié**, minimal, sur le backend interne : `<VirtualHost 172.18.0.1:8081>` + `ServerName` + `DocumentRoot /var/www/html` (exemple : `roles/relecture-ia-deploy/templates/apache-relecture-ia.conf.j2` ; voir section ci-dessous)
+4. **Entrypoints** : `websecure` (443) pour tout nouveau service ; `web` (80) ne sert qu'au challenge ACME et aux redirections HTTP→HTTPS. `mindwtr` (8787) est l'entrée historique de la Phase 1, gardée pour les clients pas encore migrés (mindwtr, vault, ntfy, puttini, rat — labels `mindwtr,websecure`) et dont le retrait est prévu (PR #23, étape 5) : ne pas y ajouter de nouveau service.
+   - **Options statiques de Traefik** (ligne `command:` de `docker-compose.traefik.yml.j2`) : l'image est épinglée (`traefik_image`, v3.7.15) ; toute nouvelle option se vérifie dans le `--help` de cette image avant le run — un dry-run ne redémarre pas Traefik (incident du 2026-11-06 : option inconnue de la 3.7.5, tous les sites coupés 4 min).
 5. **Healthcheck** : utiliser `127.0.0.1` et non `localhost` — avec IPv6 activé, `localhost` résout en `::1` et échoue si le service n'écoute qu'en IPv4.
+6. **Serveur ASGI Python (Uvicorn/Hypercorn) : activer les proxy headers** — Traefik termine le TLS et parle en clair au conteneur, donc sans `--proxy-headers` (Uvicorn) le serveur applicatif ignore `X-Forwarded-Proto` et génère ses propres redirections (ex. trailing slash automatique de Starlette/FastAPI) en `http://` au lieu de `https://` — cassé côté client puisque le port 80 n'a pas de route Traefik pour ces services (seuls `mindwtr`/`websecure` le sont). Incident réel : [[project_m3gan]], 2026-09-22, `backend/Dockerfile` — fix : `uvicorn app.main:app ... --proxy-headers --forwarded-allow-ips='*'`.
 
 ### Hors Traefik (services non-HTTP)
 
@@ -207,8 +213,8 @@ Nouveau réseau : choisir un subnet `172.x.0.0/16` libre, et `fd00:0:0:N::/64` d
 ## Infra Apache / certbot sur glaurung — points critiques
 
 - Vhosts dans `/etc/apache2/sites-available/*.conf` — **générés automatiquement** par les templates Ansible de ce repo. Chaque vhost a un dossier `.d/` pour snippets additionnels.
-- Les vhosts existants écoutent sur les IPs **explicites** du serveur (`51.254.212.250:80` et `[2001:41d0:302:2100::4203]:80`). Un vhost `*:80` est dans un groupe de priorité inférieure et ne s'applique **jamais** — le vhost certbot doit déclarer les mêmes IPs explicites.
-- Certbot via snap, `--webroot -w /var/www/html`. Le challenge HTTP-01 nécessite un vhost Apache dédié pour le domaine (sans lui, Apache redirige vers `bots.plcoder.net:443` qui timeout).
+- Depuis la Phase 2, Apache n'écoute plus en public : ses vhosts sont sur le backend interne `172.18.0.1:8081` (joignable seulement depuis le réseau Docker `mindwtr`), et Traefik lui transmet le challenge ACME (router `acme-challenge`) et le trafic des vhosts legacy (reader, bots). *(Avant la Phase 2, les vhosts écoutaient sur les IPs publiques explicites `51.254.212.250:80` / `[2001:41d0:302:2100::4203]:80`, un vhost `*:80` ne s'appliquant jamais : la règle ne vaut plus.)*
+- Certbot via snap, `--webroot -w /var/www/html`. Le challenge HTTP-01 nécessite un vhost Apache dédié pour le domaine.
 - Hook de renouvellement : `/etc/letsencrypt/renewal-hooks/deploy/reload-traefik.sh` — copie les certs dans `/opt/mindwtr/certs/` et `docker restart traefik`.
 - **Docker Compose** sur glaurung : version 1 (`docker-compose` avec trait d'union). Pas de plugin Compose v2 (`docker compose`) — le serveur tourne sur Debian stretch avec Docker installé manuellement.
 - Modules Apache actifs : proxy, proxy_http, proxy_fcgi, rewrite, ssl, headers.

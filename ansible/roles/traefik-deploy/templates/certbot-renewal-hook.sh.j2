@@ -39,6 +39,24 @@ case "$RENEWED_LINEAGE" in
     cp /etc/letsencrypt/live/bots.plcoder.net/privkey.pem  ${DEPLOY_DIR}/certs/bots-plcoder/privkey.pem
     chmod 640 ${DEPLOY_DIR}/certs/bots-plcoder/fullchain.pem ${DEPLOY_DIR}/certs/bots-plcoder/privkey.pem
     ;;
+  */pub.daneel.net)
+    cp /etc/letsencrypt/live/pub.daneel.net/fullchain.pem ${DEPLOY_DIR}/certs/pub-daneel-net/fullchain.pem
+    cp /etc/letsencrypt/live/pub.daneel.net/privkey.pem  ${DEPLOY_DIR}/certs/pub-daneel-net/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/pub-daneel-net/fullchain.pem ${DEPLOY_DIR}/certs/pub-daneel-net/privkey.pem
+    ;;
+  */{{ m3gan_domain }})
+    cp /etc/letsencrypt/live/{{ m3gan_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/m3gan/fullchain.pem
+    cp /etc/letsencrypt/live/{{ m3gan_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/m3gan/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/m3gan/fullchain.pem ${DEPLOY_DIR}/certs/m3gan/privkey.pem
+    ;;
+{% if relecture_domain is defined %}
+  */{{ relecture_domain }})
+    # Un seul lineage pour le site, l'admin et les workers (relecture-ia-deploy).
+    cp /etc/letsencrypt/live/{{ relecture_domain }}/fullchain.pem ${DEPLOY_DIR}/certs/relecture-ia/fullchain.pem
+    cp /etc/letsencrypt/live/{{ relecture_domain }}/privkey.pem  ${DEPLOY_DIR}/certs/relecture-ia/privkey.pem
+    chmod 640 ${DEPLOY_DIR}/certs/relecture-ia/fullchain.pem ${DEPLOY_DIR}/certs/relecture-ia/privkey.pem
+    ;;
+{% endif %}
 esac
 
 docker restart traefik
