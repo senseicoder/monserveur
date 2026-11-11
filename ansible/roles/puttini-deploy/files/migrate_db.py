@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-<<<<<<< HEAD
-"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, état réseau #108).
-=======
-"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, notification par liaison #109).
->>>>>>> origin/master
+"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, notification par liaison #109, état réseau #108).
 Base.metadata.create_all() ne crée que les tables manquantes, jamais les
 colonnes manquantes sur une table existante — d'où ce script, exécuté dans le
 conteneur en cours (docker exec) avant le redémarrage sur la nouvelle image."""
