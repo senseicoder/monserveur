@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, notification par liaison #109, état réseau #108, seuil disque #78).
+"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, notification par liaison #109, état réseau #108, seuil disque #78, santé Android #64).
 Base.metadata.create_all() ne crée que les tables manquantes, jamais les
 colonnes manquantes sur une table existante — d'où ce script, exécuté dans le
 conteneur en cours (docker exec) avant le redémarrage sur la nouvelle image."""
@@ -27,6 +27,15 @@ MIGRATIONS = [
     # Seuil d'alerte disque par appareil (puttini#78, PR #87) : NULL = seuil global (90 %),
     # même convention que battery_alert_threshold_pct. La table storages est créée par create_all.
     ("devices", "disk_alert_threshold_pct", "INTEGER"),
+    # Santé des services Android déclarée dans le heartbeat (puttini#64, PR #76).
+    # Toutes nullables : NULL veut dire "l'appareil n'a rien déclaré", ce qui
+    # est le cas de toutes les lignes déjà en base et de toutes les sources
+    # autres que l'app Android — à ne pas confondre avec "service arrêté".
+    ("positions", "foreground_service_active", "BOOLEAN"),
+    ("positions", "work_manager_scheduled", "BOOLEAN"),
+    ("positions", "missing_permissions", "TEXT"),
+    ("positions", "run_attempt_count", "INTEGER"),
+    ("positions", "last_heartbeat_success", "DATETIME"),
 ]
 
 
