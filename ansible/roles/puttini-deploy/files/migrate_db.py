@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, notification par liaison #109, état réseau #108, seuil disque #78, santé Android #64, système #118).
+"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, notification par liaison #109, état réseau #108, seuil disque #78, santé Android #64, système #118, aide à distance #118).
 Base.metadata.create_all() ne crée que les tables manquantes, jamais les
 colonnes manquantes sur une table existante — d'où ce script, exécuté dans le
 conteneur en cours (docker exec) avant le redémarrage sur la nouvelle image."""
@@ -44,6 +44,11 @@ MIGRATIONS = [
     ("devices", "rustdesk_version", "TEXT"),
     ("devices", "boot_count", "INTEGER"),
     ("devices", "boot_time", "DATETIME"),
+    # Notification « Aide à distance » (puttini#118, lot 2) : type de message
+    # (NULL = texte, comme tous les messages existants) et expiration (NULL = jamais ;
+    # 2 h pour une demande d'aide, décision du 12/11).
+    ("messages", "kind", "TEXT"),
+    ("messages", "expires_at", "DATETIME"),
 ]
 
 
