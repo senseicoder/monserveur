@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, notification par liaison #109, état réseau #108, seuil disque #78, santé Android #64).
+"""Migration idempotente de puttini.db (ADR-013 + geofencing #54, PR #66/#67, clé lecture seule ADR-014 #92, notification par liaison #109, état réseau #108, seuil disque #78, santé Android #64, système #118).
 Base.metadata.create_all() ne crée que les tables manquantes, jamais les
 colonnes manquantes sur une table existante — d'où ce script, exécuté dans le
 conteneur en cours (docker exec) avant le redémarrage sur la nouvelle image."""
@@ -36,6 +36,14 @@ MIGRATIONS = [
     ("positions", "missing_permissions", "TEXT"),
     ("positions", "run_attempt_count", "INTEGER"),
     ("positions", "last_heartbeat_success", "DATETIME"),
+    # Système de l'appareil déclaré par l'app Android (puttini#118, lot 1) : état
+    # courant sur devices (décision du 12/11). NULL = jamais déclaré ;
+    # rustdesk_version "" = RustDesk absent du téléphone.
+    ("devices", "android_version", "TEXT"),
+    ("devices", "android_sdk", "INTEGER"),
+    ("devices", "rustdesk_version", "TEXT"),
+    ("devices", "boot_count", "INTEGER"),
+    ("devices", "boot_time", "DATETIME"),
 ]
 
 
