@@ -4,7 +4,8 @@
 
 Écrit un JSON :
   {"version": 1, "genere_le": "...", "pairs": [
-     {"id": "...", "nom": null, "en_ligne": true, "vu_le": "...", "cree_le": "..."}]}
+     {"id": "...", "nom": null, "en_ligne": true, "vu_le": "...", "cree_le": "...",
+      "ip": "..."}]}
 
 - Liste des pairs : table `peer` de la base hbbs (db_v2.sqlite3), lue sur une
   COPIE (base + journal WAL) dans un dossier temporaire : la base vivante n'est
@@ -17,6 +18,10 @@
   l'export précédent (relu dans le fichier de sortie), sinon null.
 - nom : la version open source de hbbs ne stocke pas le nom de la machine ;
   on reprend la colonne `note` si elle est remplie, sinon null.
+- ip : champ `ip` de la colonne `info` de hbbs, réécrit par hbbs quand un pair
+  réenregistre sa clé depuis une autre IP (donc IP du dernier enregistrement de
+  clé, pas forcément l'IP courante). Préfixe IPv4 mappé `::ffff:` retiré, null
+  si absente ou illisible. Sert au rapprochement avec les appareils (c3po#190).
 
 En cas d'échec (base illisible, hbbs injoignable), rien n'est écrit et le code
 retour est 1 : le consommateur voit `genere_le` vieillir au lieu de recevoir un
@@ -30,6 +35,7 @@ Compatible Python 3.5 (glaurung : Debian Stretch), bibliothèque standard seule.
 """
 
 import argparse
+import ipaddress
 import datetime
 import json
 import os
@@ -187,12 +193,25 @@ def lire_pairs(chemin_base):
         connexion = sqlite3.connect(copie)
         try:
             lignes = connexion.execute(
-                "SELECT id, note, created_at FROM peer ORDER BY id").fetchall()
+                "SELECT id, note, created_at, info FROM peer ORDER BY id").fetchall()
         finally:
             connexion.close()
     finally:
         shutil.rmtree(dossier, ignore_errors=True)
-    return [{"id": l[0], "note": l[1], "created_at": l[2]} for l in lignes]
+    return [{"id": l[0], "note": l[1], "created_at": l[2], "info": l[3]} for l in lignes]
+
+
+def ip_depuis_info(info):
+    """Colonne info de hbbs ('{"ip":"::ffff:a.b.c.d"}') → IP normalisée ou None."""
+    try:
+        valeur = json.loads(info).get("ip")
+        if not isinstance(valeur, str):
+            return None
+        adresse = ipaddress.ip_address(valeur)
+    except (TypeError, ValueError, AttributeError):
+        return None
+    mappee = getattr(adresse, "ipv4_mapped", None)
+    return str(mappee or adresse)
 
 
 # --- export --------------------------------------------------------------------
@@ -231,6 +250,7 @@ def construire_export(pairs, etats, vus, genere_le):
             "en_ligne": en_ligne,
             "vu_le": genere_le if en_ligne else vus.get(pair["id"]),
             "cree_le": date_base_iso(pair["created_at"]),
+            "ip": ip_depuis_info(pair.get("info")),
         })
     return {"version": VERSION_FORMAT, "genere_le": genere_le, "pairs": sortie}
 

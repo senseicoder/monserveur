@@ -32,9 +32,11 @@ def creer_base(chemin, pairs):
     c = sqlite3.connect(chemin)
     c.execute("PRAGMA journal_mode=WAL")
     c.execute(SCHEMA_HBBS)
-    for i, (pid, note) in enumerate(pairs):
+    for i, pair in enumerate(pairs):
+        pid, note = pair[0], pair[1]
+        info = pair[2] if len(pair) > 2 else "{}"
         c.execute("INSERT INTO peer (guid,id,uuid,pk,created_at,note,info) VALUES (?,?,?,?,?,?,?)",
-                  (bytes([i]) * 16, pid, b"u", b"k", "2026-07-11 22:33:55", note, "{}"))
+                  (bytes([i]) * 16, pid, b"u", b"k", "2026-07-11 22:33:55", note, info))
     c.commit()
     return c  # laissée ouverte : les écritures restent dans le WAL
 
@@ -95,6 +97,21 @@ class TestCodec(unittest.TestCase):
             rpe.decoder_online_response(rpe._champ_bytes(7, b""), 1)
 
 
+class TestIp(unittest.TestCase):
+    def test_ipv4_mappee(self):
+        self.assertEqual(rpe.ip_depuis_info('{"ip":"::ffff:192.0.2.10"}'), "192.0.2.10")
+        self.assertEqual(rpe.ip_depuis_info('{"ip":"::FFFF:192.0.2.10"}'), "192.0.2.10")
+
+    def test_ipv4_et_ipv6_inchangees(self):
+        self.assertEqual(rpe.ip_depuis_info('{"ip":"198.51.100.7"}'), "198.51.100.7")
+        self.assertEqual(rpe.ip_depuis_info('{"ip":"2001:db8::1"}'), "2001:db8::1")
+
+    def test_absente_ou_illisible(self):
+        for info in (None, "", "{}", '{"ip":""}', '{"ip":null}', "pas du json", "[1]",
+                     '{"ip":"n importe quoi"}', '{"ip":42}'):
+            self.assertIsNone(rpe.ip_depuis_info(info), info)
+
+
 class TestExport(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
@@ -118,8 +135,10 @@ class TestExport(unittest.TestCase):
         return rc, hbbs
 
     def test_export_complet_et_vu_le_conserve(self):
-        conn = creer_base(self.base, [("111111111", None), ("idperso", " Téléphone "),
-                                      ("222222222", "")])
+        conn = creer_base(self.base, [
+            ("111111111", None, '{"ip":"::ffff:192.0.2.10"}'),
+            ("idperso", " Téléphone ", '{"ip":"2001:db8::1"}'),
+            ("222222222", "")])
         try:
             with open(self.base, "rb") as f:
                 avant = f.read()
@@ -138,6 +157,10 @@ class TestExport(unittest.TestCase):
             self.assertFalse(p["222222222"]["en_ligne"])
             self.assertIsNone(p["222222222"]["vu_le"])
             self.assertEqual(p["111111111"]["cree_le"], "2026-07-11T22:33:55+00:00")
+            # ip : colonne info de hbbs, sans préfixe ::ffff:, null si absente
+            self.assertEqual(p["111111111"]["ip"], "192.0.2.10")
+            self.assertEqual(p["idperso"]["ip"], "2001:db8::1")
+            self.assertIsNone(p["222222222"]["ip"])
 
             # Deuxième passage : 111111111 hors ligne, garde son vu_le précédent.
             rc, _ = self.lancer({"idperso"})
