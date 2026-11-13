@@ -37,3 +37,37 @@
     chdir: "{{ deploy_dir }}"
   when: rustdesk_compose is changed and not ansible_check_mode
   changed_when: true
+
+# --- Export de l'état en ligne des pairs (monserveur#39) ---------------------
+
+- name: Créer le répertoire du script d'export des pairs
+  file:
+    path: "{{ rustdesk_pairs_export_script_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: rustdesk_pairs_export_enabled | bool
+
+- name: Déployer le script d'export des pairs
+  copy:
+    src: rustdesk-pairs-export.py
+    dest: "{{ rustdesk_pairs_export_script_dir }}/rustdesk-pairs-export.py"
+    owner: root
+    group: root
+    mode: "0755"
+  when: rustdesk_pairs_export_enabled | bool
+
+- name: Planifier l'export des pairs (/etc/cron.d/, cf. adr-cron-toujours-etc-cron-d)
+  cron:
+    name: "rustdesk-pairs-export"
+    cron_file: rustdesk-pairs-export
+    user: root
+    minute: "{{ rustdesk_pairs_export_cron_minute }}"
+    job: >-
+      /usr/bin/python3 {{ rustdesk_pairs_export_script_dir }}/rustdesk-pairs-export.py
+      --base {{ rustdesk_pairs_export_base }}
+      --hbbs {{ rustdesk_pairs_export_hbbs }}
+      --sortie {{ rustdesk_pairs_export_sortie }}
+      >> {{ rustdesk_pairs_export_log }} 2>&1
+    state: "{{ 'present' if rustdesk_pairs_export_enabled | bool else 'absent' }}"
