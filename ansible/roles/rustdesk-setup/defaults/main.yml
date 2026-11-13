@@ -1,2 +1,16 @@
 ---
 deploy_dir: "/opt/rustdesk"
+
+# Export de l'état en ligne des pairs hbbs vers le dossier Syncthing Weyr
+# (monserveur#39, consommé par claude-scripts#21 puis c3po#190).
+# Le script lit une COPIE de la base hbbs et interroge hbbs (OnlineRequest,
+# port NAT 21115) ; il n'écrit que rustdesk_pairs_export_sortie.
+rustdesk_pairs_export_enabled: true
+rustdesk_pairs_export_script_dir: /opt/rustdesk-pairs-export
+rustdesk_pairs_export_base: "{{ deploy_dir }}/data/db_v2.sqlite3"
+rustdesk_pairs_export_hbbs: "127.0.0.1:21115"
+# Dossier Syncthing Weyr de glaurung (config.xml de syncthing@cedric : path="$HOME/Sync/Weyr").
+# Le dossier doit exister : le script ne le crée jamais.
+rustdesk_pairs_export_sortie: /home/cedric/Sync/Weyr/rustdesk-pairs.json
+rustdesk_pairs_export_cron_minute: "*/5"
+rustdesk_pairs_export_log: /var/log/rustdesk-pairs-export.log

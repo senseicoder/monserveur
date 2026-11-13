@@ -2,3 +2,5 @@
 ansible/.vault_passw.py
 graphify-out/cache/last_query_stamp
 graphify-out/cache/stat-index.json
+__pycache__/
+*.pyc
